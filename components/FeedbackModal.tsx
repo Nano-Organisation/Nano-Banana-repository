@@ -19,9 +19,30 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose }) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate API call
+    // Define the destination email
+    const recipient = "feedback@digitalgentry.ai";
+    
+    // Construct the subject line
+    const subject = `Nano Feedback: ${type === 'bug' ? 'Bug Report' : 'Feature Request'}`;
+    
+    // Construct the email body
+    const body = `Type: ${type.toUpperCase()}
+User Email: ${email || 'Not provided'}
+
+Message:
+${message}
+
+------------------------------------------------
+Sent from Nano Banana AI Suite`;
+
+    // Create mailto link
+    const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    // Open user's email client
+    window.location.href = mailtoLink;
+
+    // Show local success state
     setTimeout(() => {
-      console.log({ type, message, email });
       setIsSubmitting(false);
       setSubmitted(true);
       setTimeout(() => {
@@ -29,7 +50,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose }) => {
         setMessage('');
         onClose();
       }, 2000);
-    }, 1000);
+    }, 500);
   };
 
   return (
@@ -54,8 +75,8 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose }) => {
               <div className="w-12 h-12 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
                 <Send className="w-6 h-6" />
               </div>
-              <h4 className="text-xl font-semibold text-white">Thank You!</h4>
-              <p className="text-slate-400">Your feedback helps us build a better Nano.</p>
+              <h4 className="text-xl font-semibold text-white">Opening Email...</h4>
+              <p className="text-slate-400">Please send the email from your client to complete the feedback.</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -115,7 +136,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose }) => {
                 disabled={!message || isSubmitting}
                 className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
               >
-                {isSubmitting ? 'Sending...' : 'Submit Feedback'}
+                {isSubmitting ? 'Opening Email Client...' : 'Submit Feedback'}
               </button>
             </form>
           )}

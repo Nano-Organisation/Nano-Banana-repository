@@ -22,7 +22,8 @@ export enum ToolId {
   Meme = 'MEME',
   AutomationHub = 'AUTOMATION_HUB',
   Social = 'SOCIAL',
-  PromptTrainer = 'PROMPT_TRAINER'
+  PromptTrainer = 'PROMPT_TRAINER',
+  Academy = 'ACADEMY'
 }
 
 export interface ToolConfig {
@@ -47,6 +48,7 @@ export interface EmojiPuzzle {
   emojis: string;
   answer: string;
   category: string;
+  // hint?: string; // Optional if you decide to add hints later
 }
 
 export interface WordPuzzle {

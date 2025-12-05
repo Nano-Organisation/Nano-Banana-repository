@@ -22,7 +22,8 @@ import MemeGenerator from './components/tools/MemeGenerator';
 import AutomationHub from './components/tools/AutomationHub';
 import SocialTool from './components/tools/SocialTool';
 import PromptTrainer from './components/tools/PromptTrainer';
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain } from 'lucide-react';
+import PromptAcademy from './components/tools/PromptAcademy';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked } from 'lucide-react';
 
 const TOOLS = [
   {
@@ -32,6 +33,15 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.Academy,
+    title: "Nano Academy",
+    description: "Daily prompt engineering & security tips.",
+    icon: BookMarked,
+    color: "teal",
+    gradient: "from-teal-500 to-emerald-600",
+    releaseDate: '2025-12-05'
   },
   {
     id: ToolId.PromptTrainer,
@@ -232,6 +242,8 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.Academy:
+        return <PromptAcademy />;
       case ToolId.PromptTrainer:
         return <PromptTrainer />;
       case ToolId.Live:

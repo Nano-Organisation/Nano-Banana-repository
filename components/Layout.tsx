@@ -1,7 +1,6 @@
 
 import React, { ReactNode, useState } from 'react';
-import { Sparkles, ArrowLeft, MessageSquarePlus, Settings } from 'lucide-react';
-import FeedbackModal from './FeedbackModal';
+import { Sparkles, ArrowLeft, MessageSquarePlus, Settings, Bug } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import ThemeSwitcher from './ThemeSwitcher';
 
@@ -12,8 +11,15 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, onBack, title }) => {
-  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const handleReportBug = () => {
+    window.location.href = "mailto:feedback@digitalgentry.ai?subject=Nano Banana: Bug Report";
+  };
+
+  const handleFeedback = () => {
+    window.location.href = "mailto:feedback@digitalgentry.ai?subject=Nano Banana: Feedback";
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-300">
@@ -63,17 +69,25 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title }) => {
           <div>
             &copy; {new Date().getFullYear()} Digital Gentry AI Suite. All rights reserved.
           </div>
-          <button 
-            onClick={() => setIsFeedbackOpen(true)}
-            className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-500 transition-colors"
-          >
-            <MessageSquarePlus className="w-4 h-4" />
-            Feedback
-          </button>
+          <div className="flex items-center gap-6">
+            <button 
+              onClick={handleReportBug}
+              className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-500 transition-colors"
+            >
+              <Bug className="w-4 h-4" />
+              Report a bug
+            </button>
+            <button 
+              onClick={handleFeedback}
+              className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-500 transition-colors"
+            >
+              <MessageSquarePlus className="w-4 h-4" />
+              Feedback
+            </button>
+          </div>
         </div>
       </footer>
 
-      <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
