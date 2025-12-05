@@ -26,7 +26,10 @@ import PromptAcademy from './components/tools/PromptAcademy';
 import AssistantCreator from './components/tools/AssistantCreator';
 import ListCreator from './components/tools/ListCreator';
 import PodcastTool from './components/tools/PodcastTool';
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2 } from 'lucide-react';
+import ImageToPrompt from './components/tools/ImageToPrompt';
+import QuizGenerator from './components/tools/QuizGenerator';
+import RiddleGenerator from './components/tools/RiddleGenerator';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -55,6 +58,33 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.ImageToPrompt,
+    title: "Nano Vision",
+    description: "Convert images to text descriptions or prompts.",
+    icon: Scan,
+    color: "fuchsia",
+    gradient: "from-fuchsia-500 to-purple-600",
+    releaseDate: '2025-12-06'
+  },
+  {
+    id: ToolId.QuizGenerator,
+    title: "Nano Quiz",
+    description: "Generate quizzes on any topic instantly.",
+    icon: FileQuestion,
+    color: "indigo",
+    gradient: "from-indigo-500 to-blue-600",
+    releaseDate: '2025-12-06'
+  },
+  {
+    id: ToolId.RiddleGenerator,
+    title: "Nano Riddle",
+    description: "Generate clever riddles on any subject.",
+    icon: Lightbulb,
+    color: "amber",
+    gradient: "from-amber-400 to-orange-500",
+    releaseDate: '2025-12-06'
   },
   {
     id: ToolId.Podcast,
@@ -290,6 +320,12 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.ImageToPrompt:
+        return <ImageToPrompt />;
+      case ToolId.QuizGenerator:
+        return <QuizGenerator />;
+      case ToolId.RiddleGenerator:
+        return <RiddleGenerator />;
       case ToolId.Podcast:
         return <PodcastTool />;
       case ToolId.AssistantCreator:

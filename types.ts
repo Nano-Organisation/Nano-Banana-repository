@@ -26,7 +26,10 @@ export enum ToolId {
   Academy = 'ACADEMY',
   AssistantCreator = 'ASSISTANT_CREATOR',
   ListCreator = 'LIST_CREATOR',
-  Podcast = 'PODCAST'
+  Podcast = 'PODCAST',
+  ImageToPrompt = 'IMAGE_TO_PROMPT',
+  QuizGenerator = 'QUIZ_GENERATOR',
+  RiddleGenerator = 'RIDDLE_GENERATOR'
 }
 
 export interface ToolConfig {
@@ -158,4 +161,25 @@ export interface PodcastScript {
   title: string;
   script: string; // The formatted script for TTS
   visualPrompt: string;
+}
+
+export interface QuizQuestion {
+  id: number;
+  question: string;
+  options: string[];
+  correctAnswer: string;
+  explanation: string;
+}
+
+export interface QuizData {
+  topic: string;
+  difficulty: string;
+  questions: QuizQuestion[];
+}
+
+export interface RiddleData {
+  topic: string;
+  riddle: string;
+  answer: string;
+  explanation: string;
 }

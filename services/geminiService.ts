@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, GenerateContentResponse, Chat, Modality } from "@google/genai";
-import { EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis, DailyTip, HelpfulList, PodcastScript } from "../types";
+import { EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis, DailyTip, HelpfulList, PodcastScript, QuizData, RiddleData } from "../types";
 
 // Note: For Veo calls, we create a fresh instance inside the function to ensure the latest API Key is used.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -919,6 +919,115 @@ export const generateHelpfulList = async (topic: string): Promise<HelpfulList> =
     return JSON.parse(text);
   } catch (error) {
     console.error("List Gen Error", error);
+    throw error;
+  }
+};
+
+/**
+ * Generate Image Prompt (Image to Text / Image to Prompt)
+ */
+export const generateImagePrompt = async (base64Image: string, platform: 'Description' | 'Midjourney' | 'Stable Diffusion' | 'DALL-E 3'): Promise<string> => {
+  try {
+    const model = 'gemini-2.5-flash';
+    
+    let instructions = "";
+    if (platform === 'Description') {
+      instructions = "Describe this image in vivid detail. Capture the subject, lighting, colors, style, composition, and mood. Keep it natural and descriptive.";
+    } else if (platform === 'Midjourney') {
+      instructions = "Write a highly optimized prompt for Midjourney to recreate this image. Use comma-separated keywords, specific artistic parameters (e.g. --ar 16:9, --v 6.0), and focus on style terms (e.g. photorealistic, cinematic lighting, octane render). Do not write sentences, write tokens.";
+    } else if (platform === 'Stable Diffusion') {
+      instructions = "Write a detailed prompt for Stable Diffusion to recreate this image. Include specific artist names, art styles, and quality boosters (e.g. masterpiece, best quality, 8k, ultra detailed). Focus on visual descriptors.";
+    } else if (platform === 'DALL-E 3') {
+      instructions = "Write a descriptive, natural language prompt for DALL-E 3 to recreate this image. DALL-E prefers full sentences that describe the scene, the subject's action, the setting, and the specific artistic medium or camera style.";
+    }
+
+    const imagePart = fileToGenerativePart(base64Image, 'image/jpeg');
+    const textPart = { text: instructions };
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: { parts: [imagePart, textPart] }
+    });
+
+    return response.text || "Could not analyze image.";
+  } catch (error) {
+    console.error("Image to Prompt Error", error);
+    throw error;
+  }
+};
+
+/**
+ * Generate Quiz
+ */
+export const generateQuiz = async (topic: string, count: number = 5, difficulty: string = 'Medium'): Promise<QuizData> => {
+  try {
+    const model = 'gemini-2.5-flash';
+    const prompt = `Create a ${difficulty} difficulty quiz about: "${topic}".
+    Generate ${count} multiple choice questions.
+    
+    Return ONLY a JSON object with this format:
+    {
+      "topic": "${topic}",
+      "difficulty": "${difficulty}",
+      "questions": [
+        {
+          "id": 1,
+          "question": "Question text...",
+          "options": ["Option A", "Option B", "Option C", "Option D"],
+          "correctAnswer": "The full text of the correct option",
+          "explanation": "Brief explanation of why it is correct."
+        }
+      ]
+    }
+    Do not include markdown formatting.`;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json'
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No text returned");
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Quiz Gen Error", error);
+    throw error;
+  }
+};
+
+/**
+ * Generate Riddle Content (Generator Tool)
+ */
+export const generateRiddleContent = async (topic: string): Promise<RiddleData> => {
+  try {
+    const model = 'gemini-2.5-flash';
+    const prompt = `Create a clever, original riddle about: "${topic}".
+    
+    Return ONLY a JSON object:
+    {
+      "topic": "${topic}",
+      "riddle": "The riddle text...",
+      "answer": "The Answer",
+      "explanation": "Why this is the answer."
+    }
+    Do not include markdown formatting.`;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json'
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No text returned");
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Riddle Generator Error", error);
     throw error;
   }
 };
