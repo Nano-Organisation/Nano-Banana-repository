@@ -29,7 +29,8 @@ export enum ToolId {
   Podcast = 'PODCAST',
   ImageToPrompt = 'IMAGE_TO_PROMPT',
   QuizGenerator = 'QUIZ_GENERATOR',
-  RiddleGenerator = 'RIDDLE_GENERATOR'
+  RiddleGenerator = 'RIDDLE_GENERATOR',
+  SoundFX = 'SOUND_FX'
 }
 
 export interface ToolConfig {

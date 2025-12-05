@@ -168,6 +168,24 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
 };
 
 /**
+ * Batch Image Generation (Standard)
+ * Generates multiple images in parallel.
+ */
+export const generateBatchImages = async (prompt: string, count: number): Promise<string[]> => {
+  const promises = [];
+  for (let i = 0; i < count; i++) {
+    // Add slight randomness to seed or prompt to ensure variation if needed, 
+    // though the model usually varies enough on its own. 
+    // We append a subtle invisible char or noise to ensuring non-cached unique results if strictly needed,
+    // but usually calling it multiple times is enough.
+    promises.push(generateImageWithGemini(prompt));
+  }
+  
+  const results = await Promise.all(promises);
+  return results;
+};
+
+/**
  * Image Generation (Pro): Uses gemini-3-pro-image-preview
  * Supports image sizing. Requires Paid API Key.
  */

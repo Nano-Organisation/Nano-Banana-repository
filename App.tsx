@@ -29,7 +29,8 @@ import PodcastTool from './components/tools/PodcastTool';
 import ImageToPrompt from './components/tools/ImageToPrompt';
 import QuizGenerator from './components/tools/QuizGenerator';
 import RiddleGenerator from './components/tools/RiddleGenerator';
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb } from 'lucide-react';
+import SoundFXTool from './components/tools/SoundFXTool';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -58,6 +59,15 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.SoundFX,
+    title: "Nano FX",
+    description: "Generate sound effects and audio-visuals.",
+    icon: Radio,
+    color: "rose",
+    gradient: "from-rose-500 to-red-600",
+    releaseDate: '2025-12-06'
   },
   {
     id: ToolId.ImageToPrompt,
@@ -320,6 +330,8 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.SoundFX:
+        return <SoundFXTool />;
       case ToolId.ImageToPrompt:
         return <ImageToPrompt />;
       case ToolId.QuizGenerator:
