@@ -14,11 +14,11 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleReportBug = () => {
-    window.location.href = "mailto:feedback@digitalgentry.ai?subject=Nano Banana: Bug Report";
+    window.location.href = "mailto:contact-us@thedigitalgentry.co.uk?subject=Nano Banana: Bug Report";
   };
 
   const handleFeedback = () => {
-    window.location.href = "mailto:feedback@digitalgentry.ai?subject=Nano Banana: Feedback";
+    window.location.href = "mailto:contact-us@thedigitalgentry.co.uk?subject=Nano Banana: Feedback";
   };
 
   return (
