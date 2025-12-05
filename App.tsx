@@ -30,7 +30,13 @@ import ImageToPrompt from './components/tools/ImageToPrompt';
 import QuizGenerator from './components/tools/QuizGenerator';
 import RiddleGenerator from './components/tools/RiddleGenerator';
 import SoundFXTool from './components/tools/SoundFXTool';
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio } from 'lucide-react';
+import AudioTranscriber from './components/tools/AudioTranscriber';
+import HeritageTool from './components/tools/HeritageTool';
+import MockupDesigner from './components/tools/MockupDesigner';
+import AffirmationGenerator from './components/tools/AffirmationGenerator';
+import VideoGenerator from './components/tools/VideoGenerator';
+import CopywriterTool from './components/tools/CopywriterTool';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -48,7 +54,8 @@ const SHADOW_COLORS: Record<string, string> = {
   fuchsia: 'rgba(217, 70, 239, 0.4)',
   cyan: 'rgba(6, 182, 212, 0.4)',
   violet: 'rgba(139, 92, 246, 0.4)',
-  lime: 'rgba(132, 204, 22, 0.4)'
+  lime: 'rgba(132, 204, 22, 0.4)',
+  emerald: 'rgba(16, 185, 129, 0.4)'
 };
 
 const TOOLS = [
@@ -61,6 +68,51 @@ const TOOLS = [
     gradient: "from-green-500 to-emerald-600"
   },
   {
+    id: ToolId.VideoGenerator,
+    title: "Nano Video",
+    description: "Pro-grade video generation powered by Veo.",
+    icon: Video,
+    color: "red",
+    gradient: "from-red-600 to-rose-700",
+    releaseDate: '2025-12-07'
+  },
+  {
+    id: ToolId.Copywriter,
+    title: "Nano Copy",
+    description: "Professional copywriter for blogs, ads, and emails.",
+    icon: Pen,
+    color: "emerald",
+    gradient: "from-emerald-500 to-teal-600",
+    releaseDate: '2025-12-07'
+  },
+  {
+    id: ToolId.AffirmationGenerator,
+    title: "Nano Affirmations",
+    description: "Generate a weekly affirmation plan for positivity.",
+    icon: Heart,
+    color: "teal",
+    gradient: "from-teal-500 to-emerald-600",
+    releaseDate: '2025-12-07'
+  },
+  {
+    id: ToolId.Heritage,
+    title: "Nano Heritage",
+    description: "Design coats of arms, signet rings, and authentic tartan.",
+    icon: Shield,
+    color: "amber",
+    gradient: "from-amber-600 to-orange-700",
+    releaseDate: '2025-12-07'
+  },
+  {
+    id: ToolId.AudioTranscriber,
+    title: "Nano Scribe",
+    description: "Accurately transcribe audio files to text.",
+    icon: FileAudio,
+    color: "sky",
+    gradient: "from-sky-500 to-blue-600",
+    releaseDate: '2025-12-07'
+  },
+  {
     id: ToolId.SoundFX,
     title: "Nano FX",
     description: "Generate sound effects and audio-visuals.",
@@ -68,6 +120,15 @@ const TOOLS = [
     color: "rose",
     gradient: "from-rose-500 to-red-600",
     releaseDate: '2025-12-06'
+  },
+  {
+    id: ToolId.MockupDesigner,
+    title: "Nano Mockup",
+    description: "Create high-fidelity UI designs for apps & websites.",
+    icon: LayoutIcon,
+    color: "fuchsia",
+    gradient: "from-fuchsia-500 to-purple-600",
+    releaseDate: '2025-12-07'
   },
   {
     id: ToolId.ImageToPrompt,
@@ -325,13 +386,33 @@ const isToolNew = (releaseDate?: string) => {
 const App: React.FC = () => {
   const [currentTool, setCurrentTool] = useState<ToolId>(ToolId.Dashboard);
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter tools based on search query
+  const filteredTools = TOOLS.filter(tool => {
+    const query = searchQuery.toLowerCase();
+    return tool.title.toLowerCase().includes(query) || 
+           tool.description.toLowerCase().includes(query);
+  });
 
   const renderTool = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.VideoGenerator:
+        return <VideoGenerator />;
+      case ToolId.Copywriter:
+        return <CopywriterTool />;
+      case ToolId.AffirmationGenerator:
+        return <AffirmationGenerator />;
+      case ToolId.Heritage:
+        return <HeritageTool />;
+      case ToolId.AudioTranscriber:
+        return <AudioTranscriber />;
       case ToolId.SoundFX:
         return <SoundFXTool />;
+      case ToolId.MockupDesigner:
+        return <MockupDesigner />;
       case ToolId.ImageToPrompt:
         return <ImageToPrompt />;
       case ToolId.QuizGenerator:
@@ -403,44 +484,64 @@ const App: React.FC = () => {
           Experience the next generation of AI tools powered by Gemini 2.5. 
           Edit images with words, generate code, play games, and more.
         </p>
+        
+        {/* Search Bar */}
+        <div className="max-w-md mx-auto relative pt-4">
+           <div className="absolute inset-y-0 left-0 pl-3 pt-4 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-400" />
+           </div>
+           <input
+              type="text"
+              placeholder="Find a feature..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl py-3 pl-10 pr-4 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm"
+           />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {TOOLS.map((tool) => (
-          <button
-            key={tool.id}
-            onClick={() => setCurrentTool(tool.id)}
-            onMouseEnter={() => setHoveredTool(tool.id)}
-            onMouseLeave={() => setHoveredTool(null)}
-            title={tool.description}
-            className="group relative bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-slate-600 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 overflow-hidden"
-            style={{ 
-               boxShadow: hoveredTool === tool.id 
-                  ? `0 10px 30px -10px ${SHADOW_COLORS[tool.color] || 'rgba(0,0,0,0.5)'}` 
-                  : '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-            }}
-          >
-            {/* New Badge */}
-            {isToolNew((tool as any).releaseDate) && (
-               <div className="absolute top-3 right-3 bg-amber-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg z-10 animate-pulse">
-                  NEW
-               </div>
-            )}
+        {filteredTools.length > 0 ? (
+           filteredTools.map((tool) => (
+            <button
+              key={tool.id}
+              onClick={() => setCurrentTool(tool.id)}
+              onMouseEnter={() => setHoveredTool(tool.id)}
+              onMouseLeave={() => setHoveredTool(null)}
+              title={tool.description}
+              className="group relative bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-slate-600 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 overflow-hidden"
+              style={{ 
+                 boxShadow: hoveredTool === tool.id 
+                    ? `0 10px 30px -10px ${SHADOW_COLORS[tool.color] || 'rgba(0,0,0,0.5)'}` 
+                    : '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              {/* New Badge */}
+              {isToolNew((tool as any).releaseDate) && (
+                 <div className="absolute top-3 right-3 bg-amber-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg z-10 animate-pulse">
+                    NEW
+                 </div>
+              )}
 
-            <div className={`absolute top-0 right-0 p-24 opacity-5 bg-gradient-to-br ${tool.gradient} blur-3xl rounded-full -mr-10 -mt-10 group-hover:opacity-10 transition-opacity`}></div>
-            
-            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center mb-4 shadow-lg`}>
-              <tool.icon className="w-6 h-6 text-white" />
-            </div>
-            
-            <h3 className="text-xl font-bold text-white mb-2">{tool.title}</h3>
-            <p className="text-slate-400 text-sm leading-relaxed">{tool.description}</p>
-            
-            <div className="mt-6 flex items-center text-xs font-semibold uppercase tracking-wider text-slate-500 group-hover:text-white transition-colors">
-              Launch Tool <span className="ml-2">→</span>
-            </div>
-          </button>
-        ))}
+              <div className={`absolute top-0 right-0 p-24 opacity-5 bg-gradient-to-br ${tool.gradient} blur-3xl rounded-full -mr-10 -mt-10 group-hover:opacity-10 transition-opacity`}></div>
+              
+              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center mb-4 shadow-lg`}>
+                <tool.icon className="w-6 h-6 text-white" />
+              </div>
+              
+              <h3 className="text-xl font-bold text-white mb-2">{tool.title}</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">{tool.description}</p>
+              
+              <div className="mt-6 flex items-center text-xs font-semibold uppercase tracking-wider text-slate-500 group-hover:text-white transition-colors">
+                Launch Tool <span className="ml-2">→</span>
+              </div>
+            </button>
+          ))
+        ) : (
+           <div className="col-span-full text-center py-12 text-slate-500">
+              <p>No tools found matching "{searchQuery}".</p>
+           </div>
+        )}
       </div>
     </div>
   );

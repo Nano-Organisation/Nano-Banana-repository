@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Youtube, Download, RefreshCw, Zap, TrendingUp, Gamepad, Smile, Layout, Film, Monitor, Smartphone, Square, Image as ImageIcon, Lock } from 'lucide-react';
+import { Youtube, Download, RefreshCw, Zap, TrendingUp, Gamepad, Smile, Layout, Film, Monitor, Smartphone, Square, Image as ImageIcon, Lock, AlertTriangle } from 'lucide-react';
 import { generateViralThumbnails, generateVideoWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 import { addWatermarkToImage } from '../../utils/watermark';
@@ -159,7 +159,10 @@ const ThumbnailTool: React.FC = () => {
                  Thumbnails
                </button>
                <button 
-                 onClick={() => setMode('video')}
+                 onClick={() => {
+                    setMode('video');
+                    setAspectRatio('16:9'); // Reset to valid default when switching
+                 }}
                  className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${
                    mode === 'video' 
                      ? 'bg-rose-600 text-white shadow-lg shadow-rose-900/20' 
@@ -189,13 +192,6 @@ const ThumbnailTool: React.FC = () => {
                       title="Portrait 9:16"
                     >
                       <Smartphone className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => setAspectRatio('1:1')}
-                      className={`p-2 rounded-md transition-all ${aspectRatio === '1:1' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-white'}`}
-                      title="Square 1:1"
-                    >
-                      <Square className="w-4 h-4" />
                     </button>
                   </div>
                </div>
@@ -263,6 +259,24 @@ const ThumbnailTool: React.FC = () => {
                   {mode === 'image' ? 'Designing viral clickbait...' : 'Rendering motion clip...'}
                 </p>
                 {mode === 'video' && <p className="text-xs text-slate-500">Video generation may take up to a minute.</p>}
+             </div>
+           ) : status === 'error' ? (
+             <div className="flex flex-col items-center justify-center py-12 space-y-4 text-center">
+                <div className="w-16 h-16 bg-red-900/20 rounded-full flex items-center justify-center border border-red-500/30">
+                   <AlertTriangle className="w-8 h-8 text-red-500" />
+                </div>
+                <div className="space-y-1">
+                   <h3 className="text-white font-bold">Generation Failed</h3>
+                   <p className="text-slate-400 text-sm">Please try again. If using Motion Clip, ensure you have a valid paid API key connected.</p>
+                </div>
+                {mode === 'video' && (
+                   <button 
+                     onClick={handleSelectKey}
+                     className="text-amber-500 text-xs hover:underline flex items-center gap-1 mx-auto mt-2"
+                   >
+                      <Lock className="w-3 h-3" /> Check API Key
+                   </button>
+                )}
              </div>
            ) : (
              <>

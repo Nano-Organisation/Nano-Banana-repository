@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Palette, Download, RefreshCw, Lock, Star, Share2, Wand2, Monitor, Smartphone, Square, Layers, Sparkles } from 'lucide-react';
+import { Palette, Download, RefreshCw, Lock, Star, Share2, Wand2, Monitor, Smartphone, Square, Layers, Sparkles, AlertTriangle } from 'lucide-react';
 import { generateImageWithGemini, generateProImageWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 import { drawWatermarkOnCanvas } from '../../utils/watermark';
@@ -32,6 +32,7 @@ const ImageGenerator: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [status, setStatus] = useState<LoadingState>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
   
   // Settings
   const [isPro, setIsPro] = useState(false);
@@ -69,6 +70,7 @@ const ImageGenerator: React.FC = () => {
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setStatus('loading');
+    setErrorMessage('');
     setResultImage(null);
     setActiveFilter('none'); // Reset filter on new gen
 
@@ -76,7 +78,7 @@ const ImageGenerator: React.FC = () => {
       if (isPro) {
         if (!(await getAIStudio()?.hasSelectedApiKey())) {
            setStatus('error');
-           alert("Please select a paid API key to use Nano Banana Pro.");
+           setErrorMessage("Please select a paid API key to use Nano Banana Pro.");
            handleSelectKey();
            setStatus('idle');
            return;
@@ -88,8 +90,9 @@ const ImageGenerator: React.FC = () => {
         setResultImage(img);
       }
       setStatus('success');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setErrorMessage(err.message || "Generation failed");
       setStatus('error');
     }
   };
@@ -291,6 +294,16 @@ const ImageGenerator: React.FC = () => {
                  <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
                  <p className="text-purple-500 dark:text-purple-400 text-sm animate-pulse">Dreaming up pixels...</p>
                </div>
+             ) : status === 'error' ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4 text-center p-6">
+                   <div className="w-16 h-16 bg-red-900/20 rounded-full flex items-center justify-center border border-red-500/30">
+                      <AlertTriangle className="w-8 h-8 text-red-500" />
+                   </div>
+                   <div className="space-y-1">
+                      <h3 className="text-red-500 font-bold">Generation Failed</h3>
+                      <p className="text-slate-400 text-sm">{errorMessage}</p>
+                   </div>
+                </div>
              ) : resultImage ? (
                <>
                  {/* Live Image with CSS Filter applied */}

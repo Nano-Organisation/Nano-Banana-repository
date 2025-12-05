@@ -30,7 +30,13 @@ export enum ToolId {
   ImageToPrompt = 'IMAGE_TO_PROMPT',
   QuizGenerator = 'QUIZ_GENERATOR',
   RiddleGenerator = 'RIDDLE_GENERATOR',
-  SoundFX = 'SOUND_FX'
+  SoundFX = 'SOUND_FX',
+  AudioTranscriber = 'AUDIO_TRANSCRIBER',
+  Heritage = 'HERITAGE',
+  MockupDesigner = 'MOCKUP_DESIGNER',
+  AffirmationGenerator = 'AFFIRMATION_GENERATOR',
+  VideoGenerator = 'VIDEO_GENERATOR',
+  Copywriter = 'COPYWRITER'
 }
 
 export interface ToolConfig {
@@ -183,4 +189,10 @@ export interface RiddleData {
   riddle: string;
   answer: string;
   explanation: string;
+}
+
+export interface AffirmationPlan {
+  topic: string;
+  weeklyMantra: string;
+  dailyAffirmations: { day: string; text: string }[];
 }

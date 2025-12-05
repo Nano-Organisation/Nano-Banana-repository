@@ -1,1051 +1,774 @@
 
-import { GoogleGenAI, GenerateContentResponse, Chat, Modality } from "@google/genai";
-import { EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis, DailyTip, HelpfulList, PodcastScript, QuizData, RiddleData } from "../types";
+import { GoogleGenAI, Type, Chat, Modality } from "@google/genai";
+import { 
+  MemeData, QuizData, RiddleData, StorybookData, SocialSettings, 
+  SocialCampaign, PromptAnalysis, DailyTip, HelpfulList, PodcastScript,
+  EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, AffirmationPlan
+} from "../types";
 
-// Note: For Veo calls, we create a fresh instance inside the function to ensure the latest API Key is used.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Helpers
-const fileToGenerativePart = (base64Data: string, mimeType: string) => {
-  return {
-    inlineData: {
-      data: base64Data.split(',')[1], // Remove the data url prefix
-      mimeType
-    },
-  };
-};
-
-/**
- * Helper to convert Base64 string to Uint8Array
- */
-const base64ToUint8Array = (base64: string): Uint8Array => {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+const handleGeminiError = (error: any): never => {
+  console.error("Gemini API Error:", error);
+  
+  // Attempt to extract error details from various potential structures
+  const innerError = error.error || error;
+  const msg = innerError.message || error.message || JSON.stringify(error);
+  const code = innerError.code || error.status || error.code;
+  const status = innerError.status || error.status;
+  
+  if (
+    msg.includes("429") || 
+    code === 429 || 
+    status === "RESOURCE_EXHAUSTED" || 
+    msg.includes("RESOURCE_EXHAUSTED") || 
+    msg.includes("quota")
+  ) {
+    throw new Error("Quota Exceeded: You have reached the usage limit for the Google Gemini API. Please check your billing details or try again later.");
   }
-  return bytes;
-};
-
-/**
- * Helper to write string to DataView
- */
-const writeString = (view: DataView, offset: number, string: string) => {
-  for (let i = 0; i < string.length; i++) {
-    view.setUint8(offset + i, string.charCodeAt(i));
-  }
-};
-
-/**
- * Wraps raw PCM data in a WAV container.
- * Assumes 24kHz, 16-bit mono (standard for Gemini Flash TTS).
- */
-const pcmToWav = (pcmData: Uint8Array): Blob => {
-  const WAV_HEADER_SIZE = 44;
-  const buffer = new ArrayBuffer(WAV_HEADER_SIZE + pcmData.length);
-  const view = new DataView(buffer);
-
-  // RIFF chunk descriptor
-  writeString(view, 0, 'RIFF');
-  view.setUint32(4, 36 + pcmData.length, true);
-  writeString(view, 8, 'WAVE');
-
-  // fmt sub-chunk
-  writeString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
-  view.setUint16(20, 1, true); // AudioFormat (1 for PCM)
-  view.setUint16(22, 1, true); // NumChannels (1 channel)
-  view.setUint32(24, 24000, true); // SampleRate (24000Hz)
-  view.setUint32(28, 24000 * 2, true); // ByteRate (SampleRate * BlockAlign)
-  view.setUint16(32, 2, true); // BlockAlign (NumChannels (1 channel)
-  view.setUint16(34, 16, true); // BitsPerSample (16 bits)
-
-  // data sub-chunk
-  writeString(view, 36, 'data');
-  view.setUint32(40, pcmData.length, true);
-
-  // Write audio data
-  const bytes = new Uint8Array(buffer);
-  bytes.set(pcmData, 44);
-
-  return new Blob([buffer], { type: 'audio/wav' });
-};
-
-/**
- * Chat Session: Uses gemini-2.5-flash
- * Allows custom system instructions for different personas (Assistant, Game Master, etc.)
- */
-export const createChatSession = (systemInstruction?: string): Chat => {
-  return ai.chats.create({
-    model: 'gemini-2.5-flash',
-    config: {
-      systemInstruction: systemInstruction || "You are a helpful, witty, and concise AI assistant named Nano. You are part of the Nano Banana AI Suite.",
-    }
-  });
-};
-
-/**
- * Thinking Chat Session: Uses gemini-3-pro-preview
- * Uses high thinking budget for complex tasks.
- */
-export const createThinkingChatSession = (systemInstruction?: string): Chat => {
-  return ai.chats.create({
-    model: 'gemini-3-pro-preview',
-    config: {
-      systemInstruction: systemInstruction || "You are a deep-thinking AI assistant. Use your reasoning capabilities to solve complex problems.",
-      thinkingConfig: { thinkingBudget: 32768 } // Max budget for pro
-    }
-  });
-};
-
-/**
- * Image Editing: Uses gemini-2.5-flash-image
- * Input: Image + Text Prompt
- * Output: Edited Image
- */
-export const editImageWithGemini = async (base64Image: string, prompt: string): Promise<string> => {
-  try {
-    const model = 'gemini-2.5-flash-image';
-    
-    const imagePart = fileToGenerativePart(base64Image, 'image/png'); // Assuming PNG for simplicity in editor
-    const textPart = { text: prompt };
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: {
-        parts: [imagePart, textPart]
-      }
-    });
-
-    // Iterate to find image output
-    if (response.candidates?.[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData && part.inlineData.data) {
-          return `data:image/png;base64,${part.inlineData.data}`;
-        }
-      }
-    }
-    
-    throw new Error("No image generated by the model.");
-  } catch (error) {
-    console.error("Gemini Image Edit Error:", error);
-    throw error;
-  }
-};
-
-/**
- * Image Generation (Standard): Uses gemini-2.5-flash-image
- * Input: Text Prompt
- * Output: New Image
- */
-export const generateImageWithGemini = async (prompt: string, aspectRatio: string = '1:1'): Promise<string> => {
-  try {
-    const model = 'gemini-2.5-flash-image';
-    
-    const response = await ai.models.generateContent({
-      model,
-      contents: { parts: [{ text: prompt }] },
-      config: {
-        imageConfig: {
-          aspectRatio: aspectRatio
-        }
-      }
-    });
-
-    if (response.candidates?.[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData && part.inlineData.data) {
-          return `data:image/png;base64,${part.inlineData.data}`;
-        }
-      }
-    }
-    throw new Error("No image generated.");
-  } catch (error) {
-    console.error("Gemini Image Gen Error:", error);
-    throw error;
-  }
-};
-
-/**
- * Batch Image Generation (Standard)
- * Generates multiple images in parallel.
- */
-export const generateBatchImages = async (prompt: string, count: number): Promise<string[]> => {
-  const promises = [];
-  for (let i = 0; i < count; i++) {
-    // Add slight randomness to seed or prompt to ensure variation if needed, 
-    // though the model usually varies enough on its own. 
-    // We append a subtle invisible char or noise to ensuring non-cached unique results if strictly needed,
-    // but usually calling it multiple times is enough.
-    promises.push(generateImageWithGemini(prompt));
+  if (msg.includes("API key not valid") || code === 403 || code === 400) { // 400 often returned for invalid keys too
+     throw new Error("Invalid API Key or Bad Request. Please check your settings.");
   }
   
-  const results = await Promise.all(promises);
-  return results;
+  throw new Error(msg);
 };
 
 /**
- * Image Generation (Pro): Uses gemini-3-pro-image-preview
- * Supports image sizing. Requires Paid API Key.
- */
-export const generateProImageWithGemini = async (prompt: string, size: string = '1K'): Promise<string> => {
-  try {
-    // Pro image generation uses a specific user-selected key if available
-    const proAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const model = 'gemini-3-pro-image-preview';
-    
-    const response = await proAi.models.generateContent({
-      model,
-      contents: { parts: [{ text: prompt }] },
-      config: {
-        imageConfig: {
-          imageSize: size
-        }
-      }
-    });
-
-    if (response.candidates?.[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData && part.inlineData.data) {
-          return `data:image/png;base64,${part.inlineData.data}`;
-        }
-      }
-    }
-    throw new Error("No image generated.");
-  } catch (error) {
-    console.error("Gemini Pro Image Gen Error:", error);
-    throw error;
-  }
-};
-
-/**
- * Generate 5 Viral YouTube Thumbnails
- * Runs parallel requests with slightly varied prompts to ensure diversity.
- */
-export const generateViralThumbnails = async (basePrompt: string): Promise<string[]> => {
-  // Variations to ensure different compositions/styles for the same concept
-  const variations = [
-    "hyper-realistic, close-up face, high contrast, 4k",
-    "wide angle action shot, vibrant colors, epic composition",
-    "split screen comparison style, text overlay placeholders, bright background",
-    "minimalist but shocking, curiosity inducing, high saturation",
-    "detailed 3D render style, glossy finish, trending on youtube"
-  ];
-
-  const promises = variations.map(variation => 
-    generateImageWithGemini(`YouTube thumbnail of ${basePrompt}. ${variation}`, '16:9')
-      .catch(e => null) // Catch individual errors so partial results can return
-  );
-
-  const results = await Promise.all(promises);
-  const successfulImages = results.filter((img): img is string => img !== null);
-  
-  if (successfulImages.length === 0) {
-    throw new Error("Failed to generate thumbnails.");
-  }
-
-  return successfulImages;
-};
-
-/**
- * Text Generation (Summary, Story, Code): Uses gemini-2.5-flash
+ * Text Generation
  */
 export const generateTextWithGemini = async (prompt: string, systemInstruction?: string): Promise<string> => {
   try {
-    const model = 'gemini-2.5-flash';
-    
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model,
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
-        systemInstruction,
+        systemInstruction: systemInstruction,
+      },
+    });
+    return response.text || "";
+  } catch (error) {
+    handleGeminiError(error);
+  }
+};
+
+/**
+ * Image Generation (Standard)
+ */
+export const generateImageWithGemini = async (prompt: string, aspectRatio: string = '1:1'): Promise<string> => {
+  try {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: { parts: [{ text: prompt }] },
+      config: {
+        imageConfig: {
+          aspectRatio: aspectRatio as any,
+        }
+      },
+    });
+    
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:image/png;base64,${part.inlineData.data}`;
+      } else if (part.text) {
+          // Capture refusal or text output
+          throw new Error(`Model Refusal: ${part.text}`);
+      }
+    }
+    throw new Error("No image generated. The model may have refused the prompt.");
+  } catch (error) {
+    handleGeminiError(error);
+  }
+};
+
+/**
+ * Image Generation (Pro)
+ */
+export const generateProImageWithGemini = async (prompt: string, size: string = '1K'): Promise<string> => {
+  try {
+    const ai = getAiClient();
+    // Using gemini-3-pro-image-preview
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-image-preview',
+      contents: { parts: [{ text: prompt }] },
+      config: {
+        imageConfig: {
+          imageSize: size as any, 
+        }
+      },
+    });
+    
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:image/png;base64,${part.inlineData.data}`;
+      }
+    }
+    throw new Error("No image generated");
+  } catch (error) {
+    handleGeminiError(error);
+  }
+};
+
+/**
+ * Image Editing
+ */
+export const editImageWithGemini = async (imageBase64: string, prompt: string): Promise<string> => {
+  try {
+    const ai = getAiClient();
+    const base64Data = imageBase64.split(',')[1];
+    const mimeType = imageBase64.split(';')[0].split(':')[1];
+    
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Data
+            }
+          },
+          { text: prompt }
+        ]
       }
     });
 
-    return response.text || "No response generated.";
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:image/png;base64,${part.inlineData.data}`;
+      }
+    }
+    throw new Error("No edited image returned");
   } catch (error) {
-    console.error("Gemini Text Gen Error:", error);
-    throw error;
+    handleGeminiError(error);
   }
 };
 
 /**
- * Visual QA: Uses gemini-2.5-flash (Multimodal)
- * Input: Image + Text Question
- * Output: Text Answer
+ * Visual QA / Image Analysis
  */
-export const analyzeImageWithGemini = async (base64Image: string, prompt: string): Promise<string> => {
+export const analyzeImageWithGemini = async (imageBase64: string, question: string): Promise<string> => {
   try {
-    const model = 'gemini-2.5-flash';
-    const imagePart = fileToGenerativePart(base64Image, 'image/jpeg'); // Assuming JPEG or PNG
-    const textPart = { text: prompt };
+    const ai = getAiClient();
+    const base64Data = imageBase64.split(',')[1];
+    const mimeType = imageBase64.split(';')[0].split(':')[1];
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model,
-      contents: { parts: [imagePart, textPart] }
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Data
+            }
+          },
+          { text: question }
+        ]
+      }
+    });
+    return response.text || "";
+  } catch (error) {
+    handleGeminiError(error);
+  }
+};
+
+/**
+ * Image to Prompt
+ */
+export const generateImagePrompt = async (imageBase64: string, platform: string): Promise<string> => {
+    const prompt = `Analyze this image and generate a detailed text prompt that could be used to recreate it using ${platform}. Include details about style, lighting, composition, and subject.`;
+    return analyzeImageWithGemini(imageBase64, prompt);
+};
+
+/**
+ * Chat
+ */
+export const createChatSession = (systemInstruction?: string): Chat => {
+  const ai = getAiClient();
+  return ai.chats.create({
+    model: 'gemini-2.5-flash',
+    config: {
+      systemInstruction,
+    }
+  });
+};
+
+export const createThinkingChatSession = (systemInstruction?: string): Chat => {
+  const ai = getAiClient();
+  return ai.chats.create({
+    model: 'gemini-3-pro-preview',
+    config: {
+      systemInstruction,
+      thinkingConfig: { thinkingBudget: 1024 } 
+    }
+  });
+};
+
+/**
+ * Batch Image Generation
+ */
+export const generateBatchImages = async (prompt: string, quantity: number): Promise<string[]> => {
+  const promises = [];
+  for (let i = 0; i < quantity; i++) {
+    promises.push(generateImageWithGemini(prompt));
+  }
+  return Promise.all(promises);
+};
+
+export const generateViralThumbnails = async (prompt: string): Promise<string[]> => {
+    return generateBatchImages(prompt, 5);
+};
+
+/**
+ * Games - Puzzles
+ */
+export const generateEmojiPuzzle = async (): Promise<EmojiPuzzle> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: "Generate a fun emoji puzzle where a sequence of emojis represents a movie, book, or famous phrase.",
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    emojis: { type: Type.STRING },
+                    answer: { type: Type.STRING },
+                    category: { type: Type.STRING }
+                },
+                required: ['emojis', 'answer', 'category']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+export const generateWordPuzzle = async (): Promise<WordPuzzle> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: "Generate a difficult vocabulary word with its definition and some distractor words (incorrect spellings or similar looking words).",
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    word: { type: Type.STRING },
+                    definition: { type: Type.STRING },
+                    distractors: { type: Type.ARRAY, items: { type: Type.STRING } }
+                },
+                required: ['word', 'definition', 'distractors']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+export const generateTwoTruthsPuzzle = async (): Promise<TwoTruthsPuzzle> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: "Generate 'Two Truths and a Lie' game content about a random interesting topic (History, Science, Nature).",
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    topic: { type: Type.STRING },
+                    explanation: { type: Type.STRING },
+                    statements: { 
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                text: { type: Type.STRING },
+                                isTruth: { type: Type.BOOLEAN }
+                            }
+                        }
+                    }
+                },
+                required: ['topic', 'explanation', 'statements']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+export const generateRiddlePuzzle = async (): Promise<RiddlePuzzle> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: "Generate a clever riddle.",
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    question: { type: Type.STRING },
+                    answer: { type: Type.STRING },
+                    hint: { type: Type.STRING },
+                    difficulty: { type: Type.STRING, enum: ['Easy', 'Medium', 'Hard'] }
+                },
+                required: ['question', 'answer', 'hint', 'difficulty']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+// Alias for RiddleGenerator usage
+export const generateRiddleContent = async (topic: string): Promise<RiddleData> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Generate a riddle about: ${topic}`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    topic: { type: Type.STRING },
+                    riddle: { type: Type.STRING },
+                    answer: { type: Type.STRING },
+                    explanation: { type: Type.STRING }
+                },
+                required: ['topic', 'riddle', 'answer', 'explanation']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+/**
+ * Quiz Generator
+ */
+export const generateQuiz = async (topic: string, count: number, difficulty: string): Promise<QuizData> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Generate a ${count}-question quiz about ${topic}. Difficulty: ${difficulty}.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    topic: { type: Type.STRING },
+                    difficulty: { type: Type.STRING },
+                    questions: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                id: { type: Type.INTEGER },
+                                question: { type: Type.STRING },
+                                options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                correctAnswer: { type: Type.STRING },
+                                explanation: { type: Type.STRING }
+                            },
+                            required: ['id', 'question', 'options', 'correctAnswer', 'explanation']
+                        }
+                    }
+                },
+                required: ['topic', 'difficulty', 'questions']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+/**
+ * Podcast
+ */
+export const generatePodcastScript = async (topic: string, hostName: string, guestName: string): Promise<PodcastScript> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Write a short podcast script (approx 2 mins) about ${topic}. Hosts: ${hostName} and ${guestName}. Also suggest a visual prompt for cover art.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    title: { type: Type.STRING },
+                    script: { type: Type.STRING, description: "The dialogue text." },
+                    visualPrompt: { type: Type.STRING }
+                },
+                required: ['title', 'script', 'visualPrompt']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+/**
+ * Speech
+ */
+export const generateSpeechWithGemini = async (text: string, voice: string, speed: number, pitch: number, speakers?: {speaker: string, voice: string}[]): Promise<string> => {
+    const ai = getAiClient();
+    let speechConfig: any = {};
+    
+    if (speakers && speakers.length > 0) {
+        // Multi-speaker config
+        speechConfig = {
+            multiSpeakerVoiceConfig: {
+                speakerVoiceConfigs: speakers.map(s => ({
+                    speaker: s.speaker,
+                    voiceConfig: { prebuiltVoiceConfig: { voiceName: s.voice } }
+                }))
+            }
+        };
+    } else {
+        // Single speaker
+        speechConfig = {
+            voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: voice }
+            }
+        };
+    }
+
+    const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-preview-tts",
+        contents: { parts: [{ text }] },
+        config: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: speechConfig
+        },
     });
 
-    return response.text || "No analysis generated.";
-  } catch (error) {
-    console.error("Gemini Visual QA Error:", error);
-    throw error;
-  }
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData) {
+            return `data:audio/mp3;base64,${part.inlineData.data}`;
+        }
+    }
+    throw new Error("No audio generated");
 };
 
 /**
- * Video Generation: Uses veo-3.1-fast-generate-preview
- * Input: Prompt + Optional Image
- * Note: Requires paid API Key
+ * Video
  */
 export const generateVideoWithGemini = async (prompt: string, aspectRatio: string = '16:9', imageBase64?: string): Promise<string> => {
   try {
-    // Create a NEW instance to pick up any dynamically set API keys
-    const veoAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = getAiClient();
+    let safeAspectRatio = aspectRatio;
+    // Veo strictly supports 16:9 or 9:16.
+    if (aspectRatio !== '16:9' && aspectRatio !== '9:16') {
+        console.warn(`Aspect ratio ${aspectRatio} not supported by Veo. Defaulting to 16:9.`);
+        safeAspectRatio = '16:9';
+    }
     
-    // Prepare request
+    const config: any = {
+      numberOfVideos: 1,
+      resolution: '720p',
+      aspectRatio: safeAspectRatio 
+    };
+
     const request: any = {
-      model: 'veo-3.1-fast-generate-preview',
-      prompt: prompt,
-      config: {
-        numberOfVideos: 1,
-        resolution: '720p',
-        aspectRatio: aspectRatio 
-      }
+        model: 'veo-3.1-fast-generate-preview',
+        prompt: prompt,
+        config
     };
 
     if (imageBase64) {
-      request.image = {
-        imageBytes: imageBase64.split(',')[1],
-        mimeType: 'image/png' // Assuming PNG
-      };
+        request.image = {
+          imageBytes: imageBase64.split(',')[1],
+          mimeType: 'image/png' 
+        };
     }
 
-    let operation = await veoAi.models.generateVideos(request);
+    let operation = await ai.models.generateVideos(request);
 
-    // Poll until complete
     while (!operation.done) {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Poll every 5s
-      operation = await veoAi.operations.getVideosOperation({operation: operation});
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        operation = await ai.operations.getVideosOperation({operation: operation});
     }
 
     const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (!downloadLink) throw new Error("No video URI returned.");
 
-    // Fetch the actual bytes using the key
     const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
     const blob = await response.blob();
     return URL.createObjectURL(blob);
   } catch (error) {
-    console.error("Gemini Video Gen Error:", error);
-    throw error;
+    handleGeminiError(error);
   }
 };
 
 /**
- * Text-to-Speech: Uses gemini-2.5-flash-preview-tts
- * Supports Multi-Speaker when speakerVoiceConfigs are provided.
- */
-export const generateSpeechWithGemini = async (
-  text: string, 
-  voiceName: string = 'Kore',
-  speed: number = 1.0,
-  pitch: number = 0,
-  multiSpeakerConfig?: { speaker: string, voice: string }[]
-): Promise<string> => {
-  try {
-    const model = 'gemini-2.5-flash-preview-tts';
-    
-    const config: any = {
-      responseModalities: [Modality.AUDIO], 
-    };
-
-    if (multiSpeakerConfig && multiSpeakerConfig.length === 2) {
-      // Multi-Speaker Setup
-      config.speechConfig = {
-        multiSpeakerVoiceConfig: {
-          speakerVoiceConfigs: [
-            {
-              speaker: multiSpeakerConfig[0].speaker,
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: multiSpeakerConfig[0].voice } }
-            },
-            {
-              speaker: multiSpeakerConfig[1].speaker,
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: multiSpeakerConfig[1].voice } }
-            }
-          ]
-        }
-      };
-    } else {
-      // Single Speaker Setup with prompt engineering for speed/pitch
-      const instructions = [];
-      if (speed <= 0.7) instructions.push("very slow");
-      else if (speed < 1.0) instructions.push("slow");
-      else if (speed >= 1.5) instructions.push("very fast");
-      else if (speed > 1.0) instructions.push("fast");
-
-      if (pitch <= -2) instructions.push("deep");
-      else if (pitch < 0) instructions.push("low");
-      else if (pitch >= 2) instructions.push("very high");
-      else if (pitch > 0) instructions.push("high");
-
-      let finalPrompt = text;
-      if (instructions.length > 0) {
-        finalPrompt = `Say the following with a ${instructions.join(' and ')} voice: "${text}"`;
-      }
-      
-      config.speechConfig = {
-        voiceConfig: {
-          prebuiltVoiceConfig: { voiceName }
-        }
-      };
-    }
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: { parts: [{ text: text }] }, // We send the raw text (or prompt engineered text)
-      config
-    });
-
-    // Extract base64 audio data
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    
-    if (!base64Audio) {
-      throw new Error("No audio data generated.");
-    }
-
-    // Convert to PCM Uint8Array
-    const pcmData = base64ToUint8Array(base64Audio);
-
-    // Wrap in WAV container
-    const wavBlob = pcmToWav(pcmData);
-
-    return URL.createObjectURL(wavBlob);
-  } catch (error) {
-    console.error("Gemini Speech Gen Error:", error);
-    throw error;
-  }
-};
-
-/**
- * Generate Podcast Script
- */
-export const generatePodcastScript = async (topic: string, hostName: string, guestName: string): Promise<PodcastScript> => {
-  try {
-    const model = 'gemini-2.5-flash';
-    const prompt = `Write a short, engaging podcast script (approx 1 minute) about: "${topic}".
-    Characters: ${hostName} (Host) and ${guestName} (Guest).
-    
-    Format the script EXACTLY like this for the TTS engine:
-    ${hostName}: [Text]
-    ${guestName}: [Text]
-    
-    Keep it conversational, witty, and natural.
-    Also generate a visual prompt for the podcast cover art.
-    
-    Return ONLY a JSON object:
-    {
-      "title": "Podcast Title",
-      "script": "The full script string...",
-      "visualPrompt": "Cover art description..."
-    }
-    Do not include markdown formatting.`;
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
-    });
-
-    const text = response.text;
-    if (!text) throw new Error("No text returned");
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Podcast Script Error", error);
-    throw error;
-  }
-};
-
-/**
- * Live API Connection Helper
- */
-export const getLiveClient = () => {
-    return ai.live;
-};
-
-/**
- * Emoji Puzzle Generation
- */
-export const generateEmojiPuzzle = async (): Promise<EmojiPuzzle> => {
-  try {
-    const model = 'gemini-2.5-flash';
-    const prompt = `Generate a challenging but guessable emoji puzzle.
-    Think of a popular movie, book, song, idiom, or famous place.
-    Convert it into a sequence of emojis that represent it.
-    Return ONLY a JSON object with this format:
-    {
-      "emojis": "the emoji sequence",
-      "answer": "the text title or phrase",
-      "category": "Movie/Book/Song/Idiom/Place"
-    }
-    Do not include markdown formatting like \`\`\`json.`;
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
-    });
-
-    const text = response.text;
-    if (!text) throw new Error("No text returned");
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Puzzle Gen Error", error);
-    // Fallback puzzle
-    return { emojis: "👽🚲🌕", answer: "E.T. the Extra-Terrestrial", category: "Movie" };
-  }
-};
-
-/**
- * Word Puzzle Generation
- */
-export const generateWordPuzzle = async (): Promise<WordPuzzle> => {
-  try {
-    const model = 'gemini-2.5-flash';
-    const prompt = `Generate a word spelling puzzle.
-    1. Pick a commonly misspelled English word (e.g., intermediate to advanced difficulty).
-    2. Provide its dictionary definition (keep it concise, max 20 words).
-    3. Provide 2 plausible but incorrect spellings (distractors).
-    
-    Return ONLY a JSON object with this format:
-    {
-      "word": "correct_spelling",
-      "definition": "the definition of the word",
-      "distractors": ["incorrect_spelling_1", "incorrect_spelling_2"]
-    }
-    Do not include markdown formatting like \`\`\`json.`;
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
-    });
-
-    const text = response.text;
-    if (!text) throw new Error("No text returned");
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Word Puzzle Gen Error", error);
-    // Fallback puzzle
-    return { 
-      word: "accommodate", 
-      definition: "To provide lodging or sufficient space for.", 
-      distractors: ["acommodate", "accomodate"] 
-    };
-  }
-};
-
-/**
- * Two Truths and a Lie Generation
- */
-export const generateTwoTruthsPuzzle = async (): Promise<TwoTruthsPuzzle> => {
-  try {
-    const model = 'gemini-2.5-flash';
-    const prompt = `Generate a "Two Truths and a Lie" puzzle about a random interesting topic (e.g., Space, Animals, History, Science).
-    Return ONLY a JSON object with this format:
-    {
-      "topic": "The Topic Name",
-      "statements": [
-        {"text": "Statement 1", "isTruth": true},
-        {"text": "Statement 2", "isTruth": false},
-        {"text": "Statement 3", "isTruth": true}
-      ],
-      "explanation": "A brief explanation of why the lie is false."
-    }
-    Ensure statements are shuffled. Do not include markdown formatting.`;
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
-    });
-
-    const text = response.text;
-    if (!text) throw new Error("No text returned");
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Two Truths Gen Error", error);
-    return {
-      topic: "Bananas",
-      statements: [
-        { text: "Bananas are berries.", isTruth: true },
-        { text: "Bananas grow on trees.", isTruth: false },
-        { text: "Humans share 50% of their DNA with bananas.", isTruth: true }
-      ],
-      explanation: "Bananas actually grow on large herbaceous plants, not trees!"
-    };
-  }
-};
-
-/**
- * Riddle Puzzle Generation
- */
-export const generateRiddlePuzzle = async (): Promise<RiddlePuzzle> => {
-  try {
-    const model = 'gemini-2.5-flash';
-    const prompt = `Generate a clever, rhyming riddle.
-    Return ONLY a JSON object with this format:
-    {
-      "question": "The riddle text",
-      "answer": "The answer (1-2 words)",
-      "hint": "A subtle clue to help solve it",
-      "difficulty": "Easy" or "Medium" or "Hard"
-    }
-    Do not include markdown formatting.`;
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
-    });
-
-    const text = response.text;
-    if (!text) throw new Error("No text returned");
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Riddle Gen Error", error);
-    return {
-      question: "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?",
-      answer: "Echo",
-      hint: "I repeat what you say.",
-      difficulty: "Easy"
-    };
-  }
-};
-
-/**
- * Storybook Generation: Steps to create a book with consistent pages.
- */
-export const generateStoryScript = async (concept: string, style: string, existingCharacter?: string): Promise<StorybookData> => {
-  try {
-    const model = 'gemini-2.5-flash';
-    let prompt = `You are a children's book author and art director.
-    Create a short story (4 pages) based on this concept: "${concept}".
-    The visual style is: "${style}".`;
-
-    if (existingCharacter) {
-      prompt += `
-      IMPORTANT: You must use this PRE-DEFINED character description exactly for the main character: "${existingCharacter}". 
-      Do not create a new visual description for the main character, just reuse this one in the 'characterDescription' field.`;
-    } else {
-      prompt += `
-      IMPORTANT: To ensure the main character looks exactly the same on every page, you must define a strict 'characterDescription' first.`;
-    }
-    
-    prompt += `
-    Return ONLY a JSON object with the following structure:
-    {
-      "title": "A catchy title",
-      "style": "The visual style description",
-      "characterDescription": "A highly detailed, immutable visual description of the main character(s). Include specific details like hair color, clothing style and color, height, and accessories. This exact string will be used to generate every image.",
-      "pages": [
-        {
-          "pageNumber": 1,
-          "text": "The story text for page 1 (approx 2-3 sentences)",
-          "imagePrompt": "The specific action and setting for page 1. Do NOT re-describe the character's appearance here, just refer to them by name or as 'the character'."
-        },
-        ...
-      ]
-    }
-    Do not include markdown formatting.`;
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
-    });
-
-    const text = response.text;
-    if (!text) throw new Error("No text returned");
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Storybook Script Error", error);
-    throw error;
-  }
-};
-
-/**
- * Meme Concept Generation
+ * Meme Concept
  */
 export const generateMemeConcept = async (topic: string): Promise<MemeData> => {
-  try {
-    const model = 'gemini-2.5-flash';
-    const prompt = `Generate a viral, funny meme concept about: "${topic}".
-    1. Write a witty Top Text (setup) and Bottom Text (punchline). Keep them short and uppercase.
-    2. Write a visual prompt for an image that matches the joke perfectly. It should be a meme-style background image.
-    
-    Return ONLY a JSON object with this format:
-    {
-      "topText": "TOP TEXT HERE",
-      "bottomText": "BOTTOM TEXT HERE",
-      "visualPrompt": "A description of the image..."
-    }
-    Do not include markdown formatting.`;
-
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
+        model: 'gemini-2.5-flash',
+        contents: `Create a funny meme concept about: ${topic}.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    topText: { type: Type.STRING },
+                    bottomText: { type: Type.STRING },
+                    visualPrompt: { type: Type.STRING, description: "Prompt to generate the meme image without text." }
+                },
+                required: ['topText', 'bottomText', 'visualPrompt']
+            }
+        }
     });
-
-    const text = response.text;
-    if (!text) throw new Error("No text returned");
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Meme Gen Error", error);
-    throw error;
-  }
+    return JSON.parse(response.text || "{}");
 };
 
 /**
- * Nano Social Campaign Generation
- * Updates: Supports platform selection, tone, style, language, and emoji toggle.
+ * Social Campaign
  */
-export const generateSocialCampaign = async (topic: string, settings?: SocialSettings): Promise<SocialCampaign> => {
-  try {
-    const model = 'gemini-2.5-flash';
+export const generateSocialCampaign = async (topic: string, settings: SocialSettings): Promise<SocialCampaign> => {
+    const ai = getAiClient();
     
-    const platforms = settings?.platforms || ['linkedin', 'twitter', 'instagram'];
-    const tone = settings?.tone || 'Professional yet engaging';
-    const style = settings?.style || 'Standard';
-    const lang = settings?.language || 'English';
-    
-    let emojiInstruction = "STRICTLY NO EMOJIS. Do not include any emojis in the text.";
-    if (settings?.useEmojis) {
-       emojiInstruction = `Use relevant emojis tailored to each specific platform's culture:
-        - LinkedIn: Use professional, minimal symbols (e.g., 🚀, 📈, 💡, ✅). Avoid excessive or casual yellow face emojis.
-        - Twitter/X: Use punchy, functional emojis (e.g., 🧵, 👇, 🔥, 🚨).
-        - Instagram: Use visual, aesthetic, and expressive emojis matching the photo vibe (e.g., ✨, 📸, 🌿, 🎨).
-        - Facebook: Use friendly, community-oriented emojis (e.g., 👋, ❤️, 😊, 👍).
-        - TikTok: Use high-energy, trending, or slang-appropriate emojis (e.g., 💀, 😭, ⚡️, 👀, 🔥).
-        - YouTube Shorts: Use attention-grabbing, urgent emojis (e.g., 🔴, 😱, ▶️, 💥).
-        - Threads: Use conversational, casual emojis (e.g., ☕️, 💭, 🧵).
-        - Pinterest: Use aesthetic, decorative emojis for lists/titles (e.g., 📌, 🎨, ✨, 🌸).`;
-    }
-
-    const prompt = `You are an expert Social Media Manager. Create a cohesive "Write Once, Post Everywhere" campaign about: "${topic}".
-    
-    CONFIGURATION:
-    - Tone: ${tone}
-    - Style: ${style}
-    - Language: ${lang}
-    - Emoji Rule: ${emojiInstruction}
-    
-    PLATFORMS TO GENERATE (Generate content ONLY for these): ${platforms.join(', ')}.
-    
-    INSTRUCTIONS:
-    - LinkedIn: Professional, industry insights.
-    - Twitter: Thread format (array of strings), punchy hooks.
-    - Instagram: Visual focus, engaging caption + hashtags.
-    - Facebook: Conversational, community-focused, engaging.
-    - TikTok: A short, engaging video script (concept & narration) optimized for high retention.
-    - YouTube Shorts: SEO Title + Description + Short Video Script concept.
-    - Threads: Conversational, question-based, community engagement focus.
-    - Pinterest: Pin Title + Pin Description. Highly visual focus.
-
-    For each selected platform, provide a visual image prompt that matches the content and platform vibe.
-
-    Return ONLY a JSON object with this structure (omit keys for platforms NOT selected):
-    {
-      "topic": "${topic}",
-      "linkedin": { "text": "...", "imagePrompt": "..." },
-      "twitter": { "text": ["...", "..."], "imagePrompt": "..." },
-      "instagram": { "text": "...", "hashtags": "...", "imagePrompt": "..." },
-      "facebook": { "text": "...", "imagePrompt": "..." },
-      "tiktok": { "text": "...", "imagePrompt": "..." },
-      "youtube_shorts": { "text": "...", "imagePrompt": "..." },
-      "threads": { "text": "...", "imagePrompt": "..." },
-      "pinterest": { "text": "Title: ... Description: ...", "imagePrompt": "..." }
-    }
-    Do not include markdown formatting.`;
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
+    const platformProperties: any = {};
+    settings.platforms.forEach(p => {
+        platformProperties[p] = {
+            type: Type.OBJECT,
+            properties: {
+                text: { type: (p === 'twitter' || p === 'threads') ? Type.ARRAY : Type.STRING, ...( (p === 'twitter' || p === 'threads') ? { items: { type: Type.STRING } } : {}) },
+                imagePrompt: { type: Type.STRING },
+                hashtags: { type: Type.STRING }
+            },
+            required: ['text', 'imagePrompt']
+        };
     });
 
-    const text = response.text;
-    if (!text) throw new Error("No text returned");
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Social Campaign Gen Error", error);
-    throw error;
-  }
+    // Custom emoji instructions based on settings
+    let emojiInstruction = settings.useEmojis ? "Use emojis appropriate for the platform." : "Do NOT use any emojis.";
+    if (settings.useEmojis) {
+        emojiInstruction = `
+        Emoji Guidelines:
+        - LinkedIn: Use professional symbols (✅, 📈, 💡). Minimal usage.
+        - TikTok/Instagram: Use trending and expressive emojis (✨, 🔥, 😂).
+        - Twitter/X: Use concise emojis to save space.
+        - General: Match the tone of the content.
+        `;
+    }
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Create a social media campaign about "${topic}". Tone: ${settings.tone}. Style: ${settings.style}. Language: ${settings.language}. ${emojiInstruction} Platforms: ${settings.platforms.join(', ')}.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    topic: { type: Type.STRING },
+                    ...platformProperties
+                },
+                required: ['topic', ...settings.platforms]
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
 };
 
 /**
- * Prompt Engineering Trainer
- * Analyzes prompts based on specific platform best practices.
- */
-export const analyzePrompt = async (userPrompt: string, platform: string): Promise<PromptAnalysis> => {
-  try {
-    const model = 'gemini-2.5-flash';
-    
-    const prompt = `You are an expert Lead Prompt Engineer specializing in Large Language Models.
-    Analyze the following user prompt intended for the platform: "${platform}".
-
-    Target Platform nuances you should know:
-    - OpenAI / ChatGPT: Prefers clear personas ("Act as..."), explicit steps, and output format constraints.
-    - Google Gemini: Excel at reasoning and multimodal context. Prefers clear instructions without excessive fluff.
-    - Anthropic Claude: Excels with XML tags (<context>...</context>) to structure input and clear role prompting.
-    - Microsoft Copilot: Prefers concise, goal-oriented instructions, often business-focused.
-    - Perplexity: Prefers research-oriented queries, asking for sources or citations.
-    - Midjourney: Prefers comma-separated keywords, stylistic parameters (--ar, --v), and less conversational grammar.
-
-    USER PROMPT:
-    "${userPrompt}"
-
-    Evaluate the prompt based on clarity, context, constraints, and platform-specific optimization.
-    
-    If the prompt is already optimal (score > 90), do not suggest major changes.
-    
-    Return ONLY a JSON object with this structure:
-    {
-      "score": number (0-100),
-      "isOptimal": boolean (true if score > 90),
-      "strengths": ["list", "of", "pros"],
-      "weaknesses": ["list", "of", "cons"],
-      "suggestion": "The improved version of the prompt (optimized for ${platform})",
-      "reasoning": "A brief explanation of WHY the suggestion is better (metadata/theory).",
-      "platformAdvice": "Specific tip for ${platform} used in this optimization."
-    }
-    Do not include markdown formatting.`;
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
-    });
-
-    const text = response.text;
-    if (!text) throw new Error("No text returned");
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Prompt Analysis Error", error);
-    throw error;
-  }
-};
-
-/**
- * Generate Infinite Daily Tip
+ * Daily Tip
  */
 export const generateDailyTip = async (dayIndex: number): Promise<DailyTip> => {
-  try {
-    const model = 'gemini-2.5-flash';
-    const prompt = `Generate a unique, high-quality "Tip of the Day" for AI Prompt Engineering or AI Security.
-    
-    This is for Day ${dayIndex} of a learning program.
-    Ensure the tip is advanced, practical, and distinct from generic advice.
-    
-    Structure the response as a valid JSON object:
-    {
-      "dayIndex": ${dayIndex},
-      "date": "${new Date().toISOString()}",
-      "category": "Prompting" or "Security" (Pick one randomly),
-      "title": "Catchy Title",
-      "content": "The main advice (2-3 sentences)",
-      "example": "A concrete prompt example or scenario (optional)"
-    }
-    Do not include markdown formatting.`;
-
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
+        model: 'gemini-2.5-flash',
+        contents: `Generate a daily tip for Day ${dayIndex}. Category: either 'Prompting' or 'Security'.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    dayIndex: { type: Type.INTEGER },
+                    date: { type: Type.STRING },
+                    category: { type: Type.STRING, enum: ['Prompting', 'Security'] },
+                    title: { type: Type.STRING },
+                    content: { type: Type.STRING },
+                    example: { type: Type.STRING }
+                },
+                required: ['dayIndex', 'title', 'content', 'category']
+            }
+        }
     });
-
-    const text = response.text;
-    if (!text) throw new Error("No text returned");
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Daily Tip Error", error);
-    // Fallback
-    return {
-      dayIndex: dayIndex,
-      date: new Date().toISOString(),
-      category: 'Prompting',
-      title: 'Context Window Awareness',
-      content: 'Remember that LLMs have a limited context window. For very long conversations, summarize previous key points to keep the model focused.',
-      example: '"Summarize our conversation so far, then answer this..."'
-    };
-  }
+    return JSON.parse(response.text || "{}");
 };
 
 /**
- * Generate Helpful List
+ * Helpful List
  */
 export const generateHelpfulList = async (topic: string): Promise<HelpfulList> => {
-  try {
-    const model = 'gemini-2.5-flash';
-    const prompt = `Create a helpful, actionable checklist/list for the following topic: "${topic}".
-    
-    The list could be for Cleaning, Self-Care, Language Learning, Moving House, etc.
-    1. Create a catchy Title and a brief Description.
-    2. Generate 10-15 actionable items.
-    3. Write a visual image prompt for a header image that matches the list theme.
-    
-    Return ONLY a JSON object:
-    {
-      "title": "List Title",
-      "description": "Brief inspiring description",
-      "items": ["Item 1", "Item 2", ...],
-      "imagePrompt": "Visual description for header image"
-    }
-    Do not include markdown formatting.`;
-
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
-    });
-
-    const text = response.text;
-    if (!text) throw new Error("No text returned");
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("List Gen Error", error);
-    throw error;
-  }
-};
-
-/**
- * Generate Image Prompt (Image to Text / Image to Prompt)
- */
-export const generateImagePrompt = async (base64Image: string, platform: 'Description' | 'Midjourney' | 'Stable Diffusion' | 'DALL-E 3'): Promise<string> => {
-  try {
-    const model = 'gemini-2.5-flash';
-    
-    let instructions = "";
-    if (platform === 'Description') {
-      instructions = "Describe this image in vivid detail. Capture the subject, lighting, colors, style, composition, and mood. Keep it natural and descriptive.";
-    } else if (platform === 'Midjourney') {
-      instructions = "Write a highly optimized prompt for Midjourney to recreate this image. Use comma-separated keywords, specific artistic parameters (e.g. --ar 16:9, --v 6.0), and focus on style terms (e.g. photorealistic, cinematic lighting, octane render). Do not write sentences, write tokens.";
-    } else if (platform === 'Stable Diffusion') {
-      instructions = "Write a detailed prompt for Stable Diffusion to recreate this image. Include specific artist names, art styles, and quality boosters (e.g. masterpiece, best quality, 8k, ultra detailed). Focus on visual descriptors.";
-    } else if (platform === 'DALL-E 3') {
-      instructions = "Write a descriptive, natural language prompt for DALL-E 3 to recreate this image. DALL-E prefers full sentences that describe the scene, the subject's action, the setting, and the specific artistic medium or camera style.";
-    }
-
-    const imagePart = fileToGenerativePart(base64Image, 'image/jpeg');
-    const textPart = { text: instructions };
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: { parts: [imagePart, textPart] }
-    });
-
-    return response.text || "Could not analyze image.";
-  } catch (error) {
-    console.error("Image to Prompt Error", error);
-    throw error;
-  }
-};
-
-/**
- * Generate Quiz
- */
-export const generateQuiz = async (topic: string, count: number = 5, difficulty: string = 'Medium'): Promise<QuizData> => {
-  try {
-    const model = 'gemini-2.5-flash';
-    const prompt = `Create a ${difficulty} difficulty quiz about: "${topic}".
-    Generate ${count} multiple choice questions.
-    
-    Return ONLY a JSON object with this format:
-    {
-      "topic": "${topic}",
-      "difficulty": "${difficulty}",
-      "questions": [
-        {
-          "id": 1,
-          "question": "Question text...",
-          "options": ["Option A", "Option B", "Option C", "Option D"],
-          "correctAnswer": "The full text of the correct option",
-          "explanation": "Brief explanation of why it is correct."
+        model: 'gemini-2.5-flash',
+        contents: `Create a helpful checklist for: ${topic}.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    title: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    items: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    imagePrompt: { type: Type.STRING }
+                },
+                required: ['title', 'description', 'items', 'imagePrompt']
+            }
         }
-      ]
-    }
-    Do not include markdown formatting.`;
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
     });
-
-    const text = response.text;
-    if (!text) throw new Error("No text returned");
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Quiz Gen Error", error);
-    throw error;
-  }
+    return JSON.parse(response.text || "{}");
 };
 
 /**
- * Generate Riddle Content (Generator Tool)
+ * Storybook
  */
-export const generateRiddleContent = async (topic: string): Promise<RiddleData> => {
-  try {
-    const model = 'gemini-2.5-flash';
-    const prompt = `Create a clever, original riddle about: "${topic}".
+export const generateStoryScript = async (concept: string, style: string, charDesc?: string): Promise<StorybookData> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Write a 4-page story script based on concept: "${concept}". Style: ${style}. ${charDesc ? `Use this character: ${charDesc}` : 'Create a main character.'}
+        For each page, provide the text and a detailed image prompt.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    title: { type: Type.STRING },
+                    style: { type: Type.STRING },
+                    characterDescription: { type: Type.STRING },
+                    pages: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                pageNumber: { type: Type.INTEGER },
+                                text: { type: Type.STRING },
+                                imagePrompt: { type: Type.STRING }
+                            },
+                            required: ['pageNumber', 'text', 'imagePrompt']
+                        }
+                    }
+                },
+                required: ['title', 'style', 'characterDescription', 'pages']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+/**
+ * Prompt Analysis
+ */
+export const analyzePrompt = async (prompt: string, platform: string): Promise<PromptAnalysis> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Analyze this prompt for ${platform}: "${prompt}". Provide a score (0-100), strengths, weaknesses, a better version, reasoning, and platform specific advice.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    score: { type: Type.INTEGER },
+                    isOptimal: { type: Type.BOOLEAN },
+                    strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    suggestion: { type: Type.STRING },
+                    reasoning: { type: Type.STRING },
+                    platformAdvice: { type: Type.STRING }
+                },
+                required: ['score', 'isOptimal', 'strengths', 'weaknesses', 'suggestion', 'reasoning', 'platformAdvice']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+/**
+ * Audio Transcription
+ */
+export const transcribeAudioWithGemini = async (audioBase64: string, mimeType: string): Promise<string> => {
+    const ai = getAiClient();
+    const base64Data = audioBase64.split(',')[1];
     
-    Return ONLY a JSON object:
-    {
-      "topic": "${topic}",
-      "riddle": "The riddle text...",
-      "answer": "The Answer",
-      "explanation": "Why this is the answer."
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: {
+            parts: [
+                {
+                    inlineData: {
+                        mimeType: mimeType,
+                        data: base64Data
+                    }
+                },
+                { text: "Transcribe this audio." }
+            ]
+        }
+    });
+    return response.text || "";
+};
+
+/**
+ * Code Generation (Multimodal or Text)
+ */
+export const generateUiCode = async (prompt: string, device: string, style: string, imageBase64?: string): Promise<string> => {
+    const ai = getAiClient();
+    const parts: any[] = [];
+    
+    if (imageBase64) {
+        const base64Data = imageBase64.split(',')[1];
+        parts.push({
+            inlineData: {
+                mimeType: 'image/png', 
+                data: base64Data
+            }
+        });
+        parts.push({ text: `Generate HTML/Tailwind CSS code that replicates this UI design for ${device}. Style: ${style}. Return ONLY the code.` });
+    } else {
+        parts.push({ text: `Generate HTML/Tailwind CSS code for a ${device} UI. Description: ${prompt}. Style: ${style}. Return ONLY the code.` });
     }
-    Do not include markdown formatting.`;
 
     const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
+        model: 'gemini-2.5-flash', 
+        contents: { parts }
     });
+    
+    let code = response.text || "";
+    code = code.replace(/```html/g, '').replace(/```/g, '');
+    return code;
+};
 
-    const text = response.text;
-    if (!text) throw new Error("No text returned");
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Riddle Generator Error", error);
-    throw error;
-  }
+/**
+ * Affirmation Generator
+ */
+export const generateAffirmationPlan = async (topic: string, tone: string): Promise<AffirmationPlan> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Generate a weekly affirmation plan focused on "${topic}". Tone: ${tone}. Include a main "Mantra of the Week" and 7 daily affirmations (Monday to Sunday).`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    topic: { type: Type.STRING },
+                    weeklyMantra: { type: Type.STRING },
+                    dailyAffirmations: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                day: { type: Type.STRING },
+                                text: { type: Type.STRING }
+                            },
+                            required: ['day', 'text']
+                        }
+                    }
+                },
+                required: ['topic', 'weeklyMantra', 'dailyAffirmations']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
 };

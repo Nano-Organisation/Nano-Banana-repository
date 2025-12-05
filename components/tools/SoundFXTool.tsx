@@ -5,7 +5,8 @@ import { generateVideoWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 
 const STYLES = [
-  { id: 'cinematic', label: 'Cinematic', desc: 'Epic, movie-quality soundscapes' },
+  { id: 'foley', label: 'Realism / Foley', desc: 'Raw, realistic sound recording. No music.' },
+  { id: 'cinematic', label: 'Cinematic', desc: 'Epic, movie-quality sound design' },
   { id: 'cartoon', label: 'Cartoon', desc: 'Exaggerated, funny, boing/crash sounds' },
   { id: 'horror', label: 'Horror', desc: 'Eerie, suspenseful, creepy ambience' },
   { id: 'nature', label: 'Nature', desc: 'Realistic rain, wind, animals' },
@@ -57,10 +58,13 @@ const SoundFXTool: React.FC = () => {
     setVideoUrl(null);
 
     try {
-      // Craft a prompt that forces Veo to focus on the AUDIO aspect
-      // We ask for a minimal visual (like a visualizer or abstract art) so the model puts effort into the sound matching the prompt.
+      // Craft a prompt that strictly enforces SOUND EFFECT ONLY
       const styleDesc = STYLES.find(s => s.id === selectedStyle)?.desc;
-      const finalPrompt = `High quality audio of ${prompt}. ${styleDesc}. Visual: abstract audio visualizer, minimal, dark background. Focus on the sound effect.`;
+      
+      // We explicitly tell Veo "NO MUSIC" and "RAW AUDIO"
+      const finalPrompt = `Sound Effect: ${prompt}. ${styleDesc}.
+      AUDIO REQUIREMENTS: Raw foley sound only. NO MUSIC. NO BACKGROUND SCORE. NO SONGS. High fidelity audio.
+      VISUAL: Abstract minimalist audio visualizer on black background.`;
       
       const url = await generateVideoWithGemini(finalPrompt, '16:9');
       setVideoUrl(url);
@@ -132,7 +136,7 @@ const SoundFXTool: React.FC = () => {
                     <textarea
                        value={prompt}
                        onChange={(e) => setPrompt(e.target.value)}
-                       placeholder="e.g. Thunder cracking loudly, Sci-Fi door opening, Footsteps on gravel..."
+                       placeholder="e.g. Car tyres screeching on asphalt, Thunder cracking, Glass breaking..."
                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 h-32 resize-none"
                     />
                  </div>
