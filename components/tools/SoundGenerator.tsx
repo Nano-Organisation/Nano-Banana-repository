@@ -51,7 +51,12 @@ const SoundGenerator: React.FC = () => {
           <Volume2 className="w-8 h-8 text-sky-500" />
           Nano Speech
         </h2>
-        <p className="text-slate-600 dark:text-slate-400">Transform text into lifelike speech using Gemini 2.5.</p>
+        <div className="flex flex-col items-center gap-1">
+           <p className="text-slate-600 dark:text-slate-400">Transform text into lifelike speech using Gemini 2.5.</p>
+           <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+              Model: gemini-2.5-flash-preview-tts
+           </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

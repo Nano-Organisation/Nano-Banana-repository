@@ -52,7 +52,12 @@ const ImageEditor: React.FC = () => {
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Nano Edit</h2>
-        <p className="text-slate-600 dark:text-slate-400">Modify images with natural language using Gemini 2.5 Flash Image.</p>
+        <div className="flex flex-col items-center gap-1">
+           <p className="text-slate-600 dark:text-slate-400">Modify images with natural language using Gemini 2.5 Flash Image.</p>
+           <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+              Model: gemini-2.5-flash-image
+           </span>
+        </div>
       </div>
 
       {/* Main Workspace */}

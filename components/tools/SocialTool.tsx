@@ -95,7 +95,12 @@ const SocialTool: React.FC = () => {
           <Share2 className="w-8 h-8 text-blue-500" />
           Nano Social
         </h2>
-        <p className="text-slate-600 dark:text-slate-400">Turn one idea into a multi-platform campaign instantly.</p>
+        <div className="flex flex-col items-center gap-1">
+           <p className="text-slate-600 dark:text-slate-400">Turn one idea into a multi-platform campaign instantly.</p>
+           <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+              Model: gemini-2.5-flash
+           </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

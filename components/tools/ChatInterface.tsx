@@ -153,7 +153,9 @@ const ChatInterface: React.FC = () => {
           <MessageSquare className="w-8 h-8 text-green-500" />
           Nano Chat
         </h2>
-        <p className="text-slate-600 dark:text-slate-400 text-sm">Your AI companion for general queries.</p>
+        <div className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+           Model: {isThinkingMode ? 'gemini-3-pro-preview' : 'gemini-2.5-flash'}
+        </div>
       </div>
 
       <div className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl">

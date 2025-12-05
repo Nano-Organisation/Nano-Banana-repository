@@ -93,7 +93,12 @@ const MemeGenerator: React.FC = () => {
           <Laugh className="w-8 h-8 text-yellow-400" />
           Nano Meme
         </h2>
-        <p className="text-slate-600 dark:text-slate-400">Become a meme lord with zero effort.</p>
+        <div className="flex flex-col items-center gap-1">
+           <p className="text-slate-600 dark:text-slate-400">Become a meme lord with zero effort.</p>
+           <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+              Model: gemini-2.5-flash
+           </span>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">

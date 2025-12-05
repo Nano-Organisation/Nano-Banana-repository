@@ -122,7 +122,12 @@ const TextTool: React.FC<TextToolProps> = ({ mode, onBack }) => {
             <Icon className={`w-8 h-8 ${colorClass}`} />
             {config.title}
           </h2>
-          <p className="text-slate-600 dark:text-slate-400">{config.desc}</p>
+          <div className="flex flex-col items-center gap-1">
+             <p className="text-slate-600 dark:text-slate-400">{config.desc}</p>
+             <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                Model: gemini-2.5-flash
+             </span>
+          </div>
         </div>
       </div>
 

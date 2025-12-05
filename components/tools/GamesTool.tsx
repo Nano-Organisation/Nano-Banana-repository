@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Gamepad2, Send, Bot, User, Ghost, ScrollText, HelpCircle, 
@@ -166,6 +165,9 @@ const EmojiChallenge: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       {/* HUD */}
       <div className="bg-slate-950 p-4 border-b border-slate-800 flex justify-between items-center">
         <div className="flex items-center gap-4">
+          <button onClick={onExit} className="text-slate-500 hover:text-white flex items-center gap-1">
+             <XCircle className="w-5 h-5"/> EXIT
+          </button>
           <div className="flex items-center gap-2 text-yellow-400 font-bold">
             <Trophy className="w-5 h-5" />
             <span>Score: {score}</span>
@@ -294,10 +296,15 @@ const WordChallenge: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     <div className="flex flex-col h-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative">
       {/* Header */}
       <div className="bg-slate-950 p-4 border-b border-slate-800 flex justify-between items-center">
-        <h3 className="font-bold text-white flex items-center gap-2">
-          <CaseUpper className="w-5 h-5 text-cyan-500" />
-          Word Wizard
-        </h3>
+        <div className="flex items-center gap-4">
+            <button onClick={onExit} className="text-slate-500 hover:text-white flex items-center gap-1">
+                <XCircle className="w-5 h-5"/> EXIT
+            </button>
+            <h3 className="font-bold text-white flex items-center gap-2">
+            <CaseUpper className="w-5 h-5 text-cyan-500" />
+            Word Wizard
+            </h3>
+        </div>
         <div className="flex items-center gap-2 text-cyan-400 font-bold bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
           <Trophy className="w-4 h-4" />
           <span>Score: {score}</span>
@@ -414,10 +421,15 @@ const TwoTruthsChallenge: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   return (
     <div className="flex flex-col h-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative">
       <div className="bg-slate-950 p-4 border-b border-slate-800 flex justify-between items-center">
-        <h3 className="font-bold text-white flex items-center gap-2">
-          <UserCheck className="w-5 h-5 text-rose-500" />
-          Two Truths & A Lie
-        </h3>
+        <div className="flex items-center gap-4">
+            <button onClick={onExit} className="text-slate-500 hover:text-white flex items-center gap-1">
+                <XCircle className="w-5 h-5"/> EXIT
+            </button>
+            <h3 className="font-bold text-white flex items-center gap-2">
+            <UserCheck className="w-5 h-5 text-rose-500" />
+            Two Truths & A Lie
+            </h3>
+        </div>
         <div className="flex items-center gap-2 text-rose-400 font-bold bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
           <Trophy className="w-4 h-4" />
           <span>Score: {score}</span>
@@ -547,10 +559,15 @@ const RiddleChallenge: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   return (
     <div className="flex flex-col h-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative">
       <div className="bg-slate-950 p-4 border-b border-slate-800 flex justify-between items-center">
-        <h3 className="font-bold text-white flex items-center gap-2">
-          <Lightbulb className="w-5 h-5 text-violet-500" />
-          Riddle Realm
-        </h3>
+        <div className="flex items-center gap-4">
+            <button onClick={onExit} className="text-slate-500 hover:text-white flex items-center gap-1">
+                <XCircle className="w-5 h-5"/> EXIT
+            </button>
+            <h3 className="font-bold text-white flex items-center gap-2">
+            <Lightbulb className="w-5 h-5 text-violet-500" />
+            Riddle Realm
+            </h3>
+        </div>
         <div className="flex items-center gap-2 text-violet-400 font-bold bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
           <Trophy className="w-4 h-4" />
           <span>Score: {score}</span>
@@ -641,7 +658,6 @@ const RiddleChallenge: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   );
 };
 
-
 // --- Main Games Tool ---
 const GamesTool: React.FC = () => {
   const [activeGame, setActiveGame] = useState<GameMode | null>(null);
@@ -688,192 +704,111 @@ const GamesTool: React.FC = () => {
       setStatus('idle');
     } catch (error) {
       console.error("Game Error:", error);
+      setMessages(prev => [...prev, { role: 'model', text: "Sorry, the game master encountered an error." }]);
       setStatus('error');
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === 'Enter') handleSend();
   };
 
-  if (!activeGame) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
-        <div className="text-center space-y-2">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
-            <Gamepad2 className="w-8 h-8 text-orange-500" />
-            Nano Games
-          </h2>
-          <p className="text-slate-600 dark:text-slate-400">Choose your adventure and play against Gemini.</p>
-        </div>
+  // Render specific challenge components based on game ID
+  if (activeGame) {
+     if (activeGame.id === 'emoji') return <div className="h-[600px]"><EmojiChallenge onExit={exitGame} /></div>;
+     if (activeGame.id === 'word') return <div className="h-[600px]"><WordChallenge onExit={exitGame} /></div>;
+     if (activeGame.id === 'truths') return <div className="h-[600px]"><TwoTruthsChallenge onExit={exitGame} /></div>;
+     if (activeGame.id === 'riddle') return <div className="h-[600px]"><RiddleChallenge onExit={exitGame} /></div>;
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {GAMES.map((game) => (
-            <button
-              key={game.id}
-              onClick={() => startGame(game)}
-              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 p-6 rounded-2xl text-left transition-all hover:-translate-y-1 hover:shadow-xl group"
-            >
-              <div className={`w-12 h-12 rounded-xl bg-${game.color}-600/20 text-${game.color}-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                <game.icon className="w-6 h-6" />
+     // For text-based games (Adventure, Mystery, Trivia, Bible)
+     return (
+        <div className="h-[600px] flex flex-col bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
+           {/* Header */}
+           <div className="p-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+              <div className="flex items-center gap-2 text-white font-bold">
+                 <activeGame.icon className={`w-5 h-5 text-${activeGame.color}-500`} />
+                 {activeGame.name}
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">{game.name}</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">{game.description}</p>
-            </button>
-          ))}
+              <button onClick={exitGame} className="text-xs text-slate-500 hover:text-white uppercase font-bold tracking-wider">
+                 Exit Game
+              </button>
+           </div>
+
+           {/* Chat Area */}
+           <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+              {messages.map((msg, idx) => (
+                 <div key={idx} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'bg-slate-700' : `bg-${activeGame.color}-600`}`}>
+                       {msg.role === 'user' ? <User className="w-5 h-5 text-slate-300" /> : <Bot className="w-5 h-5 text-white" />}
+                    </div>
+                    <div className={`rounded-2xl px-5 py-3 text-sm leading-relaxed whitespace-pre-wrap shadow-md max-w-[80%] ${msg.role === 'user' ? 'bg-slate-800 text-slate-100 rounded-tr-none' : 'bg-slate-950/80 border border-slate-800 text-slate-300 rounded-tl-none'}`}>
+                       {msg.text}
+                    </div>
+                 </div>
+              ))}
+              {status === 'loading' && (
+                 <div className="flex gap-4">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-${activeGame.color}-600`}>
+                       <Bot className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="bg-slate-950/50 border border-slate-800 rounded-2xl rounded-tl-none px-5 py-4 flex items-center gap-2">
+                       <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce"></div>
+                       <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce delay-100"></div>
+                       <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce delay-200"></div>
+                    </div>
+                 </div>
+              )}
+              <div ref={messagesEndRef} />
+           </div>
+
+           {/* Input */}
+           <div className="p-4 bg-slate-950 border-t border-slate-800 flex gap-2">
+              <input 
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type your action or answer..."
+                className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+              <button 
+                onClick={handleSend}
+                disabled={!inputValue.trim() || status === 'loading'}
+                className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl disabled:opacity-50"
+              >
+                 <Send className="w-5 h-5" />
+              </button>
+           </div>
         </div>
-      </div>
-    );
+     );
   }
 
-  // Handle Challenge Sub-Modes
-  const isChallengeMode = subMode === 'challenge';
-  const showChallengeToggle = activeGame.id === 'emoji' || activeGame.id === 'word' || activeGame.id === 'truths' || activeGame.id === 'riddle';
-
-  if (isChallengeMode) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-4 h-[calc(100vh-140px)] flex flex-col animate-fade-in">
-        <div className="flex items-center justify-between px-2 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg bg-${activeGame.color}-600/20 text-${activeGame.color}-500`}>
-              <activeGame.icon className="w-5 h-5" />
-            </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{activeGame.name}</h2>
-          </div>
-          <div className="flex gap-2">
-             <button 
-              onClick={() => setSubMode('chat')}
-              className="text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-transparent hover:border-slate-700"
-            >
-              Back to Chat
-            </button>
-            <button 
-              onClick={exitGame}
-              className="text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-            >
-              Exit
-            </button>
-          </div>
-        </div>
-        {activeGame.id === 'emoji' && <EmojiChallenge onExit={() => setSubMode('chat')} />}
-        {activeGame.id === 'word' && <WordChallenge onExit={() => setSubMode('chat')} />}
-        {activeGame.id === 'truths' && <TwoTruthsChallenge onExit={() => setSubMode('chat')} />}
-        {activeGame.id === 'riddle' && <RiddleChallenge onExit={() => setSubMode('chat')} />}
-      </div>
-    );
-  }
-
+  // Dashboard / Menu
   return (
-    <div className="max-w-4xl mx-auto space-y-4 h-[calc(100vh-140px)] flex flex-col animate-fade-in">
-      {/* Game Header */}
-      <div className="flex items-center justify-between px-2 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg bg-${activeGame.color}-600/20 text-${activeGame.color}-500`}>
-            <activeGame.icon className="w-5 h-5" />
-          </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">{activeGame.name}</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Toggle for Challenge Games */}
-          {showChallengeToggle && (
-             <div className="flex bg-slate-800 rounded-lg p-1 mr-2 border border-slate-700">
-               <button 
-                 onClick={() => setSubMode('chat')}
-                 className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${subMode === 'chat' ? 'bg-slate-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-               >
-                 Chat
-               </button>
-               <button 
-                  onClick={() => setSubMode('challenge')}
-                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${subMode === 'challenge' ? `bg-${activeGame.color}-600 text-white shadow` : 'text-slate-400 hover:text-white'}`}
-               >
-                 <Trophy className="w-3 h-3" />
-                 Challenge
-               </button>
-             </div>
-          )}
-          <button 
-            onClick={exitGame}
-            className="text-slate-400 hover:text-white hover:bg-slate-800 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-          >
-            Exit Game
-          </button>
-        </div>
-      </div>
+    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
+       <div className="text-center space-y-2">
+         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
+           <Gamepad2 className="w-8 h-8 text-orange-500" />
+           Nano Games
+         </h2>
+         <p className="text-slate-600 dark:text-slate-400">Play infinite AI-generated games.</p>
+       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl relative">
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-          {messages.map((msg, idx) => (
-            <div 
-              key={idx} 
-              className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
-            >
-              <div className={`
-                w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
-                ${msg.role === 'user' ? 'bg-amber-500' : `bg-${activeGame.color}-600`}
-              `}>
-                {msg.role === 'user' ? <User className="w-5 h-5 text-slate-900" /> : <Bot className="w-5 h-5 text-white" />}
-              </div>
-              
-              <div className={`
-                max-w-[80%] rounded-2xl px-5 py-3 text-sm leading-relaxed whitespace-pre-wrap
-                ${msg.role === 'user' 
-                  ? 'bg-slate-800 text-slate-100 rounded-tr-none' 
-                  : 'bg-slate-950/80 border border-slate-800 text-slate-300 rounded-tl-none'}
-              `}>
-                {msg.text}
-              </div>
-            </div>
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {GAMES.map((game) => (
+             <button
+               key={game.id}
+               onClick={() => startGame(game)}
+               className="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-slate-500 p-6 rounded-2xl text-left transition-all hover:-translate-y-1 group relative overflow-hidden"
+             >
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-${game.color}-500/10 text-${game.color}-500 group-hover:bg-${game.color}-500 group-hover:text-white transition-colors`}>
+                   <game.icon className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-white text-lg mb-1">{game.name}</h3>
+                <p className="text-sm text-slate-400 leading-snug">{game.description}</p>
+             </button>
           ))}
-          {status === 'loading' && (
-             <div className="flex gap-4">
-               <div className={`w-8 h-8 rounded-full bg-${activeGame.color}-600 flex items-center justify-center flex-shrink-0`}>
-                 <Bot className="w-5 h-5 text-white" />
-               </div>
-               <div className="bg-slate-950/50 border border-slate-800 rounded-2xl rounded-tl-none px-5 py-4 flex items-center gap-2">
-                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-               </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input */}
-        <div className="p-4 bg-slate-950 border-t border-slate-800 flex gap-3 items-end">
-          <button 
-            onClick={() => startGame(activeGame)} // Restart
-            className="p-3 text-slate-500 hover:text-white hover:bg-slate-900 rounded-xl transition-colors mb-[2px]"
-            title="Restart Game"
-          >
-            <RefreshCcw className="w-5 h-5" />
-          </button>
-          
-          <div className="flex-1">
-            <textarea
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Your move..."
-              className={`w-full bg-slate-900 border border-slate-700 rounded-xl pl-4 pr-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-${activeGame.color}-500 resize-none max-h-32 min-h-[50px] custom-scrollbar`}
-              style={{ height: '52px' }}
-            />
-          </div>
-          
-          <button
-            onClick={handleSend}
-            disabled={!inputValue.trim() || status === 'loading'}
-            className={`bg-${activeGame.color}-600 hover:bg-${activeGame.color}-700 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-colors mb-[2px]`}
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+       </div>
     </div>
   );
 };

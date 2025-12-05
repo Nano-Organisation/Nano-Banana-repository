@@ -88,7 +88,12 @@ const PinterestTool: React.FC = () => {
           <Pin className="w-8 h-8 text-red-500" />
           Nano Pinterest
         </h2>
-        <p className="text-slate-600 dark:text-slate-400">Generate viral-worthy, vertical images tailored for Pinterest.</p>
+        <div className="flex flex-col items-center gap-1">
+           <p className="text-slate-600 dark:text-slate-400">Generate viral-worthy, vertical images tailored for Pinterest.</p>
+           <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+              Model: gemini-2.5-flash-image
+           </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

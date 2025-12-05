@@ -179,9 +179,14 @@ const LiveTool: React.FC = () => {
           </div>
           
           <h2 className="text-4xl font-bold text-slate-900 dark:text-white">Nano Live</h2>
-          <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-             Start a real-time voice conversation with Gemini. Speak naturally and get instant audio responses.
-          </p>
+          <div className="flex flex-col items-center gap-1">
+             <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+                Start a real-time voice conversation with Gemini. Speak naturally and get instant audio responses.
+             </p>
+             <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                Model: gemini-2.5-live
+             </span>
+          </div>
        </div>
 
        <div className="flex flex-col items-center gap-6">

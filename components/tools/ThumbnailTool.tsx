@@ -131,7 +131,12 @@ const ThumbnailTool: React.FC = () => {
           <Youtube className="w-8 h-8 text-red-600" />
           Nano Thumbnails
         </h2>
-        <p className="text-slate-600 dark:text-slate-400">Generate viral YouTube thumbnails or motion intros instantly.</p>
+        <div className="flex flex-col items-center gap-1">
+           <p className="text-slate-600 dark:text-slate-400">Generate viral YouTube thumbnails or motion intros instantly.</p>
+           <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+              Model: {mode === 'image' ? 'gemini-2.5-flash-image' : 'veo-3.1'}
+           </span>
+        </div>
       </div>
 
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl space-y-8">

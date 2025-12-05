@@ -163,7 +163,12 @@ const ImageGenerator: React.FC = () => {
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold dark:text-white text-slate-900">Nano Create</h2>
-        <p className="text-slate-500 dark:text-slate-400">Generate high-quality visuals with filters and pro tools.</p>
+        <div className="flex flex-col items-center gap-1">
+           <p className="text-slate-500 dark:text-slate-400">Generate high-quality visuals with filters and pro tools.</p>
+           <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+              Model: {isPro ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image'}
+           </span>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
