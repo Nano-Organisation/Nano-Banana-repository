@@ -25,7 +25,8 @@ import PromptTrainer from './components/tools/PromptTrainer';
 import PromptAcademy from './components/tools/PromptAcademy';
 import AssistantCreator from './components/tools/AssistantCreator';
 import ListCreator from './components/tools/ListCreator';
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks } from 'lucide-react';
+import PodcastTool from './components/tools/PodcastTool';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2 } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -54,6 +55,15 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.Podcast,
+    title: "Nano Cast",
+    description: "Generate multi-speaker audio podcasts from any topic.",
+    icon: Mic2,
+    color: "indigo",
+    gradient: "from-indigo-500 to-violet-600",
+    releaseDate: '2025-12-05'
   },
   {
     id: ToolId.AssistantCreator,
@@ -280,6 +290,8 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.Podcast:
+        return <PodcastTool />;
       case ToolId.AssistantCreator:
         return <AssistantCreator />;
       case ToolId.ListCreator:

@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, GenerateContentResponse, Chat, Modality } from "@google/genai";
-import { EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis, DailyTip, HelpfulList } from "../types";
+import { EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis, DailyTip, HelpfulList, PodcastScript } from "../types";
 
 // Note: For Veo calls, we create a fresh instance inside the function to ensure the latest API Key is used.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -326,45 +326,67 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
 
 /**
  * Text-to-Speech: Uses gemini-2.5-flash-preview-tts
+ * Supports Multi-Speaker when speakerVoiceConfigs are provided.
  */
 export const generateSpeechWithGemini = async (
   text: string, 
   voiceName: string = 'Kore',
   speed: number = 1.0,
-  pitch: number = 0
+  pitch: number = 0,
+  multiSpeakerConfig?: { speaker: string, voice: string }[]
 ): Promise<string> => {
   try {
     const model = 'gemini-2.5-flash-preview-tts';
     
-    // Construct instructions based on speed and pitch
-    const instructions = [];
-    if (speed <= 0.7) instructions.push("very slow");
-    else if (speed < 1.0) instructions.push("slow");
-    else if (speed >= 1.5) instructions.push("very fast");
-    else if (speed > 1.0) instructions.push("fast");
+    const config: any = {
+      responseModalities: [Modality.AUDIO], 
+    };
 
-    if (pitch <= -2) instructions.push("deep");
-    else if (pitch < 0) instructions.push("low");
-    else if (pitch >= 2) instructions.push("very high");
-    else if (pitch > 0) instructions.push("high");
+    if (multiSpeakerConfig && multiSpeakerConfig.length === 2) {
+      // Multi-Speaker Setup
+      config.speechConfig = {
+        multiSpeakerVoiceConfig: {
+          speakerVoiceConfigs: [
+            {
+              speaker: multiSpeakerConfig[0].speaker,
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: multiSpeakerConfig[0].voice } }
+            },
+            {
+              speaker: multiSpeakerConfig[1].speaker,
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: multiSpeakerConfig[1].voice } }
+            }
+          ]
+        }
+      };
+    } else {
+      // Single Speaker Setup with prompt engineering for speed/pitch
+      const instructions = [];
+      if (speed <= 0.7) instructions.push("very slow");
+      else if (speed < 1.0) instructions.push("slow");
+      else if (speed >= 1.5) instructions.push("very fast");
+      else if (speed > 1.0) instructions.push("fast");
 
-    let finalPrompt = text;
-    if (instructions.length > 0) {
-      // Prompt engineering to influence the speech style
-      finalPrompt = `Say the following with a ${instructions.join(' and ')} voice: "${text}"`;
+      if (pitch <= -2) instructions.push("deep");
+      else if (pitch < 0) instructions.push("low");
+      else if (pitch >= 2) instructions.push("very high");
+      else if (pitch > 0) instructions.push("high");
+
+      let finalPrompt = text;
+      if (instructions.length > 0) {
+        finalPrompt = `Say the following with a ${instructions.join(' and ')} voice: "${text}"`;
+      }
+      
+      config.speechConfig = {
+        voiceConfig: {
+          prebuiltVoiceConfig: { voiceName }
+        }
+      };
     }
 
     const response = await ai.models.generateContent({
       model,
-      contents: { parts: [{ text: finalPrompt }] },
-      config: {
-        responseModalities: [Modality.AUDIO], 
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName }
-          }
-        }
-      }
+      contents: { parts: [{ text: text }] }, // We send the raw text (or prompt engineered text)
+      config
     });
 
     // Extract base64 audio data
@@ -383,6 +405,47 @@ export const generateSpeechWithGemini = async (
     return URL.createObjectURL(wavBlob);
   } catch (error) {
     console.error("Gemini Speech Gen Error:", error);
+    throw error;
+  }
+};
+
+/**
+ * Generate Podcast Script
+ */
+export const generatePodcastScript = async (topic: string, hostName: string, guestName: string): Promise<PodcastScript> => {
+  try {
+    const model = 'gemini-2.5-flash';
+    const prompt = `Write a short, engaging podcast script (approx 1 minute) about: "${topic}".
+    Characters: ${hostName} (Host) and ${guestName} (Guest).
+    
+    Format the script EXACTLY like this for the TTS engine:
+    ${hostName}: [Text]
+    ${guestName}: [Text]
+    
+    Keep it conversational, witty, and natural.
+    Also generate a visual prompt for the podcast cover art.
+    
+    Return ONLY a JSON object:
+    {
+      "title": "Podcast Title",
+      "script": "The full script string...",
+      "visualPrompt": "Cover art description..."
+    }
+    Do not include markdown formatting.`;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json'
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No text returned");
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Podcast Script Error", error);
     throw error;
   }
 };

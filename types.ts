@@ -25,7 +25,8 @@ export enum ToolId {
   PromptTrainer = 'PROMPT_TRAINER',
   Academy = 'ACADEMY',
   AssistantCreator = 'ASSISTANT_CREATOR',
-  ListCreator = 'LIST_CREATOR'
+  ListCreator = 'LIST_CREATOR',
+  Podcast = 'PODCAST'
 }
 
 export interface ToolConfig {
@@ -151,4 +152,10 @@ export interface HelpfulList {
   description: string;
   items: string[];
   imagePrompt: string;
+}
+
+export interface PodcastScript {
+  title: string;
+  script: string; // The formatted script for TTS
+  visualPrompt: string;
 }
