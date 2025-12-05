@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, GenerateContentResponse, Chat, Modality } from "@google/genai";
-import { EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, StorybookData, MemeData } from "../types";
+import { EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, StorybookData, MemeData, SocialCampaign, SocialSettings } from "../types";
 
 // Note: For Veo calls, we create a fresh instance inside the function to ensure the latest API Key is used.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -636,6 +636,85 @@ export const generateMemeConcept = async (topic: string): Promise<MemeData> => {
     return JSON.parse(text);
   } catch (error) {
     console.error("Meme Gen Error", error);
+    throw error;
+  }
+};
+
+/**
+ * Nano Social Campaign Generation
+ * Updates: Supports platform selection, tone, style, language, and emoji toggle.
+ */
+export const generateSocialCampaign = async (topic: string, settings?: SocialSettings): Promise<SocialCampaign> => {
+  try {
+    const model = 'gemini-2.5-flash';
+    
+    const platforms = settings?.platforms || ['linkedin', 'twitter', 'instagram'];
+    const tone = settings?.tone || 'Professional yet engaging';
+    const style = settings?.style || 'Standard';
+    const lang = settings?.language || 'English';
+    
+    let emojiInstruction = "STRICTLY NO EMOJIS. Do not include any emojis in the text.";
+    if (settings?.useEmojis) {
+       emojiInstruction = `Use relevant emojis tailored to each specific platform's culture:
+        - LinkedIn: Use professional, minimal symbols (e.g., 🚀, 📈, 💡, ✅). Avoid excessive or casual yellow face emojis.
+        - Twitter/X: Use punchy, functional emojis (e.g., 🧵, 👇, 🔥, 🚨).
+        - Instagram: Use visual, aesthetic, and expressive emojis matching the photo vibe (e.g., ✨, 📸, 🌿, 🎨).
+        - Facebook: Use friendly, community-oriented emojis (e.g., 👋, ❤️, 😊, 👍).
+        - TikTok: Use high-energy, trending, or slang-appropriate emojis (e.g., 💀, 😭, ⚡️, 👀, 🔥).
+        - YouTube Shorts: Use attention-grabbing, urgent emojis (e.g., 🔴, 😱, ▶️, 💥).
+        - Threads: Use conversational, casual emojis (e.g., ☕️, 💭, 🧵).
+        - Pinterest: Use aesthetic, decorative emojis for lists/titles (e.g., 📌, 🎨, ✨, 🌸).`;
+    }
+
+    const prompt = `You are an expert Social Media Manager. Create a cohesive "Write Once, Post Everywhere" campaign about: "${topic}".
+    
+    CONFIGURATION:
+    - Tone: ${tone}
+    - Style: ${style}
+    - Language: ${lang}
+    - Emoji Rule: ${emojiInstruction}
+    
+    PLATFORMS TO GENERATE (Generate content ONLY for these): ${platforms.join(', ')}.
+    
+    INSTRUCTIONS:
+    - LinkedIn: Professional, industry insights.
+    - Twitter: Thread format (array of strings), punchy hooks.
+    - Instagram: Visual focus, engaging caption + hashtags.
+    - Facebook: Conversational, community-focused, engaging.
+    - TikTok: A short, engaging video script (concept & narration) optimized for high retention.
+    - YouTube Shorts: SEO Title + Description + Short Video Script concept.
+    - Threads: Conversational, question-based, community engagement focus.
+    - Pinterest: Pin Title + Pin Description. Highly visual focus.
+
+    For each selected platform, provide a visual image prompt that matches the content and platform vibe.
+
+    Return ONLY a JSON object with this structure (omit keys for platforms NOT selected):
+    {
+      "topic": "${topic}",
+      "linkedin": { "text": "...", "imagePrompt": "..." },
+      "twitter": { "text": ["...", "..."], "imagePrompt": "..." },
+      "instagram": { "text": "...", "hashtags": "...", "imagePrompt": "..." },
+      "facebook": { "text": "...", "imagePrompt": "..." },
+      "tiktok": { "text": "...", "imagePrompt": "..." },
+      "youtube_shorts": { "text": "...", "imagePrompt": "..." },
+      "threads": { "text": "...", "imagePrompt": "..." },
+      "pinterest": { "text": "Title: ... Description: ...", "imagePrompt": "..." }
+    }
+    Do not include markdown formatting.`;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json'
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No text returned");
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Social Campaign Gen Error", error);
     throw error;
   }
 };

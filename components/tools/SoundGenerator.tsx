@@ -47,11 +47,11 @@ const SoundGenerator: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Volume2 className="w-8 h-8 text-sky-500" />
           Nano Speech
         </h2>
-        <p className="text-slate-400">Transform text into lifelike speech using Gemini 2.5.</p>
+        <p className="text-slate-600 dark:text-slate-400">Transform text into lifelike speech using Gemini 2.5.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

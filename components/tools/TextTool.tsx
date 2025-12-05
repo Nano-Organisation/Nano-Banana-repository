@@ -118,11 +118,11 @@ const TextTool: React.FC<TextToolProps> = ({ mode, onBack }) => {
           </button>
         )}
         <div className="text-center space-y-2">
-          <h2 className={`text-3xl font-bold text-white flex items-center justify-center gap-3`}>
+          <h2 className={`text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3`}>
             <Icon className={`w-8 h-8 ${colorClass}`} />
             {config.title}
           </h2>
-          <p className="text-slate-400">{config.desc}</p>
+          <p className="text-slate-600 dark:text-slate-400">{config.desc}</p>
         </div>
       </div>
 

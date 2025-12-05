@@ -703,11 +703,11 @@ const GamesTool: React.FC = () => {
     return (
       <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
         <div className="text-center space-y-2">
-          <h2 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
             <Gamepad2 className="w-8 h-8 text-orange-500" />
             Nano Games
           </h2>
-          <p className="text-slate-400">Choose your adventure and play against Gemini.</p>
+          <p className="text-slate-600 dark:text-slate-400">Choose your adventure and play against Gemini.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -741,7 +741,7 @@ const GamesTool: React.FC = () => {
             <div className={`p-2 rounded-lg bg-${activeGame.color}-600/20 text-${activeGame.color}-500`}>
               <activeGame.icon className="w-5 h-5" />
             </div>
-            <h2 className="text-xl font-bold text-white">{activeGame.name}</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{activeGame.name}</h2>
           </div>
           <div className="flex gap-2">
              <button 
@@ -774,7 +774,7 @@ const GamesTool: React.FC = () => {
           <div className={`p-2 rounded-lg bg-${activeGame.color}-600/20 text-${activeGame.color}-500`}>
             <activeGame.icon className="w-5 h-5" />
           </div>
-          <h2 className="text-xl font-bold text-white">{activeGame.name}</h2>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">{activeGame.name}</h2>
         </div>
         <div className="flex items-center gap-2">
           {/* Toggle for Challenge Games */}

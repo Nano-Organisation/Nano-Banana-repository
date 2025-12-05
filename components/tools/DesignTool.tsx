@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { PenTool, Download, RefreshCw, Layout, Smartphone, Sticker, Hexagon } from 'lucide-react';
 import { generateImageWithGemini } from '../../services/geminiService';
@@ -56,11 +57,11 @@ const DesignTool: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <PenTool className="w-8 h-8 text-fuchsia-500" />
           Nano Design
         </h2>
-        <p className="text-slate-400">Create professional logos, icons, and UI concepts in seconds.</p>
+        <p className="text-slate-600 dark:text-slate-400">Create professional logos, icons, and UI concepts in seconds.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

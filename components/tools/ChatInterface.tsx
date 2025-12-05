@@ -28,14 +28,23 @@ const ChatInterface: React.FC = () => {
     }
   };
 
+  // Effect 1: Handle Session Switching (Thinking Mode vs Standard)
   useEffect(() => {
     initSession(isThinkingMode);
     
     setMessages([
-      { role: 'model', text: isThinkingMode ? "Thinking mode active. I will reason deeply about your complex queries." : "Hi! I'm Nano. How can I help you today?" }
+      { 
+        role: 'model', 
+        text: isThinkingMode 
+          ? "Thinking mode active. I will reason deeply about your complex queries." 
+          : "Hi! I'm Nano. How can I help you today?",
+        isThinking: isThinkingMode 
+      }
     ]);
+  }, [isThinkingMode]);
 
-    // Initialize Speech Recognition
+  // Effect 2: Initialize Speech Recognition (Run Once)
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRecognition) {
@@ -61,7 +70,14 @@ const ChatInterface: React.FC = () => {
         recognitionRef.current = recognition;
       }
     }
-  }, [isThinkingMode]); // Re-init if mode changes
+    
+    // Cleanup
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -99,7 +115,13 @@ const ChatInterface: React.FC = () => {
 
   const handleClear = () => {
     initSession(isThinkingMode);
-    setMessages([{ role: 'model', text: "Chat cleared. What's on your mind now?" }]);
+    setMessages([{ 
+      role: 'model', 
+      text: isThinkingMode 
+        ? "Chat cleared. Ready for complex reasoning." 
+        : "Chat cleared. What's on your mind now?",
+      isThinking: isThinkingMode
+    }]);
     setStatus('idle');
   };
 
@@ -127,11 +149,11 @@ const ChatInterface: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-4 h-[calc(100vh-140px)] flex flex-col">
       <div className="text-center space-y-1 flex-shrink-0">
-        <h2 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <MessageSquare className="w-8 h-8 text-green-500" />
           Nano Chat
         </h2>
-        <p className="text-slate-400 text-sm">Your AI companion for general queries.</p>
+        <p className="text-slate-600 dark:text-slate-400 text-sm">Your AI companion for general queries.</p>
       </div>
 
       <div className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
@@ -150,6 +172,7 @@ const ChatInterface: React.FC = () => {
                     ? 'bg-purple-600/20 text-purple-400 border-purple-500/50' 
                     : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
                 }`}
+                title={isThinkingMode ? "Disable Thinking Mode" : "Enable Thinking Mode for complex tasks"}
              >
                 <BrainCircuit className="w-3.5 h-3.5" />
                 Deep Think
@@ -157,6 +180,7 @@ const ChatInterface: React.FC = () => {
              <button 
                onClick={handleClear}
                className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/50 border border-slate-700 rounded-lg text-xs font-bold text-slate-300 transition-all group"
+               title="Clear conversation and start new chat"
              >
                <RefreshCw className="w-3.5 h-3.5 group-hover:rotate-180 transition-transform" />
                New Chat
@@ -229,13 +253,18 @@ const ChatInterface: React.FC = () => {
 
         {/* Input Area */}
         <div className="p-4 bg-slate-950 border-t border-slate-800 flex gap-3 items-end">
-          <button onClick={handleClear} className="p-3 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-xl transition-colors mb-[2px]">
+          <button 
+            onClick={handleClear} 
+            className="p-3 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-xl transition-colors mb-[2px]"
+            title="Clear Chat"
+          >
             <Trash2 className="w-5 h-5" />
           </button>
 
           {isSpeechSupported && (
             <button
               onClick={toggleVoiceInput}
+              title={isListening ? "Stop Listening" : "Start Listening"}
               className={`p-3 rounded-xl transition-all mb-[2px] ${
                 isListening 
                   ? 'bg-red-500/20 text-red-500 animate-pulse border border-red-500/50' 
@@ -251,7 +280,7 @@ const ChatInterface: React.FC = () => {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isThinkingMode ? "Ask a complex question..." : "Type your message..."}
+              placeholder={isThinkingMode ? "Ask a complex question requiring reasoning..." : "Type your message..."}
               className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-4 pr-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none max-h-32 min-h-[50px] custom-scrollbar shadow-inner"
               style={{ height: '52px' }}
             />

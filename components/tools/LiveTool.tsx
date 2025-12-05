@@ -178,8 +178,8 @@ const LiveTool: React.FC = () => {
              )}
           </div>
           
-          <h2 className="text-4xl font-bold text-white">Nano Live</h2>
-          <p className="text-slate-400 max-w-md mx-auto">
+          <h2 className="text-4xl font-bold text-slate-900 dark:text-white">Nano Live</h2>
+          <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">
              Start a real-time voice conversation with Gemini. Speak naturally and get instant audio responses.
           </p>
        </div>

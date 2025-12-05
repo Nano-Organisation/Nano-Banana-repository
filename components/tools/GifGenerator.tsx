@@ -80,8 +80,8 @@ const GifGenerator: React.FC = () => {
           <Lock className="w-10 h-10 text-rose-500" />
         </div>
         <div className="space-y-4">
-          <h2 className="text-3xl font-bold text-white">Unlock Nano GIF</h2>
-          <p className="text-slate-400">
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Unlock Nano GIF</h2>
+          <p className="text-slate-600 dark:text-slate-400">
             This feature is powered by the advanced <strong>Veo</strong> model. 
             To create animations, you must select a valid paid API key (GCP project).
           </p>
@@ -109,11 +109,11 @@ const GifGenerator: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Film className="w-8 h-8 text-rose-500" />
           Nano GIF
         </h2>
-        <p className="text-slate-400">Generate videos from text or animate images using Gemini Veo.</p>
+        <p className="text-slate-600 dark:text-slate-400">Generate videos from text or animate images using Gemini Veo.</p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-6">

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Upload, Eraser, Download, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { editImageWithGemini } from '../../services/geminiService';
@@ -41,11 +42,11 @@ const BackgroundRemover: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Eraser className="w-8 h-8 text-rose-500" />
           Nano Remove
         </h2>
-        <p className="text-slate-400">Isolate your subject with AI-powered background removal.</p>
+        <p className="text-slate-600 dark:text-slate-400">Isolate your subject with AI-powered background removal.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

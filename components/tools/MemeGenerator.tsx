@@ -85,11 +85,11 @@ const MemeGenerator: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Laugh className="w-8 h-8 text-yellow-400" />
           Nano Meme
         </h2>
-        <p className="text-slate-400">Become a meme lord with zero effort.</p>
+        <p className="text-slate-600 dark:text-slate-400">Become a meme lord with zero effort.</p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">

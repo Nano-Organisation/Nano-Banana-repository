@@ -20,7 +20,8 @@ export enum ToolId {
   Storybook = 'STORYBOOK',
   Live = 'LIVE',
   Meme = 'MEME',
-  AutomationHub = 'AUTOMATION_HUB'
+  AutomationHub = 'AUTOMATION_HUB',
+  Social = 'SOCIAL'
 }
 
 export interface ToolConfig {
@@ -91,4 +92,32 @@ export interface MemeData {
   topText: string;
   bottomText: string;
   visualPrompt: string;
+}
+
+export interface SocialPostContent {
+  text: string | string[]; // Array for threads
+  imagePrompt: string;
+  hashtags?: string;
+}
+
+export interface SocialCampaign {
+  topic: string;
+  linkedin?: SocialPostContent;
+  twitter?: SocialPostContent;
+  instagram?: SocialPostContent;
+  facebook?: SocialPostContent;
+  tiktok?: SocialPostContent;
+  youtube_shorts?: SocialPostContent;
+  threads?: SocialPostContent;
+  pinterest?: SocialPostContent;
+}
+
+export type SocialPlatform = 'linkedin' | 'twitter' | 'instagram' | 'facebook' | 'tiktok' | 'youtube_shorts' | 'threads' | 'pinterest';
+
+export interface SocialSettings {
+  platforms: SocialPlatform[];
+  tone: string;
+  style: string;
+  language: string;
+  useEmojis: boolean;
 }

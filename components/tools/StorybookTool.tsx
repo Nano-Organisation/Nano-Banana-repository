@@ -26,6 +26,7 @@ const StorybookTool: React.FC = () => {
   const [showSaveCharDialog, setShowSaveCharDialog] = useState(false);
   const [showCharManager, setShowCharManager] = useState(false);
   const [newCharName, setNewCharName] = useState('');
+  const [isSavingChar, setIsSavingChar] = useState(false);
 
   // Load characters from local storage
   useEffect(() => {
@@ -44,19 +45,31 @@ const StorybookTool: React.FC = () => {
     localStorage.setItem('nano_saved_characters', JSON.stringify(chars));
   };
 
-  const handleSaveCharacter = () => {
+  const handleSaveCharacter = async () => {
     if (!bookData || !newCharName.trim()) return;
+    setIsSavingChar(true);
+
+    let previewUrl = bookData.pages[0]?.imageUrl; // Fallback
+
+    try {
+       // Generate a specific portrait for the saved character to ensure high quality preview
+       const portraitPrompt = `Character portrait of ${bookData.characterDescription}. Isolated, white background, high quality. Visual Style: ${bookData.style}`;
+       previewUrl = await generateImageWithGemini(portraitPrompt, '1:1');
+    } catch (e) {
+       console.error("Failed to generate character preview, using page 1", e);
+    }
     
     const newChar: SavedCharacter = {
       id: Date.now().toString(),
       name: newCharName.trim(),
       description: bookData.characterDescription,
-      previewImage: bookData.pages[0]?.imageUrl
+      previewImage: previewUrl
     };
 
     const updated = [...savedCharacters, newChar];
     saveToLocalStorage(updated);
     
+    setIsSavingChar(false);
     setShowSaveCharDialog(false);
     setNewCharName('');
     alert(`Character "${newChar.name}" saved!`);
@@ -271,11 +284,11 @@ Scene Prompt: ${p.imagePrompt}
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in relative">
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <BookOpen className="w-8 h-8 text-amber-500" />
           Nano Storybook
         </h2>
-        <p className="text-slate-400">Create illustrated short stories in your favorite style.</p>
+        <p className="text-slate-600 dark:text-slate-400">Create illustrated short stories in your favorite style.</p>
       </div>
 
       {!bookData ? (
@@ -556,21 +569,9 @@ Scene Prompt: ${p.imagePrompt}
             <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-sm space-y-4 shadow-2xl">
                <div className="text-center">
                   <h3 className="text-xl font-bold text-white mb-1">Save Character</h3>
-                  <p className="text-slate-400 text-sm">Give this character a name to use them in future stories.</p>
+                  <p className="text-slate-400 text-sm">Give this character a name. We will generate a clear portrait for future use.</p>
                </div>
                
-               <div className="flex justify-center my-4">
-                  {bookData?.pages[0]?.imageUrl ? (
-                     <div className="w-24 h-24 rounded-full border-4 border-amber-500 overflow-hidden">
-                        <img src={bookData.pages[0].imageUrl} className="w-full h-full object-cover" />
-                     </div>
-                  ) : (
-                     <div className="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center text-slate-500">
-                        No Image
-                     </div>
-                  )}
-               </div>
-
                <input 
                   type="text" 
                   autoFocus
@@ -590,10 +591,11 @@ Scene Prompt: ${p.imagePrompt}
                   </button>
                   <button 
                      onClick={handleSaveCharacter}
-                     disabled={!newCharName.trim()}
-                     className="flex-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition-colors"
+                     disabled={!newCharName.trim() || isSavingChar}
+                     className="flex-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
                   >
-                     Save
+                     {isSavingChar ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                     {isSavingChar ? 'Creating...' : 'Save'}
                   </button>
                </div>
             </div>

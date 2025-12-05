@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Upload, Wand2, Download, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { editImageWithGemini } from '../../services/geminiService';
@@ -40,8 +41,8 @@ const ImageEditor: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold text-white">Nano Edit</h2>
-        <p className="text-slate-400">Modify images with natural language using Gemini 2.5 Flash Image.</p>
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Nano Edit</h2>
+        <p className="text-slate-600 dark:text-slate-400">Modify images with natural language using Gemini 2.5 Flash Image.</p>
       </div>
 
       {/* Main Workspace */}

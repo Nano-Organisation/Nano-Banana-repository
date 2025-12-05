@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
-import { Youtube, Download, RefreshCw, Zap, TrendingUp, Gamepad, Smile, Layout } from 'lucide-react';
-import { generateViralThumbnails } from '../../services/geminiService';
+import React, { useState, useEffect } from 'react';
+import { Youtube, Download, RefreshCw, Zap, TrendingUp, Gamepad, Smile, Layout, Film, Monitor, Smartphone, Square, Image as ImageIcon, Lock } from 'lucide-react';
+import { generateViralThumbnails, generateVideoWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 
 const STYLES = [
@@ -40,21 +40,74 @@ const STYLES = [
 const ThumbnailTool: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [selectedStyleId, setSelectedStyleId] = useState(STYLES[4].id); // Default to Trending
+  
+  // Mode State
+  const [mode, setMode] = useState<'image' | 'video'>('image');
+  const [aspectRatio, setAspectRatio] = useState('16:9');
+  
+  // Results
   const [thumbnails, setThumbnails] = useState<string[]>([]);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  
   const [status, setStatus] = useState<LoadingState>('idle');
+  const [hasKey, setHasKey] = useState<boolean>(false);
+
+  useEffect(() => {
+    checkKey();
+  }, []);
+
+  const getAIStudio = () => (window as any).aistudio;
+
+  const checkKey = async () => {
+    const aiStudio = getAIStudio();
+    if (aiStudio) {
+      const selected = await aiStudio.hasSelectedApiKey();
+      setHasKey(selected);
+    } else {
+      setHasKey(true); 
+    }
+  };
+
+  const handleSelectKey = async () => {
+    const aiStudio = getAIStudio();
+    if (aiStudio) {
+      await aiStudio.openSelectKey();
+      await checkKey();
+    }
+  };
 
   const selectedStyle = STYLES.find(s => s.id === selectedStyleId) || STYLES[4];
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setStatus('loading');
-    setThumbnails([]);
+    
+    // Clear previous results based on mode
+    if (mode === 'image') setVideoUrl(null);
+    else setThumbnails([]);
+
+    // Check key for video mode
+    if (mode === 'video') {
+       const aiStudio = getAIStudio();
+       if (aiStudio && !(await aiStudio.hasSelectedApiKey())) {
+          setStatus('error');
+          setHasKey(false);
+          return;
+       }
+    }
     
     try {
       // enhance prompt with style instructions
       const finalPrompt = `${prompt}. Style: ${selectedStyle.label} - ${selectedStyle.desc}`;
-      const results = await generateViralThumbnails(finalPrompt);
-      setThumbnails(results);
+      
+      if (mode === 'image') {
+         const results = await generateViralThumbnails(finalPrompt);
+         setThumbnails(results);
+      } else {
+         const url = await generateVideoWithGemini(finalPrompt, aspectRatio);
+         setVideoUrl(url);
+      }
+      
       setStatus('success');
     } catch (err) {
       console.error(err);
@@ -65,16 +118,76 @@ const ThumbnailTool: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Youtube className="w-8 h-8 text-red-600" />
           Nano Thumbnails
         </h2>
-        <p className="text-slate-400">Generate 5 viral-ready YouTube thumbnails at once.</p>
+        <p className="text-slate-600 dark:text-slate-400">Generate viral YouTube thumbnails or motion intros instantly.</p>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl space-y-6">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl space-y-8">
         {/* Controls */}
         <div className="space-y-6">
+          
+          {/* Top Bar: Mode & Aspect Ratio */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-6">
+             {/* Mode Selector */}
+             <div className="flex bg-slate-800 rounded-xl p-1 border border-slate-700">
+               <button 
+                 onClick={() => setMode('image')}
+                 className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${
+                   mode === 'image' 
+                     ? 'bg-red-600 text-white shadow-lg shadow-red-900/20' 
+                     : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                 }`}
+               >
+                 <ImageIcon className="w-4 h-4" />
+                 Thumbnails
+               </button>
+               <button 
+                 onClick={() => setMode('video')}
+                 className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${
+                   mode === 'video' 
+                     ? 'bg-rose-600 text-white shadow-lg shadow-rose-900/20' 
+                     : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                 }`}
+               >
+                 <Film className="w-4 h-4" />
+                 Motion Clip
+               </button>
+             </div>
+
+             {/* Aspect Ratio (Video Only) */}
+             {mode === 'video' && (
+               <div className="flex items-center gap-3 animate-fade-in">
+                  <span className="text-sm font-medium text-slate-400">Ratio:</span>
+                  <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                    <button 
+                      onClick={() => setAspectRatio('16:9')}
+                      className={`p-2 rounded-md transition-all ${aspectRatio === '16:9' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-white'}`}
+                      title="Landscape 16:9"
+                    >
+                      <Monitor className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => setAspectRatio('9:16')}
+                      className={`p-2 rounded-md transition-all ${aspectRatio === '9:16' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-white'}`}
+                      title="Portrait 9:16"
+                    >
+                      <Smartphone className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => setAspectRatio('1:1')}
+                      className={`p-2 rounded-md transition-all ${aspectRatio === '1:1' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-white'}`}
+                      title="Square 1:1"
+                    >
+                      <Square className="w-4 h-4" />
+                    </button>
+                  </div>
+               </div>
+             )}
+          </div>
+
           <div className="space-y-3">
              <label className="text-sm font-medium text-slate-400">Select Viral Style</label>
              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -84,8 +197,8 @@ const ThumbnailTool: React.FC = () => {
                    onClick={() => setSelectedStyleId(style.id)}
                    className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all text-center ${
                      selectedStyleId === style.id 
-                       ? 'bg-red-600/20 border-red-500 text-white' 
-                       : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                       ? 'bg-slate-800 border-red-500 text-white ring-1 ring-red-500/50' 
+                       : 'bg-slate-950/50 border-slate-700 text-slate-400 hover:bg-slate-800'
                    }`}
                  >
                    <style.icon className={`w-5 h-5 ${selectedStyleId === style.id ? 'text-red-500' : ''}`} />
@@ -100,57 +213,111 @@ const ThumbnailTool: React.FC = () => {
                type="text"
                value={prompt}
                onChange={(e) => setPrompt(e.target.value)}
-               placeholder="Video topic: e.g., 'I survived 24 hours in a haunted house' or 'iPhone 16 Review'"
+               placeholder={mode === 'image' ? "Video topic: e.g., 'I survived 24 hours in a haunted house'" : "Motion prompt: e.g. 'Glitch effect intro text saying GAME OVER'"}
                className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500"
                onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
              />
              <button
                onClick={handleGenerate}
                disabled={!prompt || status === 'loading'}
-               className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold px-8 py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-900/20 whitespace-nowrap"
+               className={`${mode === 'image' ? 'bg-red-600 hover:bg-red-700' : 'bg-rose-600 hover:bg-rose-700'} disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold px-8 py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg whitespace-nowrap min-w-[180px]`}
              >
-               {status === 'loading' ? <RefreshCw className="animate-spin" /> : <Zap className="fill-current" />}
-               Generate 5 Variants
+               {status === 'loading' ? (
+                 <RefreshCw className="animate-spin" />
+               ) : (
+                 mode === 'image' ? <Zap className="fill-current" /> : <Film className="fill-current" />
+               )}
+               {mode === 'image' ? 'Generate 5 Variants' : 'Generate Video'}
              </button>
           </div>
+          
+          {/* API Key Warning for Video Mode */}
+          {mode === 'video' && !hasKey && (
+             <div className="flex items-center justify-center gap-2 text-amber-500 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20 cursor-pointer hover:bg-amber-500/20 transition-colors" onClick={handleSelectKey}>
+                <Lock className="w-4 h-4" />
+                <span className="text-sm font-medium">Paid API Key required for Video Generation</span>
+             </div>
+          )}
         </div>
 
-        {/* Results Grid */}
-        <div className="border-t border-slate-800 pt-8">
+        {/* Results */}
+        <div className="border-t border-slate-800 pt-8 min-h-[300px]">
            {status === 'loading' ? (
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="aspect-video bg-slate-800/50 rounded-xl animate-pulse flex items-center justify-center border border-slate-700/50">
-                     <Youtube className="w-10 h-10 text-slate-700" />
-                  </div>
-                ))}
-             </div>
-           ) : thumbnails.length > 0 ? (
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
-                {thumbnails.map((src, idx) => (
-                  <div key={idx} className="group relative aspect-video bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-lg transition-transform hover:-translate-y-1">
-                     <img src={src} alt={`Thumbnail variant ${idx + 1}`} className="w-full h-full object-cover" />
-                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <a 
-                          href={src} 
-                          download={`nano-thumbnail-${idx+1}.png`}
-                          className="bg-white text-black px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:scale-105 transition-transform"
-                        >
-                          <Download className="w-4 h-4" />
-                          Download
-                        </a>
-                     </div>
-                     <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded">
-                        Variant {idx + 1}
-                     </div>
-                  </div>
-                ))}
+             <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <div className={`w-12 h-12 border-4 ${mode === 'image' ? 'border-red-500' : 'border-rose-500'} border-t-transparent rounded-full animate-spin`}></div>
+                <p className={`${mode === 'image' ? 'text-red-400' : 'text-rose-400'} animate-pulse`}>
+                  {mode === 'image' ? 'Designing viral clickbait...' : 'Rendering motion clip...'}
+                </p>
+                {mode === 'video' && <p className="text-xs text-slate-500">Video generation may take up to a minute.</p>}
              </div>
            ) : (
-             <div className="text-center py-12 text-slate-500">
-               <Youtube className="w-16 h-16 mx-auto mb-4 opacity-10" />
-               <p>Enter a topic and generate 5 viral thumbnails instantly.</p>
-             </div>
+             <>
+                {/* Image Grid */}
+                {mode === 'image' && (
+                   thumbnails.length > 0 ? (
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
+                        {thumbnails.map((src, idx) => (
+                          <div key={idx} className="group relative aspect-video bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-lg transition-transform hover:-translate-y-1">
+                             <img src={src} alt={`Thumbnail variant ${idx + 1}`} className="w-full h-full object-cover" />
+                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <a 
+                                  href={src} 
+                                  download={`nano-thumbnail-${idx+1}.png`}
+                                  className="bg-white text-black px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:scale-105 transition-transform"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  Download
+                                </a>
+                             </div>
+                             <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded">
+                                Variant {idx + 1}
+                             </div>
+                          </div>
+                        ))}
+                     </div>
+                   ) : (
+                     <div className="text-center py-12 text-slate-500">
+                       <ImageIcon className="w-16 h-16 mx-auto mb-4 opacity-10" />
+                       <p>Enter a topic to generate thumbnails.</p>
+                     </div>
+                   )
+                )}
+
+                {/* Video Player */}
+                {mode === 'video' && (
+                   videoUrl ? (
+                     <div className="flex justify-center animate-fade-in-up">
+                        <div className={`
+                          relative bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-2xl group
+                          ${aspectRatio === '9:16' ? 'aspect-[9/16] max-w-sm w-full' : aspectRatio === '1:1' ? 'aspect-square max-w-md w-full' : 'aspect-video max-w-2xl w-full'}
+                        `}>
+                           <video 
+                             src={videoUrl} 
+                             controls 
+                             autoPlay 
+                             loop 
+                             className="w-full h-full object-cover" 
+                           />
+                           <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <a 
+                                href={videoUrl} 
+                                download="nano-motion.mp4"
+                                className="bg-black/60 hover:bg-rose-600 text-white p-3 rounded-full backdrop-blur-sm transition-colors block"
+                                title="Download Video"
+                              >
+                                <Download className="w-5 h-5" />
+                              </a>
+                           </div>
+                        </div>
+                     </div>
+                   ) : (
+                     <div className="text-center py-12 text-slate-500">
+                       <Film className="w-16 h-16 mx-auto mb-4 opacity-10" />
+                       <p>Enter a prompt to generate a motion clip.</p>
+                     </div>
+                   )
+                )}
+             </>
            )}
         </div>
       </div>

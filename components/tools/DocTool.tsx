@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { FileText, Scissors, Download, FileType, CheckCircle, AlertCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -61,11 +62,11 @@ const DocTool: React.FC = () => {
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       {/* Header */}
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <FileType className="w-8 h-8 text-teal-500" />
           Nano Doc
         </h2>
-        <p className="text-slate-400">Essential document utilities powered by Nano.</p>
+        <p className="text-slate-600 dark:text-slate-400">Essential document utilities powered by Nano.</p>
       </div>
 
       {/* Tabs */}

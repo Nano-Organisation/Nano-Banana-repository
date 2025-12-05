@@ -20,7 +20,8 @@ import StorybookTool from './components/tools/StorybookTool';
 import LiveTool from './components/tools/LiveTool';
 import MemeGenerator from './components/tools/MemeGenerator';
 import AutomationHub from './components/tools/AutomationHub';
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot } from 'lucide-react';
+import SocialTool from './components/tools/SocialTool';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2 } from 'lucide-react';
 
 const TOOLS = [
   {
@@ -37,7 +38,17 @@ const TOOLS = [
     description: "Real-time voice conversation with Gemini.",
     icon: Activity,
     color: "indigo",
-    gradient: "from-indigo-500 to-violet-600"
+    gradient: "from-indigo-500 to-violet-600",
+    isNew: true
+  },
+  {
+    id: ToolId.Social,
+    title: "Nano Social",
+    description: "Multi-platform social media campaign generator.",
+    icon: Share2,
+    color: "blue",
+    gradient: "from-blue-500 to-cyan-600",
+    isNew: true
   },
   {
     id: ToolId.Meme,
@@ -45,7 +56,8 @@ const TOOLS = [
     description: "Instant meme generator from topics.",
     icon: Laugh,
     color: "yellow",
-    gradient: "from-yellow-400 to-amber-500"
+    gradient: "from-yellow-400 to-amber-500",
+    isNew: true
   },
   {
     id: ToolId.Storybook,
@@ -53,7 +65,8 @@ const TOOLS = [
     description: "Create illustrated books, comics, and fairy tales.",
     icon: BookOpen,
     color: "amber",
-    gradient: "from-amber-500 to-yellow-600"
+    gradient: "from-amber-500 to-yellow-600",
+    isNew: true
   },
   {
     id: ToolId.YouTubeThumbnail,
@@ -61,7 +74,8 @@ const TOOLS = [
     description: "Generate 5 viral-style YouTube thumbnails at once.",
     icon: Youtube,
     color: "red",
-    gradient: "from-red-600 to-orange-600"
+    gradient: "from-red-600 to-orange-600",
+    isNew: true
   },
   {
     id: ToolId.Games,
@@ -77,7 +91,8 @@ const TOOLS = [
     description: "Generate viral-worthy, vertical Pinterest images.",
     icon: Pin,
     color: "red",
-    gradient: "from-red-500 to-rose-600"
+    gradient: "from-red-500 to-rose-600",
+    isNew: true
   },
   {
     id: ToolId.Tutor,
@@ -93,7 +108,8 @@ const TOOLS = [
     description: "Generate animated GIFs using Veo.",
     icon: Film,
     color: "rose",
-    gradient: "from-rose-500 to-pink-600"
+    gradient: "from-rose-500 to-pink-600",
+    isNew: true
   },
   {
     id: ToolId.SoundGenerator,
@@ -101,7 +117,8 @@ const TOOLS = [
     description: "Convert text to lifelike speech.",
     icon: Volume2,
     color: "sky",
-    gradient: "from-sky-500 to-blue-600"
+    gradient: "from-sky-500 to-blue-600",
+    isNew: true
   },
   {
     id: ToolId.ImageEditor,
@@ -181,7 +198,8 @@ const TOOLS = [
     description: "Browser extension builder and Excel automation.",
     icon: Bot,
     color: "violet",
-    gradient: "from-violet-500 to-purple-600"
+    gradient: "from-violet-500 to-purple-600",
+    isNew: true
   }
 ];
 
@@ -194,6 +212,8 @@ const App: React.FC = () => {
         return <ChatInterface />;
       case ToolId.Live:
         return <LiveTool />;
+      case ToolId.Social:
+        return <SocialTool />;
       case ToolId.Meme:
         return <MemeGenerator />;
       case ToolId.Storybook:
@@ -238,10 +258,10 @@ const App: React.FC = () => {
   const renderDashboard = () => (
     <div className="space-y-12 animate-fade-in">
       <div className="text-center space-y-4 py-10">
-        <h2 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight">
+        <h2 className="text-4xl md:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight">
           Unleash <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-amber-600">Nano Power</span>
         </h2>
-        <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+        <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
           Experience the next generation of AI tools powered by Gemini 2.5. 
           Edit images with words, generate code, play games, and more.
         </p>
@@ -255,6 +275,13 @@ const App: React.FC = () => {
             title={tool.description}
             className="group relative bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-xl overflow-hidden"
           >
+            {/* New Badge */}
+            {(tool as any).isNew && (
+               <div className="absolute top-3 right-3 bg-amber-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg z-10 animate-pulse">
+                  NEW
+               </div>
+            )}
+
             <div className={`absolute top-0 right-0 p-24 opacity-5 bg-gradient-to-br ${tool.gradient} blur-3xl rounded-full -mr-10 -mt-10 group-hover:opacity-10 transition-opacity`}></div>
             
             <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center mb-4 shadow-lg`}>

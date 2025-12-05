@@ -17,11 +17,11 @@ const AutomationHub: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-12 animate-fade-in">
       <div className="text-center space-y-4 py-8">
-        <h2 className="text-4xl font-bold text-white flex items-center justify-center gap-3">
+        <h2 className="text-4xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Bot className="w-10 h-10 text-violet-500" />
           Nano Automate
         </h2>
-        <p className="text-slate-400 max-w-xl mx-auto">
+        <p className="text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
           Build powerful automation scripts and browser extensions in seconds.
         </p>
       </div>
