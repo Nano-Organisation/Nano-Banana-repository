@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Chat, Modality } from "@google/genai";
 import { 
   MemeData, QuizData, RiddleData, StorybookData, SocialSettings, 
@@ -6,7 +5,11 @@ import {
   EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, AffirmationPlan
 } from "../types";
 
-const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAiClient = () => {
+  // Safe access for process.env to prevent 'process is not defined' crashes in browser
+  const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : '';
+  return new GoogleGenAI({ apiKey: apiKey });
+};
 
 const handleGeminiError = (error: any): never => {
   console.error("Gemini API Error:", error);
@@ -487,7 +490,9 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
     const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (!downloadLink) throw new Error("No video URI returned.");
 
-    const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+    // For safety, assume process.env might be missing in some builds, fallback or fail gracefully
+    const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : '';
+    const response = await fetch(`${downloadLink}&key=${apiKey}`);
     const blob = await response.blob();
     return URL.createObjectURL(blob);
   } catch (error) {
