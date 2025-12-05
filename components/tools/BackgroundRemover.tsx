@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, Eraser, Download, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { editImageWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
+import { addWatermarkToImage } from '../../utils/watermark';
 
 const BackgroundRemover: React.FC = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
@@ -37,6 +38,15 @@ const BackgroundRemover: React.FC = () => {
       console.error(error);
       setStatus('error');
     }
+  };
+
+  const handleDownload = async () => {
+    if (!resultImage) return;
+    const watermarked = await addWatermarkToImage(resultImage);
+    const link = document.createElement('a');
+    link.href = watermarked;
+    link.download = `nano-remove-result.png`;
+    link.click();
   };
 
   return (
@@ -116,14 +126,13 @@ const BackgroundRemover: React.FC = () => {
           ) : resultImage ? (
             <>
               <img src={resultImage} alt="No Background" className="w-full h-full object-contain bg-[url('https://www.transparenttextures.com/patterns/black-linen.png')] bg-slate-800" />
-              <a 
-                href={resultImage} 
-                download="nano-remove-result.png"
+              <button 
+                onClick={handleDownload}
                 className="absolute bottom-4 right-4 bg-slate-950/80 hover:bg-black text-white px-4 py-2 rounded-lg backdrop-blur-md flex items-center gap-2 font-medium border border-slate-800 transition-colors"
               >
                 <Download className="w-4 h-4" />
                 Save
-              </a>
+              </button>
             </>
           ) : (
             <div className="text-center p-6 text-slate-600 space-y-2">

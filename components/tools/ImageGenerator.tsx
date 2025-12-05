@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Palette, Download, RefreshCw, Lock, Star, Share2, Wand2, Monitor, Smartphone, Square, Layers, Sparkles } from 'lucide-react';
 import { generateImageWithGemini, generateProImageWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
+import { drawWatermarkOnCanvas } from '../../utils/watermark';
 
 // Filter Definitions (CSS-like)
 const FILTERS = [
@@ -80,10 +81,6 @@ const ImageGenerator: React.FC = () => {
            setStatus('idle');
            return;
         }
-        // Note: Currently Pro Gen function signature is just (prompt, size). 
-        // If the backend supports AR for Pro, it should be updated there. 
-        // For now, we pass standard params or update the service if needed.
-        // Assuming Pro follows size mainly, but we can try to prompt engineer ratio if needed.
         const img = await generateProImageWithGemini(`${prompt} --ar ${aspectRatio}`, size);
         setResultImage(img);
       } else {
@@ -116,6 +113,11 @@ const ImageGenerator: React.FC = () => {
            // Apply filter context
            ctx.filter = FILTERS.find(f => f.id === activeFilter)?.style || 'none';
            ctx.drawImage(img, 0, 0);
+           
+           // Remove filter for text drawing to keep it crisp
+           ctx.filter = 'none';
+           // ADD WATERMARK
+           drawWatermarkOnCanvas(ctx, canvas.width, canvas.height);
            
            canvas.toBlob((blob) => {
              resolve(blob);

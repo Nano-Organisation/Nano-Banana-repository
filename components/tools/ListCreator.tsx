@@ -4,6 +4,7 @@ import { ListChecks, RefreshCw, CheckSquare, Download, Image as ImageIcon } from
 import { generateHelpfulList, generateImageWithGemini } from '../../services/geminiService';
 import { HelpfulList, LoadingState } from '../../types';
 import jsPDF from 'jspdf';
+import { WATERMARK_TEXT } from '../../utils/watermark';
 
 const ListCreator: React.FC = () => {
   const [topic, setTopic] = useState('');
@@ -47,8 +48,19 @@ const ListCreator: React.FC = () => {
   const handleDownloadPDF = () => {
     if (!listData) return;
     const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    const addWatermark = () => {
+        doc.setFontSize(8);
+        doc.setTextColor(180);
+        doc.text(WATERMARK_TEXT, pageWidth - 10, 10, { align: 'right' });
+        doc.text(WATERMARK_TEXT, pageWidth / 2, pageHeight - 10, { align: 'center' });
+        doc.setTextColor(0);
+    };
     
     // Header
+    addWatermark();
     if (headerImage) {
        try {
           doc.addImage(headerImage, 'PNG', 15, 15, 180, 100);
@@ -75,6 +87,7 @@ const ListCreator: React.FC = () => {
     listData.items.forEach((item, i) => {
        if (y > 280) {
           doc.addPage();
+          addWatermark();
           y = 20;
        }
        // Draw checkbox square

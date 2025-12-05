@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { PenTool, Download, RefreshCw, Layout, Smartphone, Sticker, Hexagon } from 'lucide-react';
 import { generateImageWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
+import { addWatermarkToImage } from '../../utils/watermark';
 
 const STYLES = [
   { 
@@ -52,6 +53,15 @@ const DesignTool: React.FC = () => {
       console.error(err);
       setStatus('error');
     }
+  };
+
+  const handleDownload = async () => {
+    if (!resultImage) return;
+    const watermarked = await addWatermarkToImage(resultImage);
+    const link = document.createElement('a');
+    link.href = watermarked;
+    link.download = `nano-design-${selectedStyle.id}.png`;
+    link.click();
   };
 
   return (
@@ -142,14 +152,13 @@ const DesignTool: React.FC = () => {
 
           {/* Persistent Download Button */}
           {resultImage && (
-            <a 
-              href={resultImage} 
-              download={`nano-design-${selectedStyle.id}.png`}
+            <button 
+              onClick={handleDownload}
               className="w-full bg-slate-800 hover:bg-slate-700 hover:text-white text-slate-200 font-semibold px-6 py-4 rounded-xl flex items-center justify-center gap-2 transition-all border border-slate-700 hover:border-slate-500 shadow-lg"
             >
               <Download className="w-5 h-5" />
               Download {selectedStyle.label}
-            </a>
+            </button>
           )}
         </div>
       </div>

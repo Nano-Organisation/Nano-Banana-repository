@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Pin, Download, RefreshCw, Palette, Camera, Scissors, Utensils, Home, Map, Smartphone } from 'lucide-react';
 import { generateImageWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
+import { addWatermarkToImage } from '../../utils/watermark';
 
 const STYLES = [
   { 
@@ -69,6 +70,15 @@ const PinterestTool: React.FC = () => {
       console.error(err);
       setStatus('error');
     }
+  };
+
+  const handleDownload = async () => {
+    if (!resultImage) return;
+    const watermarked = await addWatermarkToImage(resultImage);
+    const link = document.createElement('a');
+    link.href = watermarked;
+    link.download = `nano-pin-${selectedStyle.id}.png`;
+    link.click();
   };
 
   return (
@@ -185,14 +195,13 @@ const PinterestTool: React.FC = () => {
 
           {/* Persistent Download Button */}
           {resultImage && (
-            <a 
-              href={resultImage} 
-              download={`nano-pin-${selectedStyle.id}.png`}
+            <button 
+              onClick={handleDownload}
               className="w-full max-w-md mx-auto bg-slate-800 hover:bg-slate-700 hover:text-white text-slate-200 font-semibold px-6 py-4 rounded-xl flex items-center justify-center gap-2 transition-all border border-slate-700 hover:border-slate-500 shadow-lg"
             >
               <Download className="w-5 h-5" />
               Download Pin
-            </a>
+            </button>
           )}
         </div>
       </div>

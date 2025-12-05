@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Youtube, Download, RefreshCw, Zap, TrendingUp, Gamepad, Smile, Layout, Film, Monitor, Smartphone, Square, Image as ImageIcon, Lock } from 'lucide-react';
 import { generateViralThumbnails, generateVideoWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
+import { addWatermarkToImage } from '../../utils/watermark';
 
 const STYLES = [
   { 
@@ -113,6 +114,14 @@ const ThumbnailTool: React.FC = () => {
       console.error(err);
       setStatus('error');
     }
+  };
+
+  const handleDownloadImage = async (url: string, index: number) => {
+    const watermarked = await addWatermarkToImage(url);
+    const link = document.createElement('a');
+    link.href = watermarked;
+    link.download = `nano-thumbnail-${index + 1}.png`;
+    link.click();
   };
 
   return (
@@ -260,14 +269,13 @@ const ThumbnailTool: React.FC = () => {
                           <div key={idx} className="group relative aspect-video bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-lg transition-transform hover:-translate-y-1">
                              <img src={src} alt={`Thumbnail variant ${idx + 1}`} className="w-full h-full object-cover" />
                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <a 
-                                  href={src} 
-                                  download={`nano-thumbnail-${idx+1}.png`}
+                                <button
+                                  onClick={() => handleDownloadImage(src, idx)}
                                   className="bg-white text-black px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:scale-105 transition-transform"
                                 >
                                   <Download className="w-4 h-4" />
                                   Download
-                                </a>
+                                </button>
                              </div>
                              <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded">
                                 Variant {idx + 1}

@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Mic2, Play, Users, RefreshCw, Download, Image as ImageIcon, Music } from 'lucide-react';
 import { generatePodcastScript, generateSpeechWithGemini, generateImageWithGemini } from '../../services/geminiService';
 import { LoadingState, PodcastScript } from '../../types';
+import { addWatermarkToImage } from '../../utils/watermark';
 
 const VOICES = [
   { name: 'Kore', label: 'Kore (Female, Balanced)', color: 'pink' },
@@ -57,8 +58,11 @@ const PodcastTool: React.FC = () => {
 
       const [audio, art] = await Promise.all([audioPromise, artPromise]);
       
+      // Automatically watermark the cover art for display
+      const watermarkedArt = await addWatermarkToImage(art);
+      
       setAudioUrl(audio);
-      setCoverArt(art);
+      setCoverArt(watermarkedArt);
       setStatus('success');
     } catch (e) {
       console.error(e);

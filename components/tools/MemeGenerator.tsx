@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Laugh, RefreshCw, Download, Layers } from 'lucide-react';
 import { generateMemeConcept, generateImageWithGemini } from '../../services/geminiService';
 import { LoadingState, MemeData } from '../../types';
+import { drawWatermarkOnCanvas } from '../../utils/watermark';
 
 const MemeGenerator: React.FC = () => {
   const [topic, setTopic] = useState('');
@@ -69,6 +70,9 @@ const MemeGenerator: React.FC = () => {
           ctx.strokeText(memeData.bottomText.toUpperCase(), 512, 984, 960);
           ctx.fillText(memeData.bottomText.toUpperCase(), 512, 984, 960);
         }
+
+        // DRAW WATERMARK (Mandatory)
+        drawWatermarkOnCanvas(ctx, 1024, 1024);
       };
     }
   }, [status, memeData, imageBase64]);
