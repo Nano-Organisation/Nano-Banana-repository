@@ -59,6 +59,13 @@ export interface TwoTruthsPuzzle {
   explanation: string;
 }
 
+export interface RiddlePuzzle {
+  question: string;
+  answer: string;
+  hint: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+}
+
 export interface StoryPage {
   pageNumber: number;
   text: string;

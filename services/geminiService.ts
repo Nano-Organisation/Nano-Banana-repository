@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, GenerateContentResponse, Chat, Modality } from "@google/genai";
-import { EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, StorybookData, MemeData } from "../types";
+import { EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, StorybookData, MemeData } from "../types";
 
 // Note: For Veo calls, we create a fresh instance inside the function to ensure the latest API Key is used.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -510,6 +510,44 @@ export const generateTwoTruthsPuzzle = async (): Promise<TwoTruthsPuzzle> => {
         { text: "Humans share 50% of their DNA with bananas.", isTruth: true }
       ],
       explanation: "Bananas actually grow on large herbaceous plants, not trees!"
+    };
+  }
+};
+
+/**
+ * Riddle Puzzle Generation
+ */
+export const generateRiddlePuzzle = async (): Promise<RiddlePuzzle> => {
+  try {
+    const model = 'gemini-2.5-flash';
+    const prompt = `Generate a clever, rhyming riddle.
+    Return ONLY a JSON object with this format:
+    {
+      "question": "The riddle text",
+      "answer": "The answer (1-2 words)",
+      "hint": "A subtle clue to help solve it",
+      "difficulty": "Easy" or "Medium" or "Hard"
+    }
+    Do not include markdown formatting.`;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json'
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No text returned");
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Riddle Gen Error", error);
+    return {
+      question: "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?",
+      answer: "Echo",
+      hint: "I repeat what you say.",
+      difficulty: "Easy"
     };
   }
 };
