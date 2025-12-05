@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, GenerateContentResponse, Chat, Modality } from "@google/genai";
-import { EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, StorybookData, MemeData, SocialCampaign, SocialSettings } from "../types";
+import { EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis } from "../types";
 
 // Note: For Veo calls, we create a fresh instance inside the function to ensure the latest API Key is used.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -715,6 +715,61 @@ export const generateSocialCampaign = async (topic: string, settings?: SocialSet
     return JSON.parse(text);
   } catch (error) {
     console.error("Social Campaign Gen Error", error);
+    throw error;
+  }
+};
+
+/**
+ * Prompt Engineering Trainer
+ * Analyzes prompts based on specific platform best practices.
+ */
+export const analyzePrompt = async (userPrompt: string, platform: string): Promise<PromptAnalysis> => {
+  try {
+    const model = 'gemini-2.5-flash';
+    
+    const prompt = `You are an expert Lead Prompt Engineer specializing in Large Language Models.
+    Analyze the following user prompt intended for the platform: "${platform}".
+
+    Target Platform nuances you should know:
+    - OpenAI / ChatGPT: Prefers clear personas ("Act as..."), explicit steps, and output format constraints.
+    - Google Gemini: Excel at reasoning and multimodal context. Prefers clear instructions without excessive fluff.
+    - Anthropic Claude: Excels with XML tags (<context>...</context>) to structure input and clear role prompting.
+    - Microsoft Copilot: Prefers concise, goal-oriented instructions, often business-focused.
+    - Perplexity: Prefers research-oriented queries, asking for sources or citations.
+    - Midjourney: Prefers comma-separated keywords, stylistic parameters (--ar, --v), and less conversational grammar.
+
+    USER PROMPT:
+    "${userPrompt}"
+
+    Evaluate the prompt based on clarity, context, constraints, and platform-specific optimization.
+    
+    If the prompt is already optimal (score > 90), do not suggest major changes.
+    
+    Return ONLY a JSON object with this structure:
+    {
+      "score": number (0-100),
+      "isOptimal": boolean (true if score > 90),
+      "strengths": ["list", "of", "pros"],
+      "weaknesses": ["list", "of", "cons"],
+      "suggestion": "The improved version of the prompt (optimized for ${platform})",
+      "reasoning": "A brief explanation of WHY the suggestion is better (metadata/theory).",
+      "platformAdvice": "Specific tip for ${platform} used in this optimization."
+    }
+    Do not include markdown formatting.`;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json'
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No text returned");
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Prompt Analysis Error", error);
     throw error;
   }
 };

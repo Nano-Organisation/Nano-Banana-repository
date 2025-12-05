@@ -21,7 +21,8 @@ export enum ToolId {
   Live = 'LIVE',
   Meme = 'MEME',
   AutomationHub = 'AUTOMATION_HUB',
-  Social = 'SOCIAL'
+  Social = 'SOCIAL',
+  PromptTrainer = 'PROMPT_TRAINER'
 }
 
 export interface ToolConfig {
@@ -120,4 +121,14 @@ export interface SocialSettings {
   style: string;
   language: string;
   useEmojis: boolean;
+}
+
+export interface PromptAnalysis {
+  score: number;
+  isOptimal: boolean;
+  strengths: string[];
+  weaknesses: string[];
+  suggestion: string;
+  reasoning: string;
+  platformAdvice: string;
 }

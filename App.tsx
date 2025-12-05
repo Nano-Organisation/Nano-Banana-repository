@@ -21,7 +21,8 @@ import LiveTool from './components/tools/LiveTool';
 import MemeGenerator from './components/tools/MemeGenerator';
 import AutomationHub from './components/tools/AutomationHub';
 import SocialTool from './components/tools/SocialTool';
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2 } from 'lucide-react';
+import PromptTrainer from './components/tools/PromptTrainer';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain } from 'lucide-react';
 
 const TOOLS = [
   {
@@ -33,13 +34,22 @@ const TOOLS = [
     gradient: "from-green-500 to-emerald-600"
   },
   {
+    id: ToolId.PromptTrainer,
+    title: "Nano Prompt Trainer",
+    description: "Optimize prompts for ChatGPT, Claude, Midjourney & more.",
+    icon: Brain,
+    color: "pink",
+    gradient: "from-pink-500 to-fuchsia-600",
+    releaseDate: '2025-12-05'
+  },
+  {
     id: ToolId.Live,
     title: "Nano Live",
     description: "Real-time voice conversation with Gemini.",
     icon: Activity,
     color: "indigo",
     gradient: "from-indigo-500 to-violet-600",
-    isNew: true
+    releaseDate: '2025-12-05'
   },
   {
     id: ToolId.Social,
@@ -48,7 +58,7 @@ const TOOLS = [
     icon: Share2,
     color: "blue",
     gradient: "from-blue-500 to-cyan-600",
-    isNew: true
+    releaseDate: '2025-12-04'
   },
   {
     id: ToolId.Meme,
@@ -57,7 +67,7 @@ const TOOLS = [
     icon: Laugh,
     color: "yellow",
     gradient: "from-yellow-400 to-amber-500",
-    isNew: true
+    releaseDate: '2025-12-04'
   },
   {
     id: ToolId.Storybook,
@@ -66,7 +76,7 @@ const TOOLS = [
     icon: BookOpen,
     color: "amber",
     gradient: "from-amber-500 to-yellow-600",
-    isNew: true
+    releaseDate: '2025-12-04'
   },
   {
     id: ToolId.YouTubeThumbnail,
@@ -75,7 +85,7 @@ const TOOLS = [
     icon: Youtube,
     color: "red",
     gradient: "from-red-600 to-orange-600",
-    isNew: true
+    releaseDate: '2025-12-04'
   },
   {
     id: ToolId.Games,
@@ -92,7 +102,7 @@ const TOOLS = [
     icon: Pin,
     color: "red",
     gradient: "from-red-500 to-rose-600",
-    isNew: true
+    releaseDate: '2025-12-04'
   },
   {
     id: ToolId.Tutor,
@@ -109,7 +119,7 @@ const TOOLS = [
     icon: Film,
     color: "rose",
     gradient: "from-rose-500 to-pink-600",
-    isNew: true
+    releaseDate: '2025-12-04'
   },
   {
     id: ToolId.SoundGenerator,
@@ -118,7 +128,7 @@ const TOOLS = [
     icon: Volume2,
     color: "sky",
     gradient: "from-sky-500 to-blue-600",
-    isNew: true
+    releaseDate: '2025-12-04'
   },
   {
     id: ToolId.ImageEditor,
@@ -199,9 +209,21 @@ const TOOLS = [
     icon: Bot,
     color: "violet",
     gradient: "from-violet-500 to-purple-600",
-    isNew: true
+    releaseDate: '2025-12-04'
   }
 ];
+
+// Helper to determine if a tool is "New" based on 60-day window
+const isToolNew = (releaseDate?: string) => {
+  if (!releaseDate) return false;
+  const releaseTime = new Date(releaseDate).getTime();
+  const currentTime = new Date().getTime();
+  const sixtyDaysInMs = 60 * 24 * 60 * 60 * 1000;
+  
+  // Logic: Show badge if we are NOT past the 60 day expiration date.
+  // This supports the user's specific request for future dates (2025) to show as new now.
+  return currentTime <= (releaseTime + sixtyDaysInMs);
+};
 
 const App: React.FC = () => {
   const [currentTool, setCurrentTool] = useState<ToolId>(ToolId.Dashboard);
@@ -210,6 +232,8 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.PromptTrainer:
+        return <PromptTrainer />;
       case ToolId.Live:
         return <LiveTool />;
       case ToolId.Social:
@@ -275,8 +299,8 @@ const App: React.FC = () => {
             title={tool.description}
             className="group relative bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-xl overflow-hidden"
           >
-            {/* New Badge */}
-            {(tool as any).isNew && (
+            {/* New Badge - Dynamically calculated */}
+            {isToolNew((tool as any).releaseDate) && (
                <div className="absolute top-3 right-3 bg-amber-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg z-10 animate-pulse">
                   NEW
                </div>
