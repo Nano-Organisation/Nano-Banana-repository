@@ -1,8 +1,6 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="<img width="1344" height="943" alt="image" src="https://github.com/user-attachments/assets/61706126-7f81-466d-b611-3ead3615b361" />
-" />
-</div>
 
+
+<img width="1344" height="943" alt="image" src="https://github.com/user-attachments/assets/1e9d31e2-d999-4a44-b38c-8afa60eed4ae" />
 
 
 <div align="center">
