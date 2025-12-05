@@ -24,7 +24,8 @@ import SocialTool from './components/tools/SocialTool';
 import PromptTrainer from './components/tools/PromptTrainer';
 import PromptAcademy from './components/tools/PromptAcademy';
 import AssistantCreator from './components/tools/AssistantCreator';
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus } from 'lucide-react';
+import ListCreator from './components/tools/ListCreator';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -41,7 +42,8 @@ const SHADOW_COLORS: Record<string, string> = {
   purple: 'rgba(168, 85, 247, 0.4)',
   fuchsia: 'rgba(217, 70, 239, 0.4)',
   cyan: 'rgba(6, 182, 212, 0.4)',
-  violet: 'rgba(139, 92, 246, 0.4)'
+  violet: 'rgba(139, 92, 246, 0.4)',
+  lime: 'rgba(132, 204, 22, 0.4)'
 };
 
 const TOOLS = [
@@ -63,9 +65,18 @@ const TOOLS = [
     releaseDate: '2025-12-05'
   },
   {
+    id: ToolId.ListCreator,
+    title: "Nano Lists",
+    description: "Generate helpful checklists with visuals.",
+    icon: ListChecks,
+    color: "lime",
+    gradient: "from-lime-500 to-green-600",
+    releaseDate: '2025-12-05'
+  },
+  {
     id: ToolId.Academy,
     title: "Nano Academy",
-    description: "Daily prompt engineering & security tips.",
+    description: "Infinite daily prompt engineering tips.",
     icon: BookMarked,
     color: "teal",
     gradient: "from-teal-500 to-emerald-600",
@@ -271,6 +282,8 @@ const App: React.FC = () => {
         return <ChatInterface />;
       case ToolId.AssistantCreator:
         return <AssistantCreator />;
+      case ToolId.ListCreator:
+        return <ListCreator />;
       case ToolId.Academy:
         return <PromptAcademy />;
       case ToolId.PromptTrainer:

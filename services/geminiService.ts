@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, GenerateContentResponse, Chat, Modality } from "@google/genai";
-import { EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis } from "../types";
+import { EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis, DailyTip, HelpfulList } from "../types";
 
 // Note: For Veo calls, we create a fresh instance inside the function to ensure the latest API Key is used.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -770,6 +770,92 @@ export const analyzePrompt = async (userPrompt: string, platform: string): Promi
     return JSON.parse(text);
   } catch (error) {
     console.error("Prompt Analysis Error", error);
+    throw error;
+  }
+};
+
+/**
+ * Generate Infinite Daily Tip
+ */
+export const generateDailyTip = async (dayIndex: number): Promise<DailyTip> => {
+  try {
+    const model = 'gemini-2.5-flash';
+    const prompt = `Generate a unique, high-quality "Tip of the Day" for AI Prompt Engineering or AI Security.
+    
+    This is for Day ${dayIndex} of a learning program.
+    Ensure the tip is advanced, practical, and distinct from generic advice.
+    
+    Structure the response as a valid JSON object:
+    {
+      "dayIndex": ${dayIndex},
+      "date": "${new Date().toISOString()}",
+      "category": "Prompting" or "Security" (Pick one randomly),
+      "title": "Catchy Title",
+      "content": "The main advice (2-3 sentences)",
+      "example": "A concrete prompt example or scenario (optional)"
+    }
+    Do not include markdown formatting.`;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json'
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No text returned");
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Daily Tip Error", error);
+    // Fallback
+    return {
+      dayIndex: dayIndex,
+      date: new Date().toISOString(),
+      category: 'Prompting',
+      title: 'Context Window Awareness',
+      content: 'Remember that LLMs have a limited context window. For very long conversations, summarize previous key points to keep the model focused.',
+      example: '"Summarize our conversation so far, then answer this..."'
+    };
+  }
+};
+
+/**
+ * Generate Helpful List
+ */
+export const generateHelpfulList = async (topic: string): Promise<HelpfulList> => {
+  try {
+    const model = 'gemini-2.5-flash';
+    const prompt = `Create a helpful, actionable checklist/list for the following topic: "${topic}".
+    
+    The list could be for Cleaning, Self-Care, Language Learning, Moving House, etc.
+    1. Create a catchy Title and a brief Description.
+    2. Generate 10-15 actionable items.
+    3. Write a visual image prompt for a header image that matches the list theme.
+    
+    Return ONLY a JSON object:
+    {
+      "title": "List Title",
+      "description": "Brief inspiring description",
+      "items": ["Item 1", "Item 2", ...],
+      "imagePrompt": "Visual description for header image"
+    }
+    Do not include markdown formatting.`;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json'
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No text returned");
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("List Gen Error", error);
     throw error;
   }
 };

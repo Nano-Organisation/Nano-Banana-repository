@@ -24,7 +24,8 @@ export enum ToolId {
   Social = 'SOCIAL',
   PromptTrainer = 'PROMPT_TRAINER',
   Academy = 'ACADEMY',
-  AssistantCreator = 'ASSISTANT_CREATOR'
+  AssistantCreator = 'ASSISTANT_CREATOR',
+  ListCreator = 'LIST_CREATOR'
 }
 
 export interface ToolConfig {
@@ -134,4 +135,20 @@ export interface PromptAnalysis {
   suggestion: string;
   reasoning: string;
   platformAdvice: string;
+}
+
+export interface DailyTip {
+  dayIndex: number;
+  date: string;
+  category: 'Prompting' | 'Security';
+  title: string;
+  content: string;
+  example?: string;
+}
+
+export interface HelpfulList {
+  title: string;
+  description: string;
+  items: string[];
+  imagePrompt: string;
 }
