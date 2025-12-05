@@ -23,7 +23,26 @@ import AutomationHub from './components/tools/AutomationHub';
 import SocialTool from './components/tools/SocialTool';
 import PromptTrainer from './components/tools/PromptTrainer';
 import PromptAcademy from './components/tools/PromptAcademy';
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked } from 'lucide-react';
+import AssistantCreator from './components/tools/AssistantCreator';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus } from 'lucide-react';
+
+const SHADOW_COLORS: Record<string, string> = {
+  green: 'rgba(34, 197, 94, 0.4)',
+  teal: 'rgba(20, 184, 166, 0.4)',
+  pink: 'rgba(236, 72, 153, 0.4)',
+  indigo: 'rgba(99, 102, 241, 0.4)',
+  blue: 'rgba(59, 130, 246, 0.4)',
+  yellow: 'rgba(234, 179, 8, 0.4)',
+  amber: 'rgba(245, 158, 11, 0.4)',
+  red: 'rgba(239, 68, 68, 0.4)',
+  orange: 'rgba(249, 115, 22, 0.4)',
+  rose: 'rgba(244, 63, 94, 0.4)',
+  sky: 'rgba(14, 165, 233, 0.4)',
+  purple: 'rgba(168, 85, 247, 0.4)',
+  fuchsia: 'rgba(217, 70, 239, 0.4)',
+  cyan: 'rgba(6, 182, 212, 0.4)',
+  violet: 'rgba(139, 92, 246, 0.4)'
+};
 
 const TOOLS = [
   {
@@ -33,6 +52,15 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.AssistantCreator,
+    title: "Nano Assistant",
+    description: "Create your own custom AI assistant.",
+    icon: UserPlus,
+    color: "cyan",
+    gradient: "from-cyan-500 to-blue-600",
+    releaseDate: '2025-12-05'
   },
   {
     id: ToolId.Academy,
@@ -230,18 +258,19 @@ const isToolNew = (releaseDate?: string) => {
   const currentTime = new Date().getTime();
   const sixtyDaysInMs = 60 * 24 * 60 * 60 * 1000;
   
-  // Logic: Show badge if we are NOT past the 60 day expiration date.
-  // This supports the user's specific request for future dates (2025) to show as new now.
   return currentTime <= (releaseTime + sixtyDaysInMs);
 };
 
 const App: React.FC = () => {
   const [currentTool, setCurrentTool] = useState<ToolId>(ToolId.Dashboard);
+  const [hoveredTool, setHoveredTool] = useState<string | null>(null);
 
   const renderTool = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.AssistantCreator:
+        return <AssistantCreator />;
       case ToolId.Academy:
         return <PromptAcademy />;
       case ToolId.PromptTrainer:
@@ -308,10 +337,17 @@ const App: React.FC = () => {
           <button
             key={tool.id}
             onClick={() => setCurrentTool(tool.id)}
+            onMouseEnter={() => setHoveredTool(tool.id)}
+            onMouseLeave={() => setHoveredTool(null)}
             title={tool.description}
-            className="group relative bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:shadow-xl overflow-hidden"
+            className="group relative bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-slate-600 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 overflow-hidden"
+            style={{ 
+               boxShadow: hoveredTool === tool.id 
+                  ? `0 10px 30px -10px ${SHADOW_COLORS[tool.color] || 'rgba(0,0,0,0.5)'}` 
+                  : '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            }}
           >
-            {/* New Badge - Dynamically calculated */}
+            {/* New Badge */}
             {isToolNew((tool as any).releaseDate) && (
                <div className="absolute top-3 right-3 bg-amber-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg z-10 animate-pulse">
                   NEW

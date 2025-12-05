@@ -23,7 +23,8 @@ export enum ToolId {
   AutomationHub = 'AUTOMATION_HUB',
   Social = 'SOCIAL',
   PromptTrainer = 'PROMPT_TRAINER',
-  Academy = 'ACADEMY'
+  Academy = 'ACADEMY',
+  AssistantCreator = 'ASSISTANT_CREATOR'
 }
 
 export interface ToolConfig {
