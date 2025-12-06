@@ -36,6 +36,60 @@ const handleGeminiError = (error: any): never => {
   throw new Error(msg);
 };
 
+// --- WAV Header Helpers ---
+const writeString = (view: DataView, offset: number, string: string) => {
+  for (let i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i));
+  }
+};
+
+const createWavUrl = (base64Data: string): string => {
+  const binaryString = atob(base64Data);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  // Gemini TTS returns raw PCM at 24kHz, 1 channel, 16-bit
+  const sampleRate = 24000;
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  
+  const wavHeader = new ArrayBuffer(44);
+  const view = new DataView(wavHeader);
+  
+  /* RIFF identifier */
+  writeString(view, 0, 'RIFF');
+  /* RIFF chunk length */
+  view.setUint32(4, 36 + len, true);
+  /* RIFF type */
+  writeString(view, 8, 'WAVE');
+  /* format chunk identifier */
+  writeString(view, 12, 'fmt ');
+  /* format chunk length */
+  view.setUint32(16, 16, true);
+  /* sample format (1 is PCM) */
+  view.setUint16(20, 1, true);
+  /* channel count */
+  view.setUint16(22, numChannels, true);
+  /* sample rate */
+  view.setUint32(24, sampleRate, true);
+  /* byte rate (sample rate * block align) */
+  view.setUint32(28, sampleRate * numChannels * (bitsPerSample / 8), true);
+  /* block align (channel count * bytes per sample) */
+  view.setUint16(32, numChannels * (bitsPerSample / 8), true);
+  /* bits per sample */
+  view.setUint16(34, bitsPerSample, true);
+  /* data chunk identifier */
+  writeString(view, 36, 'data');
+  /* data chunk length */
+  view.setUint32(40, len, true);
+
+  const blob = new Blob([view, bytes], { type: 'audio/wav' });
+  return URL.createObjectURL(blob);
+};
+
 /**
  * Text Generation
  */
@@ -67,18 +121,39 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
       config: {
         imageConfig: {
           aspectRatio: aspectRatio as any,
-        }
+        },
+        safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+        ]
       },
     });
     
+    // FIRST PASS: Look for image
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
         return `data:image/png;base64,${part.inlineData.data}`;
-      } else if (part.text) {
-          // Capture refusal or text output
-          throw new Error(`Model Refusal: ${part.text}`);
       }
     }
+
+    // SECOND PASS: If no image, look for text refusal
+    let refusalText = "";
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.text) {
+          refusalText += part.text;
+      }
+    }
+    
+    if (refusalText) {
+        // If text looks positive but no image, likely a safety block
+        if (refusalText.toLowerCase().includes("here is") || refusalText.toLowerCase().includes("image")) {
+            throw new Error("Image Filtered: The model generated a response but the image was blocked by safety filters.");
+        }
+        throw new Error(`Model Refusal: ${refusalText}`);
+    }
+
     throw new Error("No image generated. The model may have refused the prompt.");
   } catch (error) {
     handleGeminiError(error);
@@ -98,15 +173,38 @@ export const generateProImageWithGemini = async (prompt: string, size: string = 
       config: {
         imageConfig: {
           imageSize: size as any, 
-        }
+        },
+        safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+        ]
       },
     });
     
+    // FIRST PASS: Look for image
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
         return `data:image/png;base64,${part.inlineData.data}`;
       }
     }
+
+    // SECOND PASS: Look for text
+    let refusalText = "";
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.text) {
+          refusalText += part.text;
+      }
+    }
+    
+    if (refusalText) {
+        if (refusalText.toLowerCase().includes("here is") || refusalText.toLowerCase().includes("image")) {
+            throw new Error("Image Filtered: The model generated a response but the image was blocked by safety filters.");
+        }
+        throw new Error(`Model Refusal: ${refusalText}`);
+    }
+
     throw new Error("No image generated");
   } catch (error) {
     handleGeminiError(error);
@@ -134,14 +232,39 @@ export const editImageWithGemini = async (imageBase64: string, prompt: string): 
           },
           { text: prompt }
         ]
+      },
+      config: {
+        safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+        ]
       }
     });
 
+    // FIRST PASS: Look for image
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
         return `data:image/png;base64,${part.inlineData.data}`;
       }
     }
+
+    // SECOND PASS: Look for text
+    let refusalText = "";
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.text) {
+          refusalText += part.text;
+      }
+    }
+    
+    if (refusalText) {
+        if (refusalText.toLowerCase().includes("here is") || refusalText.toLowerCase().includes("image")) {
+            throw new Error("Image Filtered: The model generated a response but the image was blocked by safety filters.");
+        }
+        throw new Error(`Model Refusal: ${refusalText}`);
+    }
+
     throw new Error("No edited image returned");
   } catch (error) {
     handleGeminiError(error);
@@ -442,7 +565,8 @@ export const generateSpeechWithGemini = async (text: string, voice: string, spee
 
     for (const part of response.candidates?.[0]?.content?.parts || []) {
         if (part.inlineData) {
-            return `data:audio/mp3;base64,${part.inlineData.data}`;
+            // Convert raw PCM to a playable WAV Blob URL
+            return createWavUrl(part.inlineData.data);
         }
     }
     throw new Error("No audio generated");
