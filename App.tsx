@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ToolId } from './types';
 import Layout from './components/Layout';
+import LoginGate from './components/LoginGate';
 import ImageEditor from './components/tools/ImageEditor';
 import ImageGenerator from './components/tools/ImageGenerator';
 import VisualQA from './components/tools/VisualQA';
@@ -443,7 +444,6 @@ const TOOLS = [
   }
 ];
 
-// Helper to determine if a tool is "New" based on 60-day window
 const isToolNew = (releaseDate?: string) => {
   if (!releaseDate) return false;
   const releaseTime = new Date(releaseDate).getTime();
@@ -458,13 +458,15 @@ const App: React.FC = () => {
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [pendingExternalUrl, setPendingExternalUrl] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Filter tools based on search query
-  const filteredTools = TOOLS.filter(tool => {
-    const query = searchQuery.toLowerCase();
-    return tool.title.toLowerCase().includes(query) || 
-           tool.description.toLowerCase().includes(query);
-  });
+  useEffect(() => {
+    // Check if user has already authenticated
+    const hasAccess = localStorage.getItem('nano_access_granted');
+    if (hasAccess === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
 
   const confirmExternalNavigation = () => {
     if (pendingExternalUrl) {
@@ -472,6 +474,12 @@ const App: React.FC = () => {
       setPendingExternalUrl(null);
     }
   };
+
+  const filteredTools = TOOLS.filter(tool => {
+    const query = searchQuery.toLowerCase();
+    return tool.title.toLowerCase().includes(query) || 
+           tool.description.toLowerCase().includes(query);
+  });
 
   const renderTool = () => {
     switch (currentTool) {
@@ -650,6 +658,11 @@ const App: React.FC = () => {
       </div>
     </div>
   );
+
+  // If not authenticated, show the login gate
+  if (!isAuthenticated) {
+    return <LoginGate onLogin={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <Layout 
