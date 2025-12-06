@@ -38,7 +38,9 @@ export enum ToolId {
   VideoGenerator = 'VIDEO_GENERATOR',
   Copywriter = 'COPYWRITER',
   Magic = 'MAGIC',
-  Cipher = 'CIPHER'
+  Cipher = 'CIPHER',
+  BrandCollateral = 'BRAND_COLLATERAL',
+  UGCAds = 'UGC_ADS'
 }
 
 export interface ToolConfig {
@@ -197,4 +199,28 @@ export interface AffirmationPlan {
   topic: string;
   weeklyMantra: string;
   dailyAffirmations: { day: string; text: string }[];
+}
+
+export interface BrandIdentity {
+  companyName: string;
+  missionStatement: string;
+  slogan: string;
+  colorPalette: { name: string; hex: string }[];
+  fontPairing: { heading: string; body: string };
+  logoPrompt: string;
+  brandVoice: string;
+}
+
+export interface UGCSection {
+  section: string; // Hook, Pain Point, etc.
+  visual: string;
+  audio: string;
+  duration: string;
+}
+
+export interface UGCScript {
+  title: string;
+  targetAudience: string;
+  totalDuration: string;
+  sections: UGCSection[];
 }

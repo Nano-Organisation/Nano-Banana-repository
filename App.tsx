@@ -38,7 +38,9 @@ import VideoGenerator from './components/tools/VideoGenerator';
 import CopywriterTool from './components/tools/CopywriterTool';
 import MagicTool from './components/tools/MagicTool';
 import CipherTool from './components/tools/CipherTool';
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock } from 'lucide-react';
+import BrandCollateralTool from './components/tools/BrandCollateralTool';
+import UGCAdsTool from './components/tools/UGCAdsTool';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -68,6 +70,24 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.BrandCollateral,
+    title: "Nano Brand",
+    description: "Generate complete brand kits and logos.",
+    icon: Briefcase,
+    color: "orange",
+    gradient: "from-orange-500 to-amber-600",
+    releaseDate: '2025-12-07'
+  },
+  {
+    id: ToolId.UGCAds,
+    title: "Nano UGC",
+    description: "Create viral scripts for TikTok and Reels.",
+    icon: Video,
+    color: "pink",
+    gradient: "from-pink-500 to-rose-600",
+    releaseDate: '2025-12-07'
   },
   {
     id: ToolId.Cipher,
@@ -419,6 +439,10 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.BrandCollateral:
+        return <BrandCollateralTool />;
+      case ToolId.UGCAds:
+        return <UGCAdsTool />;
       case ToolId.Cipher:
         return <CipherTool />;
       case ToolId.Magic:

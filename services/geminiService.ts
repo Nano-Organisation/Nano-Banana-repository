@@ -3,7 +3,8 @@ import { GoogleGenAI, Type, Chat, Modality } from "@google/genai";
 import { 
   MemeData, QuizData, RiddleData, StorybookData, SocialSettings, 
   SocialCampaign, PromptAnalysis, DailyTip, HelpfulList, PodcastScript,
-  EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, AffirmationPlan
+  EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, AffirmationPlan,
+  BrandIdentity, UGCScript
 } from "../types";
 
 const getAiClient = () => {
@@ -910,12 +911,112 @@ export const generateHiddenMessage = async (secret: string, topic: string): Prom
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Write a short, coherent paragraph (3-5 sentences) about "${topic}". 
-        Crucially, you must embed the secret message "${secret}" into the text. 
-        The words of the secret message must appear in the correct order, but can be separated by other words.
-        To mark the secret words, wrap them in double curly braces, like {{word}}. 
-        Example: If secret is "I love", output could be "It was {{I}} think a {{love}}ly day."
-        Do not change the form of the secret words if possible.`,
+        contents: `Write a coherent paragraph (3-5 sentences) strictly about "${topic}". 
+        
+        HIDDEN TASK: You must seamlessly embed the secret words "${secret}" into this paragraph.
+        The secret words must appear in order, but scattered throughout the text.
+        
+        CRITICAL: The paragraph must sound completely natural and focused on the topic. 
+        Do NOT force the secret message if it makes the sentence weird. Prioritize the cover story.
+        
+        Mark the secret words with double curly braces {{word}} in the output so I can highlight them later.
+        
+        Example:
+        Secret: "help me"
+        Topic: "Cooking"
+        Output: "When you {{help}} chop the onions, it saves time. Make sure the {{me}}at is tender."`,
     });
     return response.text || "";
+};
+
+/**
+ * Brand Identity Generator
+ */
+export const generateBrandIdentity = async (companyName: string, industry: string, vibe: string): Promise<BrandIdentity> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Generate a comprehensive brand identity for a company named "${companyName}". Industry: ${industry}. Vibe/Values: ${vibe}.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    companyName: { type: Type.STRING },
+                    missionStatement: { type: Type.STRING },
+                    slogan: { type: Type.STRING },
+                    brandVoice: { type: Type.STRING },
+                    colorPalette: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                name: { type: Type.STRING },
+                                hex: { type: Type.STRING }
+                            },
+                            required: ['name', 'hex']
+                        }
+                    },
+                    fontPairing: {
+                        type: Type.OBJECT,
+                        properties: {
+                            heading: { type: Type.STRING },
+                            body: { type: Type.STRING }
+                        },
+                        required: ['heading', 'body']
+                    },
+                    logoPrompt: { type: Type.STRING, description: "A detailed prompt to generate a logo for this brand." }
+                },
+                required: ['companyName', 'missionStatement', 'slogan', 'brandVoice', 'colorPalette', 'fontPairing', 'logoPrompt']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+/**
+ * UGC Script Generator
+ */
+export const generateUGCScript = async (product: string, audience: string, painPoint: string): Promise<UGCScript> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Write a high-converting User Generated Content (UGC) video script for TikTok/Reels. 
+        Product: ${product}. 
+        Target Audience: ${audience}. 
+        Main Pain Point: ${painPoint}.
+        Structure: 
+        1. Hook (Stop the scroll)
+        2. Problem/Agitation (Relatable pain)
+        3. Solution (Introduce product)
+        4. Social Proof/Benefits (Why it works)
+        5. Call to Action (What to do next)
+        `,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    title: { type: Type.STRING },
+                    targetAudience: { type: Type.STRING },
+                    totalDuration: { type: Type.STRING },
+                    sections: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                section: { type: Type.STRING },
+                                visual: { type: Type.STRING, description: "Visual description of what happens on screen." },
+                                audio: { type: Type.STRING, description: "Spoken words or sound effects." },
+                                duration: { type: Type.STRING }
+                            },
+                            required: ['section', 'visual', 'audio', 'duration']
+                        }
+                    }
+                },
+                required: ['title', 'targetAudience', 'totalDuration', 'sections']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
 };
