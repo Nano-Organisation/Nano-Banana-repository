@@ -41,7 +41,8 @@ import CipherTool from './components/tools/CipherTool';
 import BrandCollateralTool from './components/tools/BrandCollateralTool';
 import UGCAdsTool from './components/tools/UGCAdsTool';
 import LiveNotetaker from './components/tools/LiveNotetaker';
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList } from 'lucide-react';
+import StudioTool from './components/tools/StudioTool';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -60,7 +61,8 @@ const SHADOW_COLORS: Record<string, string> = {
   cyan: 'rgba(6, 182, 212, 0.4)',
   violet: 'rgba(139, 92, 246, 0.4)',
   lime: 'rgba(132, 204, 22, 0.4)',
-  emerald: 'rgba(16, 185, 129, 0.4)'
+  emerald: 'rgba(16, 185, 129, 0.4)',
+  slate: 'rgba(100, 116, 139, 0.4)'
 };
 
 const TOOLS = [
@@ -215,6 +217,15 @@ const TOOLS = [
     color: "indigo",
     gradient: "from-indigo-500 to-violet-600",
     releaseDate: '2025-12-05'
+  },
+  {
+    id: ToolId.Studio,
+    title: "AI Studio",
+    description: "Create professional YouTube Intros and Outros.",
+    icon: MonitorPlay,
+    color: "red",
+    gradient: "from-red-600 to-rose-600",
+    releaseDate: '2025-12-08'
   },
   {
     id: ToolId.AssistantCreator,
@@ -420,6 +431,15 @@ const TOOLS = [
     color: "violet",
     gradient: "from-violet-500 to-purple-600",
     releaseDate: '2025-12-04'
+  },
+  {
+    id: ToolId.SecurityBox,
+    title: "AI Security Box",
+    description: "Access the external Security Hub.",
+    icon: Shield,
+    color: "slate",
+    gradient: "from-slate-700 to-slate-900",
+    externalUrl: "https://sec-hub.online"
   }
 ];
 
@@ -437,6 +457,7 @@ const App: React.FC = () => {
   const [currentTool, setCurrentTool] = useState<ToolId>(ToolId.Dashboard);
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [pendingExternalUrl, setPendingExternalUrl] = useState<string | null>(null);
 
   // Filter tools based on search query
   const filteredTools = TOOLS.filter(tool => {
@@ -444,6 +465,13 @@ const App: React.FC = () => {
     return tool.title.toLowerCase().includes(query) || 
            tool.description.toLowerCase().includes(query);
   });
+
+  const confirmExternalNavigation = () => {
+    if (pendingExternalUrl) {
+      window.open(pendingExternalUrl, '_blank', 'noopener,noreferrer');
+      setPendingExternalUrl(null);
+    }
+  };
 
   const renderTool = () => {
     switch (currentTool) {
@@ -481,6 +509,8 @@ const App: React.FC = () => {
         return <RiddleGenerator />;
       case ToolId.Podcast:
         return <PodcastTool />;
+      case ToolId.Studio:
+        return <StudioTool />;
       case ToolId.AssistantCreator:
         return <AssistantCreator />;
       case ToolId.ListCreator:
@@ -574,7 +604,13 @@ const App: React.FC = () => {
            filteredTools.map((tool) => (
             <button
               key={tool.id}
-              onClick={() => setCurrentTool(tool.id)}
+              onClick={() => {
+                if ((tool as any).externalUrl) {
+                  setPendingExternalUrl((tool as any).externalUrl);
+                } else {
+                  setCurrentTool(tool.id);
+                }
+              }}
               onMouseEnter={() => setHoveredTool(tool.id)}
               onMouseLeave={() => setHoveredTool(null)}
               title={tool.description}
@@ -602,7 +638,7 @@ const App: React.FC = () => {
               <p className="text-slate-400 text-sm leading-relaxed">{tool.description}</p>
               
               <div className="mt-6 flex items-center text-xs font-semibold uppercase tracking-wider text-slate-500 group-hover:text-white transition-colors">
-                Launch Tool <span className="ml-2">→</span>
+                {(tool as any).externalUrl ? 'Open Site' : 'Launch Tool'} <span className="ml-2">→</span>
               </div>
             </button>
           ))
@@ -622,6 +658,41 @@ const App: React.FC = () => {
       onGoHome={() => setCurrentTool(ToolId.Dashboard)}
     >
       {renderTool()}
+
+      {/* External Link Warning Modal */}
+      {pendingExternalUrl && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-6 text-center transform scale-100 transition-all">
+            <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/20">
+              <Shield className="w-8 h-8 text-amber-500" />
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-white">External Link Warning</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                You are about to leave Digital Gentry AI. 
+                <br />
+                Proceed to <span className="text-amber-400 font-medium">{new URL(pendingExternalUrl).hostname}</span>?
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setPendingExternalUrl(null)}
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl transition-colors border border-slate-700"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmExternalNavigation}
+                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-amber-900/20"
+              >
+                Proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

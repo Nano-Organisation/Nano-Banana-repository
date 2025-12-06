@@ -41,7 +41,9 @@ export enum ToolId {
   Cipher = 'CIPHER',
   BrandCollateral = 'BRAND_COLLATERAL',
   UGCAds = 'UGC_ADS',
-  LiveNotetaker = 'LIVE_NOTETAKER'
+  LiveNotetaker = 'LIVE_NOTETAKER',
+  SecurityBox = 'SECURITY_BOX',
+  Studio = 'STUDIO'
 }
 
 export interface ToolConfig {
