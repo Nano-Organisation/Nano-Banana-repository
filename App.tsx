@@ -37,7 +37,8 @@ import AffirmationGenerator from './components/tools/AffirmationGenerator';
 import VideoGenerator from './components/tools/VideoGenerator';
 import CopywriterTool from './components/tools/CopywriterTool';
 import MagicTool from './components/tools/MagicTool';
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2 } from 'lucide-react';
+import CipherTool from './components/tools/CipherTool';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -67,6 +68,15 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.Cipher,
+    title: "Nano Cipher",
+    description: "Learn encryption and play code-breaking games.",
+    icon: Lock,
+    color: "sky",
+    gradient: "from-sky-500 to-indigo-600",
+    releaseDate: '2025-12-07'
   },
   {
     id: ToolId.Magic,
@@ -409,6 +419,8 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.Cipher:
+        return <CipherTool />;
       case ToolId.Magic:
         return <MagicTool />;
       case ToolId.VideoGenerator:

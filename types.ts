@@ -37,7 +37,8 @@ export enum ToolId {
   AffirmationGenerator = 'AFFIRMATION_GENERATOR',
   VideoGenerator = 'VIDEO_GENERATOR',
   Copywriter = 'COPYWRITER',
-  Magic = 'MAGIC'
+  Magic = 'MAGIC',
+  Cipher = 'CIPHER'
 }
 
 export interface ToolConfig {
