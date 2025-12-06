@@ -29,7 +29,7 @@ const BrandCollateralTool: React.FC = () => {
   
   const [status, setStatus] = useState<LoadingState>('idle');
   const [logoStatus, setLogoStatus] = useState<LoadingState>('idle');
-  const [templateStatus, setTemplateStatus] = useState<LoadingState>('idle');
+  const [templateStatus, setTemplateStatus] = useState<{ [key: string]: LoadingState }>({});
 
   const handleGenerate = async () => {
     if (!companyName.trim() || !industry.trim()) return;
@@ -38,6 +38,7 @@ const BrandCollateralTool: React.FC = () => {
     setLogoImage(null);
     setTemplateImages({});
     setLogoStatus('idle');
+    setTemplateStatus({});
 
     try {
       const result = await generateBrandIdentity(companyName, industry, vibe, personality, prefColours, prefFonts);
@@ -85,19 +86,19 @@ const BrandCollateralTool: React.FC = () => {
 
   const handleGenerateTemplate = async (type: 'stationary' | 'ppt' | 'calendar') => {
     if (!brandData) return;
-    setTemplateStatus('loading');
+    setTemplateStatus(prev => ({ ...prev, [type]: 'loading' }));
     try {
       let prompt = '';
-      if (type === 'stationary') prompt = `Corporate stationary mockup including business cards and letterhead for "${brandData.companyName}". ${brandData.stationaryPrompt}`;
-      if (type === 'ppt') prompt = `Professional PowerPoint presentation title slide design for "${brandData.companyName}". ${brandData.pptTemplatePrompt}`;
-      if (type === 'calendar') prompt = `Branded desk calendar design for "${brandData.companyName}". ${brandData.calendarPrompt}`;
+      if (type === 'stationary') prompt = `High quality corporate stationary mockup including business cards and letterhead for "${brandData.companyName}". ${brandData.stationaryPrompt}. Photorealistic, soft lighting.`;
+      if (type === 'ppt') prompt = `Professional PowerPoint presentation title slide design for "${brandData.companyName}" displayed on a laptop screen mockup. ${brandData.pptTemplatePrompt}. Modern UI.`;
+      if (type === 'calendar') prompt = `Branded corporate desk calendar design for "${brandData.companyName}" sitting on a wooden desk. ${brandData.calendarPrompt}. Photorealistic.`;
 
       const img = await generateImageWithGemini(prompt, '16:9');
       setTemplateImages(prev => ({ ...prev, [type]: img }));
-      setTemplateStatus('success');
+      setTemplateStatus(prev => ({ ...prev, [type]: 'success' }));
     } catch (e) {
       console.error(e);
-      setTemplateStatus('error');
+      setTemplateStatus(prev => ({ ...prev, [type]: 'error' }));
     }
   };
 
@@ -118,7 +119,7 @@ const BrandCollateralTool: React.FC = () => {
           Nano Brand
         </h2>
         <div className="flex flex-col items-center gap-1">
-           <p className="text-slate-600 dark:text-slate-400">Generate a complete brand identity package with templates.</p>
+           <p className="text-slate-600 dark:text-slate-400">Generate a complete brand identity package with visual templates.</p>
            <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
               Model: gemini-2.5-flash
            </span>
@@ -217,7 +218,7 @@ const BrandCollateralTool: React.FC = () => {
           )}
 
           {brandData && (
-            <div className="space-y-6 animate-fade-in-up">
+            <div className="space-y-8 animate-fade-in-up">
               
               {/* BRAND HEADER */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl text-center space-y-2">
@@ -328,83 +329,116 @@ const BrandCollateralTool: React.FC = () => {
                  </div>
               </div>
 
-              {/* STATIONARY & TEMPLATES */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
-                 <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                    <Layout className="w-5 h-5 text-orange-500" /> Visual Assets & Templates
+              {/* STATIONARY & TEMPLATES (EXPANDED LAYOUT) */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-lg">
+                 <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-2">
+                    <Layout className="w-6 h-6 text-orange-500" /> Visual Assets & Templates
                  </h3>
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Stationary */}
-                    <div className="space-y-3">
-                       <div className="aspect-video bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center relative group overflow-hidden">
-                          {templateImages.stationary ? (
-                             <>
-                                <img src={templateImages.stationary} className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                   <button onClick={() => handleDownloadImage(templateImages.stationary, 'stationary')} className="text-white font-bold flex items-center gap-1">
-                                      <Download className="w-4 h-4" /> Save
-                                   </button>
-                                </div>
-                             </>
-                          ) : (
-                             <FileText className="w-8 h-8 text-slate-700" />
-                          )}
-                       </div>
-                       <div className="flex justify-between items-center">
-                          <span className="text-sm font-bold text-slate-400">Stationary</span>
-                          <button onClick={() => handleGenerateTemplate('stationary')} className="text-xs text-orange-500 hover:text-orange-400 font-bold">
-                             {templateImages.stationary ? <RefreshCw className="w-4 h-4" /> : 'Generate'}
+                 
+                 <div className="space-y-12">
+                    
+                    {/* Stationary Row */}
+                    <div className="flex flex-col md:flex-row gap-6 items-center">
+                       <div className="md:w-1/3 space-y-2">
+                          <h4 className="text-lg font-bold text-white flex items-center gap-2">
+                             <FileText className="w-5 h-5 text-slate-400" /> Stationary Mockup
+                          </h4>
+                          <p className="text-sm text-slate-400">Business cards, letterheads, and envelopes.</p>
+                          <button 
+                             onClick={() => handleGenerateTemplate('stationary')}
+                             disabled={templateStatus['stationary'] === 'loading'}
+                             className="text-orange-500 hover:text-orange-400 font-bold text-sm flex items-center gap-2 mt-2"
+                          >
+                             {templateStatus['stationary'] === 'loading' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                             {templateImages.stationary ? 'Regenerate' : 'Generate Mockup'}
                           </button>
+                       </div>
+                       <div className="md:w-2/3 w-full">
+                          <div className="aspect-video bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center relative group overflow-hidden shadow-md">
+                             {templateImages.stationary ? (
+                                <>
+                                   <img src={templateImages.stationary} className="w-full h-full object-cover" />
+                                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                      <button onClick={() => handleDownloadImage(templateImages.stationary, 'stationary')} className="bg-white text-slate-900 px-6 py-2 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform">
+                                         <Download className="w-4 h-4" /> Save
+                                      </button>
+                                   </div>
+                                </>
+                             ) : (
+                                <span className="text-slate-700 text-sm">Click Generate to visualize</span>
+                             )}
+                          </div>
                        </div>
                     </div>
 
-                    {/* PPT */}
-                    <div className="space-y-3">
-                       <div className="aspect-video bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center relative group overflow-hidden">
-                          {templateImages.ppt ? (
-                             <>
-                                <img src={templateImages.ppt} className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                   <button onClick={() => handleDownloadImage(templateImages.ppt, 'ppt')} className="text-white font-bold flex items-center gap-1">
-                                      <Download className="w-4 h-4" /> Save
-                                   </button>
-                                </div>
-                             </>
-                          ) : (
-                             <Presentation className="w-8 h-8 text-slate-700" />
-                          )}
-                       </div>
-                       <div className="flex justify-between items-center">
-                          <span className="text-sm font-bold text-slate-400">PPT Slide</span>
-                          <button onClick={() => handleGenerateTemplate('ppt')} className="text-xs text-orange-500 hover:text-orange-400 font-bold">
-                             {templateImages.ppt ? <RefreshCw className="w-4 h-4" /> : 'Generate'}
+                    {/* PPT Row */}
+                    <div className="flex flex-col md:flex-row gap-6 items-center">
+                       <div className="md:w-1/3 space-y-2">
+                          <h4 className="text-lg font-bold text-white flex items-center gap-2">
+                             <Presentation className="w-5 h-5 text-slate-400" /> Presentation Slide
+                          </h4>
+                          <p className="text-sm text-slate-400">Branded PowerPoint title slide concept.</p>
+                          <button 
+                             onClick={() => handleGenerateTemplate('ppt')}
+                             disabled={templateStatus['ppt'] === 'loading'}
+                             className="text-orange-500 hover:text-orange-400 font-bold text-sm flex items-center gap-2 mt-2"
+                          >
+                             {templateStatus['ppt'] === 'loading' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                             {templateImages.ppt ? 'Regenerate' : 'Generate Mockup'}
                           </button>
+                       </div>
+                       <div className="md:w-2/3 w-full">
+                          <div className="aspect-video bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center relative group overflow-hidden shadow-md">
+                             {templateImages.ppt ? (
+                                <>
+                                   <img src={templateImages.ppt} className="w-full h-full object-cover" />
+                                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                      <button onClick={() => handleDownloadImage(templateImages.ppt, 'ppt')} className="bg-white text-slate-900 px-6 py-2 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform">
+                                         <Download className="w-4 h-4" /> Save
+                                      </button>
+                                   </div>
+                                </>
+                             ) : (
+                                <span className="text-slate-700 text-sm">Click Generate to visualize</span>
+                             )}
+                          </div>
                        </div>
                     </div>
 
-                    {/* Calendar */}
-                    <div className="space-y-3">
-                       <div className="aspect-video bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center relative group overflow-hidden">
-                          {templateImages.calendar ? (
-                             <>
-                                <img src={templateImages.calendar} className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                   <button onClick={() => handleDownloadImage(templateImages.calendar, 'calendar')} className="text-white font-bold flex items-center gap-1">
-                                      <Download className="w-4 h-4" /> Save
-                                   </button>
-                                </div>
-                             </>
-                          ) : (
-                             <Calendar className="w-8 h-8 text-slate-700" />
-                          )}
-                       </div>
-                       <div className="flex justify-between items-center">
-                          <span className="text-sm font-bold text-slate-400">Calendar</span>
-                          <button onClick={() => handleGenerateTemplate('calendar')} className="text-xs text-orange-500 hover:text-orange-400 font-bold">
-                             {templateImages.calendar ? <RefreshCw className="w-4 h-4" /> : 'Generate'}
+                    {/* Calendar Row */}
+                    <div className="flex flex-col md:flex-row gap-6 items-center">
+                       <div className="md:w-1/3 space-y-2">
+                          <h4 className="text-lg font-bold text-white flex items-center gap-2">
+                             <Calendar className="w-5 h-5 text-slate-400" /> Desk Calendar
+                          </h4>
+                          <p className="text-sm text-slate-400">Corporate branded calendar design.</p>
+                          <button 
+                             onClick={() => handleGenerateTemplate('calendar')}
+                             disabled={templateStatus['calendar'] === 'loading'}
+                             className="text-orange-500 hover:text-orange-400 font-bold text-sm flex items-center gap-2 mt-2"
+                          >
+                             {templateStatus['calendar'] === 'loading' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                             {templateImages.calendar ? 'Regenerate' : 'Generate Mockup'}
                           </button>
                        </div>
+                       <div className="md:w-2/3 w-full">
+                          <div className="aspect-video bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center relative group overflow-hidden shadow-md">
+                             {templateImages.calendar ? (
+                                <>
+                                   <img src={templateImages.calendar} className="w-full h-full object-cover" />
+                                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                      <button onClick={() => handleDownloadImage(templateImages.calendar, 'calendar')} className="bg-white text-slate-900 px-6 py-2 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform">
+                                         <Download className="w-4 h-4" /> Save
+                                      </button>
+                                   </div>
+                                </>
+                             ) : (
+                                <span className="text-slate-700 text-sm">Click Generate to visualize</span>
+                             )}
+                          </div>
+                       </div>
                     </div>
+
                  </div>
               </div>
 
