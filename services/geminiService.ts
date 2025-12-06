@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Chat, Modality } from "@google/genai";
 import { 
   MemeData, QuizData, RiddleData, StorybookData, SocialSettings, 
@@ -900,4 +901,21 @@ export const generateAffirmationPlan = async (topic: string, tone: string): Prom
         }
     });
     return JSON.parse(response.text || "{}");
+};
+
+/**
+ * Magic: Hidden Message
+ */
+export const generateHiddenMessage = async (secret: string, topic: string): Promise<string> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Write a short, coherent paragraph (3-5 sentences) about "${topic}". 
+        Crucially, you must embed the secret message "${secret}" into the text. 
+        The words of the secret message must appear in the correct order, but can be separated by other words.
+        To mark the secret words, wrap them in double curly braces, like {{word}}. 
+        Example: If secret is "I love", output could be "It was {{I}} think a {{love}}ly day."
+        Do not change the form of the secret words if possible.`,
+    });
+    return response.text || "";
 };

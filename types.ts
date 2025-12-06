@@ -36,7 +36,8 @@ export enum ToolId {
   MockupDesigner = 'MOCKUP_DESIGNER',
   AffirmationGenerator = 'AFFIRMATION_GENERATOR',
   VideoGenerator = 'VIDEO_GENERATOR',
-  Copywriter = 'COPYWRITER'
+  Copywriter = 'COPYWRITER',
+  Magic = 'MAGIC'
 }
 
 export interface ToolConfig {
