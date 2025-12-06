@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { FileAudio, Upload, RefreshCw, Copy, Check, FileText } from 'lucide-react';
+import { FileAudio, Upload, RefreshCw, Copy, Check, FileText, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { transcribeAudioWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 
@@ -11,6 +11,7 @@ const AudioTranscriber: React.FC = () => {
   const [transcript, setTranscript] = useState('');
   const [status, setStatus] = useState<LoadingState>('idle');
   const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,6 +39,7 @@ const AudioTranscriber: React.FC = () => {
   const handleTranscribe = async () => {
     if (!audioFile) return;
     setStatus('loading');
+    setFeedback(null);
     try {
       const result = await transcribeAudioWithGemini(audioFile, mimeType);
       setTranscript(result);
@@ -52,6 +54,11 @@ const AudioTranscriber: React.FC = () => {
     navigator.clipboard.writeText(transcript);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const toggleFeedback = (type: 'up' | 'down') => {
+    if (feedback === type) setFeedback(null);
+    else setFeedback(type);
   };
 
   return (
@@ -125,13 +132,30 @@ const AudioTranscriber: React.FC = () => {
                Transcription Result
             </h3>
             {transcript && (
-               <button 
-                 onClick={handleCopy} 
-                 className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg transition-colors"
-               >
-                 {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                 Copy Text
-               </button>
+               <div className="flex items-center gap-3">
+                  <div className="flex bg-slate-950 rounded-lg p-0.5 border border-slate-800">
+                    <button 
+                      onClick={() => toggleFeedback('up')} 
+                      className={`p-1.5 rounded hover:bg-slate-800 transition-colors ${feedback === 'up' ? 'text-green-500' : 'text-slate-500'}`}
+                    >
+                       <ThumbsUp className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="w-px bg-slate-800 mx-0.5"></div>
+                    <button 
+                      onClick={() => toggleFeedback('down')} 
+                      className={`p-1.5 rounded hover:bg-slate-800 transition-colors ${feedback === 'down' ? 'text-red-500' : 'text-slate-500'}`}
+                    >
+                       <ThumbsDown className="w-3.5 h-3.5" />
+                    </button>
+                 </div>
+                 <button 
+                   onClick={handleCopy} 
+                   className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg transition-colors"
+                 >
+                   {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                   Copy Text
+                 </button>
+               </div>
              )}
           </div>
           

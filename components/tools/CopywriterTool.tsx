@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Pen, RefreshCw, Copy, Check, FileText, Target, Users, Sparkles } from 'lucide-react';
+import { Pen, RefreshCw, Copy, Check, FileText, Target, Users, Sparkles, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { generateTextWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 
@@ -39,11 +39,13 @@ const CopywriterTool: React.FC = () => {
   const [output, setOutput] = useState('');
   const [status, setStatus] = useState<LoadingState>('idle');
   const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
 
   const handleGenerate = async () => {
     if (!productName.trim() || !keyPoints.trim()) return;
     setStatus('loading');
     setOutput('');
+    setFeedback(null);
 
     try {
       const systemPrompt = `You are a world-class copywriter and marketing strategist. 
@@ -79,6 +81,11 @@ const CopywriterTool: React.FC = () => {
     navigator.clipboard.writeText(output);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const toggleFeedback = (type: 'up' | 'down') => {
+    if (feedback === type) setFeedback(null);
+    else setFeedback(type);
   };
 
   return (
@@ -186,13 +193,30 @@ const CopywriterTool: React.FC = () => {
                Generated Content
             </h3>
             {output && (
-               <button 
-                 onClick={handleCopy} 
-                 className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg transition-colors"
-               >
-                 {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                 Copy
-               </button>
+               <div className="flex items-center gap-3">
+                  <div className="flex bg-slate-950 rounded-lg p-0.5 border border-slate-800">
+                    <button 
+                      onClick={() => toggleFeedback('up')} 
+                      className={`p-1.5 rounded hover:bg-slate-900 transition-colors ${feedback === 'up' ? 'text-green-500' : 'text-slate-500'}`}
+                    >
+                       <ThumbsUp className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="w-px bg-slate-800 mx-0.5"></div>
+                    <button 
+                      onClick={() => toggleFeedback('down')} 
+                      className={`p-1.5 rounded hover:bg-slate-900 transition-colors ${feedback === 'down' ? 'text-red-500' : 'text-slate-500'}`}
+                    >
+                       <ThumbsDown className="w-3.5 h-3.5" />
+                    </button>
+                 </div>
+                 <button 
+                   onClick={handleCopy} 
+                   className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white bg-slate-950 px-3 py-1.5 rounded-lg transition-colors border border-slate-800"
+                 >
+                   {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                   Copy
+                 </button>
+               </div>
              )}
           </div>
           

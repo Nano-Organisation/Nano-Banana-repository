@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { FileText, Feather, Code, Play, Copy, Check, GraduationCap, ShieldAlert, ArrowLeft, Puzzle, FileSpreadsheet } from 'lucide-react';
+import { FileText, Feather, Code, Play, Copy, Check, GraduationCap, ShieldAlert, ArrowLeft, Puzzle, FileSpreadsheet, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { generateTextWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 
@@ -81,10 +81,12 @@ const TextTool: React.FC<TextToolProps> = ({ mode, onBack }) => {
   const [output, setOutput] = useState('');
   const [status, setStatus] = useState<LoadingState>('idle');
   const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
 
   const handleRun = async () => {
     if (!input.trim()) return;
     setStatus('loading');
+    setFeedback(null);
     try {
       const result = await generateTextWithGemini(input, config.systemPrompt);
       setOutput(result);
@@ -98,6 +100,11 @@ const TextTool: React.FC<TextToolProps> = ({ mode, onBack }) => {
     navigator.clipboard.writeText(output);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const toggleFeedback = (type: 'up' | 'down') => {
+    if (feedback === type) setFeedback(null);
+    else setFeedback(type);
   };
 
   const Icon = config.icon;
@@ -157,9 +164,26 @@ const TextTool: React.FC<TextToolProps> = ({ mode, onBack }) => {
           <div className="bg-slate-950 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
              <span className="text-xs font-mono text-slate-500 uppercase">Output</span>
              {output && (
-               <button onClick={handleCopy} className="text-slate-400 hover:text-white transition-colors">
-                 {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-               </button>
+               <div className="flex items-center gap-2">
+                 <div className="flex bg-slate-900 rounded-lg p-0.5 border border-slate-800 mr-2">
+                    <button 
+                      onClick={() => toggleFeedback('up')} 
+                      className={`p-1.5 rounded hover:bg-slate-800 transition-colors ${feedback === 'up' ? 'text-green-500' : 'text-slate-500'}`}
+                    >
+                       <ThumbsUp className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="w-px bg-slate-800 mx-0.5"></div>
+                    <button 
+                      onClick={() => toggleFeedback('down')} 
+                      className={`p-1.5 rounded hover:bg-slate-800 transition-colors ${feedback === 'down' ? 'text-red-500' : 'text-slate-500'}`}
+                    >
+                       <ThumbsDown className="w-3.5 h-3.5" />
+                    </button>
+                 </div>
+                 <button onClick={handleCopy} className="text-slate-400 hover:text-white transition-colors">
+                   {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                 </button>
+               </div>
              )}
           </div>
           <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">

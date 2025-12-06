@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Video, RefreshCw, Copy, Check, Target, Clock, FileText, PlayCircle } from 'lucide-react';
+import { Video, RefreshCw, Copy, Check, Target, Clock, FileText, PlayCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { generateUGCScript } from '../../services/geminiService';
 import { LoadingState, UGCScript } from '../../types';
 
@@ -11,11 +11,13 @@ const UGCAdsTool: React.FC = () => {
   const [script, setScript] = useState<UGCScript | null>(null);
   const [status, setStatus] = useState<LoadingState>('idle');
   const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
 
   const handleGenerate = async () => {
     if (!product.trim() || !painPoint.trim()) return;
     setStatus('loading');
     setScript(null);
+    setFeedback(null);
     try {
       const result = await generateUGCScript(product, audience, painPoint);
       setScript(result);
@@ -32,6 +34,11 @@ const UGCAdsTool: React.FC = () => {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const toggleFeedback = (type: 'up' | 'down') => {
+    if (feedback === type) setFeedback(null);
+    else setFeedback(type);
   };
 
   return (
@@ -119,13 +126,30 @@ const UGCAdsTool: React.FC = () => {
                         <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {script.totalDuration}</span>
                      </div>
                   </div>
-                  <button 
-                     onClick={handleCopy} 
-                     className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors border border-slate-700"
-                  >
-                     {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                     Copy Script
-                  </button>
+                  <div className="flex items-center gap-3">
+                     <div className="flex bg-slate-950 rounded-lg p-0.5 border border-slate-800">
+                        <button 
+                           onClick={() => toggleFeedback('up')} 
+                           className={`p-1.5 rounded hover:bg-slate-900 transition-colors ${feedback === 'up' ? 'text-green-500' : 'text-slate-500'}`}
+                        >
+                           <ThumbsUp className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="w-px bg-slate-800 mx-0.5"></div>
+                        <button 
+                           onClick={() => toggleFeedback('down')} 
+                           className={`p-1.5 rounded hover:bg-slate-900 transition-colors ${feedback === 'down' ? 'text-red-500' : 'text-slate-500'}`}
+                        >
+                           <ThumbsDown className="w-3.5 h-3.5" />
+                        </button>
+                     </div>
+                     <button 
+                        onClick={handleCopy} 
+                        className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors border border-slate-700"
+                     >
+                        {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                        Copy Script
+                     </button>
+                  </div>
                </div>
 
                {/* Script Table */}

@@ -7,10 +7,11 @@ import ThemeSwitcher from './ThemeSwitcher';
 interface LayoutProps {
   children: ReactNode;
   onBack?: () => void;
+  onGoHome?: () => void;
   title?: string;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, onBack, title }) => {
+const Layout: React.FC<LayoutProps> = ({ children, onBack, onGoHome, title }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleReportBug = () => {
@@ -18,7 +19,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title }) => {
   };
 
   const handleFeedback = () => {
-    window.location.href = "mailto:contact-us@thedigitalgentry.co.uk?subject=Nano Banana: Feedback";
+    window.location.href = "mailto:feedback@digitalgentry.ai?subject=Nano Feedback";
   };
 
   return (
@@ -35,12 +36,18 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title }) => {
                 <ArrowLeft className="w-5 h-5 text-slate-500 dark:text-slate-400" />
               </button>
             )}
-            <div className="bg-gradient-to-br from-yellow-400 to-amber-600 p-2 rounded-lg shadow-sm">
-               <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-500 to-amber-600 dark:from-yellow-200 dark:to-amber-500">
-              {title || "Digital Gentry AI"}
-            </h1>
+            <button 
+              onClick={onGoHome}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity focus:outline-none"
+              title="Go to Dashboard"
+            >
+              <div className="bg-gradient-to-br from-yellow-400 to-amber-600 p-2 rounded-lg shadow-sm">
+                 <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-500 to-amber-600 dark:from-yellow-200 dark:to-amber-500">
+                {title || "Digital Gentry AI"}
+              </h1>
+            </button>
           </div>
           
           <div className="flex items-center gap-3">
