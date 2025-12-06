@@ -8,17 +8,18 @@ interface LayoutProps {
   children: ReactNode;
   onBack?: () => void;
   title?: string;
+  onGoHome?: () => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, onBack, title }) => {
+const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleReportBug = () => {
-    window.location.href = "mailto:contact-us@thedigitalgentry.co.uk?subject=Nano Banana: Bug Report";
+    window.location.href = "mailto:contact-us@thedigitalgentry.co.uk?subject=AI Suite: Bug Report";
   };
 
   const handleFeedback = () => {
-    window.location.href = "mailto:contact-us@thedigitalgentry.co.uk?subject=Nano Banana: Feedback";
+    window.location.href = "mailto:contact-us@thedigitalgentry.co.uk?subject=AI Suite: Feedback";
   };
 
   return (
@@ -35,12 +36,18 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title }) => {
                 <ArrowLeft className="w-5 h-5 text-slate-500 dark:text-slate-400" />
               </button>
             )}
-            <div className="bg-gradient-to-br from-yellow-400 to-amber-600 p-2 rounded-lg shadow-sm">
-               <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-500 to-amber-600 dark:from-yellow-200 dark:to-amber-500">
-              {title || "Digital Gentry AI"}
-            </h1>
+            <button 
+              onClick={onGoHome} 
+              disabled={!onGoHome}
+              className={`flex items-center gap-3 ${onGoHome ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+            >
+              <div className="bg-gradient-to-br from-yellow-400 to-amber-600 p-2 rounded-lg shadow-sm">
+                 <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-500 to-amber-600 dark:from-yellow-200 dark:to-amber-500">
+                {title || "Digital Gentry AI"}
+              </h1>
+            </button>
           </div>
           
           <div className="flex items-center gap-3">

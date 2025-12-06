@@ -78,7 +78,7 @@ const ImageGenerator: React.FC = () => {
       if (isPro) {
         if (!(await getAIStudio()?.hasSelectedApiKey())) {
            setStatus('error');
-           setErrorMessage("Please select a paid API key to use Nano Banana Pro.");
+           setErrorMessage("Please select a paid API key to use AI Create Pro.");
            handleSelectKey();
            setStatus('idle');
            return;
@@ -138,7 +138,7 @@ const ImageGenerator: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `nano-art-${Date.now()}.png`;
+      link.download = `ai-art-${Date.now()}.png`;
       link.click();
       URL.revokeObjectURL(url);
     }
@@ -148,10 +148,10 @@ const ImageGenerator: React.FC = () => {
     const blob = await processImage();
     if (blob && navigator.share) {
        try {
-         const file = new File([blob], 'nano-art.png', { type: 'image/png' });
+         const file = new File([blob], 'ai-art.png', { type: 'image/png' });
          await navigator.share({
-           title: 'Created with Nano Create',
-           text: `Check out this image I generated with Nano Create! Prompt: "${prompt}"`,
+           title: 'Created with AI Create',
+           text: `Check out this image I generated with AI Create! Prompt: "${prompt}"`,
            files: [file]
          });
        } catch (error) {
@@ -165,7 +165,7 @@ const ImageGenerator: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold dark:text-white text-slate-900">Nano Create</h2>
+        <h2 className="text-3xl font-bold dark:text-white text-slate-900">AI Create</h2>
         <div className="flex flex-col items-center gap-1">
            <p className="text-slate-500 dark:text-slate-400">Generate high-quality visuals with filters and pro tools.</p>
            <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">

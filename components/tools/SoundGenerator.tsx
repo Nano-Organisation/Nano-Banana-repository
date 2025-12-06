@@ -49,7 +49,7 @@ const SoundGenerator: React.FC = () => {
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Volume2 className="w-8 h-8 text-sky-500" />
-          Nano Speech
+          AI Speech
         </h2>
         <div className="flex flex-col items-center gap-1">
            <p className="text-slate-600 dark:text-slate-400">Transform text into lifelike speech using Gemini 2.5.</p>
@@ -136,7 +136,7 @@ const SoundGenerator: React.FC = () => {
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Enter the text you want Nano to speak..."
+              placeholder="Enter the text you want AI to speak..."
               className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 h-32 resize-none"
             />
           </div>
@@ -175,7 +175,7 @@ const SoundGenerator: React.FC = () => {
 
               <a 
                 href={audioUrl} 
-                download={`nano-speech-${selectedVoice}.wav`}
+                download={`ai-speech-${selectedVoice}.wav`}
                 className="inline-flex items-center gap-2 text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-6 py-3 rounded-xl font-medium transition-colors border border-slate-700"
               >
                 <Download className="w-5 h-5" />

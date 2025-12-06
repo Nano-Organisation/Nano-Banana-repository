@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ToolId } from './types';
 import Layout from './components/Layout';
@@ -64,7 +65,7 @@ const SHADOW_COLORS: Record<string, string> = {
 const TOOLS = [
   {
     id: ToolId.Chat,
-    title: "Nano Chat",
+    title: "AI Chat",
     description: "Conversational AI assistant for general queries.",
     icon: MessageSquare,
     color: "green",
@@ -72,7 +73,7 @@ const TOOLS = [
   },
   {
     id: ToolId.BrandCollateral,
-    title: "Nano Brand",
+    title: "AI Brand",
     description: "Generate complete brand kits and logos.",
     icon: Briefcase,
     color: "orange",
@@ -81,7 +82,7 @@ const TOOLS = [
   },
   {
     id: ToolId.UGCAds,
-    title: "Nano UGC",
+    title: "AI UGC",
     description: "Create viral scripts for TikTok and Reels.",
     icon: Video,
     color: "pink",
@@ -90,7 +91,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Cipher,
-    title: "Nano Cipher",
+    title: "AI Cipher",
     description: "Learn encryption and play code-breaking games.",
     icon: Lock,
     color: "sky",
@@ -99,7 +100,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Magic,
-    title: "Nano Magic",
+    title: "AI Magic",
     description: "Create dancing text effects and hidden secret messages.",
     icon: Wand2,
     color: "indigo",
@@ -108,7 +109,7 @@ const TOOLS = [
   },
   {
     id: ToolId.VideoGenerator,
-    title: "Nano Video",
+    title: "AI Video",
     description: "Pro-grade video generation powered by Veo.",
     icon: Video,
     color: "red",
@@ -117,7 +118,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Copywriter,
-    title: "Nano Copy",
+    title: "AI Copy",
     description: "Professional copywriter for blogs, ads, and emails.",
     icon: Pen,
     color: "emerald",
@@ -126,7 +127,7 @@ const TOOLS = [
   },
   {
     id: ToolId.AffirmationGenerator,
-    title: "Nano Affirmations",
+    title: "AI Affirmations",
     description: "Generate a weekly affirmation plan for positivity.",
     icon: Heart,
     color: "teal",
@@ -135,7 +136,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Heritage,
-    title: "Nano Heritage",
+    title: "AI Heritage",
     description: "Design coats of arms, signet rings, and authentic tartan.",
     icon: Shield,
     color: "amber",
@@ -144,7 +145,7 @@ const TOOLS = [
   },
   {
     id: ToolId.AudioTranscriber,
-    title: "Nano Scribe",
+    title: "AI Scribe",
     description: "Accurately transcribe audio files to text.",
     icon: FileAudio,
     color: "sky",
@@ -153,7 +154,7 @@ const TOOLS = [
   },
   {
     id: ToolId.SoundFX,
-    title: "Nano FX",
+    title: "AI FX",
     description: "Generate sound effects and audio-visuals.",
     icon: Radio,
     color: "rose",
@@ -162,7 +163,7 @@ const TOOLS = [
   },
   {
     id: ToolId.MockupDesigner,
-    title: "Nano Mockup",
+    title: "AI Mockup",
     description: "Create high-fidelity UI designs for apps & websites.",
     icon: LayoutIcon,
     color: "fuchsia",
@@ -171,7 +172,7 @@ const TOOLS = [
   },
   {
     id: ToolId.ImageToPrompt,
-    title: "Nano Vision",
+    title: "AI Vision",
     description: "Convert images to text descriptions or prompts.",
     icon: Scan,
     color: "fuchsia",
@@ -180,7 +181,7 @@ const TOOLS = [
   },
   {
     id: ToolId.QuizGenerator,
-    title: "Nano Quiz",
+    title: "AI Quiz",
     description: "Generate quizzes on any topic instantly.",
     icon: FileQuestion,
     color: "indigo",
@@ -189,7 +190,7 @@ const TOOLS = [
   },
   {
     id: ToolId.RiddleGenerator,
-    title: "Nano Riddle",
+    title: "AI Riddle",
     description: "Generate clever riddles on any subject.",
     icon: Lightbulb,
     color: "amber",
@@ -198,7 +199,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Podcast,
-    title: "Nano Cast",
+    title: "AI Cast",
     description: "Generate multi-speaker audio podcasts from any topic.",
     icon: Mic2,
     color: "indigo",
@@ -207,7 +208,7 @@ const TOOLS = [
   },
   {
     id: ToolId.AssistantCreator,
-    title: "Nano Assistant",
+    title: "AI Assistant",
     description: "Create your own custom AI assistant.",
     icon: UserPlus,
     color: "cyan",
@@ -216,7 +217,7 @@ const TOOLS = [
   },
   {
     id: ToolId.ListCreator,
-    title: "Nano Lists",
+    title: "AI Lists",
     description: "Generate helpful checklists with visuals.",
     icon: ListChecks,
     color: "lime",
@@ -225,7 +226,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Academy,
-    title: "Nano Academy",
+    title: "AI Academy",
     description: "Infinite daily prompt engineering tips.",
     icon: BookMarked,
     color: "teal",
@@ -234,7 +235,7 @@ const TOOLS = [
   },
   {
     id: ToolId.PromptTrainer,
-    title: "Nano Prompt Trainer",
+    title: "AI Prompt Trainer",
     description: "Optimize prompts for ChatGPT, Claude, Midjourney & more.",
     icon: Brain,
     color: "pink",
@@ -243,7 +244,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Live,
-    title: "Nano Live",
+    title: "AI Live",
     description: "Real-time voice conversation with Gemini.",
     icon: Activity,
     color: "indigo",
@@ -252,7 +253,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Social,
-    title: "Nano Social",
+    title: "AI Social",
     description: "Multi-platform social media campaign generator.",
     icon: Share2,
     color: "blue",
@@ -261,7 +262,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Meme,
-    title: "Nano Meme",
+    title: "AI Meme",
     description: "Instant meme generator from topics.",
     icon: Laugh,
     color: "yellow",
@@ -270,7 +271,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Storybook,
-    title: "Nano Storybook",
+    title: "AI Storybook",
     description: "Create illustrated books, comics, and fairy tales.",
     icon: BookOpen,
     color: "amber",
@@ -279,7 +280,7 @@ const TOOLS = [
   },
   {
     id: ToolId.YouTubeThumbnail,
-    title: "Nano Thumbnails",
+    title: "AI Thumbnails",
     description: "Generate 5 viral-style YouTube thumbnails at once.",
     icon: Youtube,
     color: "red",
@@ -288,7 +289,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Games,
-    title: "Nano Games",
+    title: "AI Games",
     description: "Interactive AI adventures, mysteries, and trivia.",
     icon: Gamepad2,
     color: "orange",
@@ -296,7 +297,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Pinterest,
-    title: "Nano Pinterest",
+    title: "AI Pinterest",
     description: "Generate viral-worthy, vertical Pinterest images.",
     icon: Pin,
     color: "red",
@@ -305,7 +306,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Tutor,
-    title: "Nano Tutor",
+    title: "AI Tutor",
     description: "Expert guidance on using popular AI platforms.",
     icon: GraduationCap,
     color: "indigo",
@@ -313,7 +314,7 @@ const TOOLS = [
   },
   {
     id: ToolId.GifGenerator,
-    title: "Nano GIF",
+    title: "AI GIF",
     description: "Generate animated GIFs using Veo.",
     icon: Film,
     color: "rose",
@@ -322,7 +323,7 @@ const TOOLS = [
   },
   {
     id: ToolId.SoundGenerator,
-    title: "Nano Speech",
+    title: "AI Speech",
     description: "Convert text to lifelike speech.",
     icon: Volume2,
     color: "sky",
@@ -331,7 +332,7 @@ const TOOLS = [
   },
   {
     id: ToolId.ImageEditor,
-    title: "Nano Edit",
+    title: "AI Edit",
     description: "Edit images using natural language prompts.",
     icon: ImageIcon,
     color: "amber",
@@ -339,7 +340,7 @@ const TOOLS = [
   },
   {
     id: ToolId.BackgroundRemover,
-    title: "Nano Remove",
+    title: "AI Remove",
     description: "Instantly remove backgrounds from images.",
     icon: Eraser,
     color: "rose",
@@ -347,7 +348,7 @@ const TOOLS = [
   },
   {
     id: ToolId.ImageGenerator,
-    title: "Nano Create",
+    title: "AI Create",
     description: "Generate high-quality images from text.",
     icon: Palette,
     color: "purple",
@@ -355,7 +356,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Design,
-    title: "Nano Design",
+    title: "AI Design",
     description: "Create logos, icons, and UI mockups.",
     icon: PenTool,
     color: "fuchsia",
@@ -363,7 +364,7 @@ const TOOLS = [
   },
   {
     id: ToolId.DocTool,
-    title: "Nano Doc",
+    title: "AI Doc",
     description: "PDF conversion and intelligent file splitting.",
     icon: FileType,
     color: "teal",
@@ -371,7 +372,7 @@ const TOOLS = [
   },
   {
     id: ToolId.VisualQA,
-    title: "Nano Lens",
+    title: "AI Lens",
     description: "Ask questions about any image you upload.",
     icon: Eye,
     color: "blue",
@@ -379,7 +380,7 @@ const TOOLS = [
   },
   {
     id: ToolId.Summarizer,
-    title: "Nano Sum",
+    title: "AI Sum",
     description: "Intelligent text summarization.",
     icon: FileText,
     color: "emerald",
@@ -387,7 +388,7 @@ const TOOLS = [
   },
   {
     id: ToolId.StoryTeller,
-    title: "Nano Tales",
+    title: "AI Tales",
     description: "Creative story and content generation.",
     icon: Feather,
     color: "pink",
@@ -395,7 +396,7 @@ const TOOLS = [
   },
   {
     id: ToolId.CodeAssistant,
-    title: "Nano Dev",
+    title: "AI Dev",
     description: "Code generation, debugging, and security auditing.",
     icon: Terminal,
     color: "cyan",
@@ -403,7 +404,7 @@ const TOOLS = [
   },
   {
     id: ToolId.AutomationHub,
-    title: "Nano Automate",
+    title: "AI Automate",
     description: "Browser extension builder and Excel automation.",
     icon: Bot,
     color: "violet",
@@ -525,7 +526,7 @@ const App: React.FC = () => {
     <div className="space-y-12 animate-fade-in">
       <div className="text-center space-y-4 py-10">
         <h2 className="text-4xl md:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-          Unleash <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-amber-600">Nano Power</span>
+          Unleash <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-amber-600">AI Power</span>
         </h2>
         <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
           Experience the next generation of AI tools powered by Gemini 2.5. 
@@ -606,6 +607,7 @@ const App: React.FC = () => {
     <Layout 
       onBack={currentTool !== ToolId.Dashboard ? () => setCurrentTool(ToolId.Dashboard) : undefined}
       title={currentTool !== ToolId.Dashboard ? TOOLS.find(t => t.id === currentTool)?.title : undefined}
+      onGoHome={() => setCurrentTool(ToolId.Dashboard)}
     >
       {renderTool()}
     </Layout>

@@ -54,7 +54,7 @@ const VisualQA: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Nano Lens</h2>
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">AI Lens</h2>
         <div className="flex flex-col items-center gap-1">
            <p className="text-slate-600 dark:text-slate-400">Upload an image and ask Gemini anything about it.</p>
            <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">

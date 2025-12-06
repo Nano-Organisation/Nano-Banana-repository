@@ -19,7 +19,7 @@ const CodeHub: React.FC = () => {
       <div className="text-center space-y-4 py-8">
         <h2 className="text-4xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Terminal className="w-10 h-10 text-cyan-500" />
-          Nano Dev
+          AI Dev
         </h2>
         <p className="text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
           Advanced developer tools for generating clean code and auditing security vulnerabilities.
@@ -37,7 +37,7 @@ const CodeHub: React.FC = () => {
             <Code className="w-7 h-7" />
           </div>
           
-          <h3 className="text-2xl font-bold text-white mb-3">Nano Coder</h3>
+          <h3 className="text-2xl font-bold text-white mb-3">AI Coder</h3>
           <p className="text-slate-400 leading-relaxed">
             Generate boilerplate, debug issues, and refactor code in any language.
           </p>
@@ -53,7 +53,7 @@ const CodeHub: React.FC = () => {
             <ShieldAlert className="w-7 h-7" />
           </div>
           
-          <h3 className="text-2xl font-bold text-white mb-3">Nano Security</h3>
+          <h3 className="text-2xl font-bold text-white mb-3">AI Security</h3>
           <p className="text-slate-400 leading-relaxed">
             Scan for vulnerabilities, analyze risks, and apply security best practices.
           </p>

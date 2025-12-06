@@ -120,7 +120,7 @@ const ThumbnailTool: React.FC = () => {
     const watermarked = await addWatermarkToImage(url);
     const link = document.createElement('a');
     link.href = watermarked;
-    link.download = `nano-thumbnail-${index + 1}.png`;
+    link.download = `ai-thumbnail-${index + 1}.png`;
     link.click();
   };
 
@@ -129,7 +129,7 @@ const ThumbnailTool: React.FC = () => {
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Youtube className="w-8 h-8 text-red-600" />
-          Nano Thumbnails
+          AI Thumbnails
         </h2>
         <div className="flex flex-col items-center gap-1">
            <p className="text-slate-600 dark:text-slate-400">Generate viral YouTube thumbnails or motion intros instantly.</p>
@@ -328,7 +328,7 @@ const ThumbnailTool: React.FC = () => {
                            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                               <a 
                                 href={videoUrl} 
-                                download="nano-motion.mp4"
+                                download="ai-motion.mp4"
                                 className="bg-black/60 hover:bg-rose-600 text-white p-3 rounded-full backdrop-blur-sm transition-colors block"
                                 title="Download Video"
                               >

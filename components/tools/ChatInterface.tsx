@@ -37,7 +37,7 @@ const ChatInterface: React.FC = () => {
         role: 'model', 
         text: isThinkingMode 
           ? "Thinking mode active. I will reason deeply about your complex queries." 
-          : "Hi! I'm Nano. How can I help you today?",
+          : "Hi! I'm ready to help. How can I assist you today?",
         isThinking: isThinkingMode 
       }
     ]);
@@ -151,7 +151,7 @@ const ChatInterface: React.FC = () => {
       <div className="text-center space-y-1 flex-shrink-0">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <MessageSquare className="w-8 h-8 text-green-500" />
-          Nano Chat
+          AI Chat
         </h2>
         <div className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
            Model: {isThinkingMode ? 'gemini-3-pro-preview' : 'gemini-2.5-flash'}

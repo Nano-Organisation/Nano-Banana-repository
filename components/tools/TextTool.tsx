@@ -11,7 +11,7 @@ interface TextToolProps {
 
 const CONFIG = {
   summarizer: {
-    title: 'Nano Sum',
+    title: 'AI Sum',
     desc: 'Condense articles and text into concise summaries.',
     placeholder: 'Paste the article or text you want to summarize here...',
     action: 'Summarize',
@@ -20,7 +20,7 @@ const CONFIG = {
     systemPrompt: 'You are an expert summarizer. Provide a concise, bulleted summary of the provided text. Focus on key takeaways.'
   },
   story: {
-    title: 'Nano Tales',
+    title: 'AI Tales',
     desc: 'Generate creative stories from simple prompts.',
     placeholder: 'Enter a topic, genre, or starting sentence...',
     action: 'Write Story',
@@ -29,7 +29,7 @@ const CONFIG = {
     systemPrompt: 'You are a creative writing assistant. Write an engaging short story based on the user\'s prompt.'
   },
   code: {
-    title: 'Nano Coder',
+    title: 'AI Coder',
     desc: 'Get coding help, snippets, and debugging advice.',
     placeholder: 'Describe the function you need or paste code to debug...',
     action: 'Generate Code',
@@ -38,7 +38,7 @@ const CONFIG = {
     systemPrompt: 'You are an expert senior software engineer. Provide clean, well-commented code solutions and explanations.'
   },
   tutor: {
-    title: 'Nano Tutor',
+    title: 'AI Tutor',
     desc: 'Expert guidance on using popular AI platforms.',
     placeholder: 'Ask how to use a specific AI tool (e.g., "How do I use Midjourney?" or "Explain the OpenAI API")...',
     action: 'Get Guide',
@@ -47,7 +47,7 @@ const CONFIG = {
     systemPrompt: 'You are an expert AI tutor. Provide comprehensive, step-by-step guides on how to use specific AI tools, platforms, and models. Be clear, beginner-friendly, and practical. Format your response with clear headings and bullet points.'
   },
   security: {
-    title: 'Nano Security',
+    title: 'AI Security',
     desc: 'Analyze code for vulnerabilities and get security advice.',
     placeholder: 'Paste code to analyze for vulnerabilities or ask a security question...',
     action: 'Analyze Security',
@@ -56,7 +56,7 @@ const CONFIG = {
     systemPrompt: 'You are an expert cybersecurity analyst and code auditor. Analyze the provided code for security vulnerabilities (OWASP Top 10, etc.), suggest fixes, and explain best practices. If asked a question, provide secure, industry-standard advice.'
   },
   browser_extension: {
-    title: 'Nano Ext',
+    title: 'AI Ext',
     desc: 'Generate code for Chrome/Firefox browser extensions.',
     placeholder: 'Describe what the extension should do (e.g., "Block ads on specific sites" or "Change background color to pink")...',
     action: 'Generate Extension',
@@ -65,7 +65,7 @@ const CONFIG = {
     systemPrompt: 'You are an expert browser extension developer. Generate complete code for a Chrome Extension (Manifest V3). Provide the content for manifest.json, background scripts, content scripts, and popup HTML/CSS/JS as needed. Use clear headers for each file so the user can copy them easily.'
   },
   excel_automation: {
-    title: 'Nano Excel',
+    title: 'AI Excel',
     desc: 'Create VBA macros and scripts for Excel automation.',
     placeholder: 'Describe the automation task (e.g., "Combine data from all sheets" or "Highlight duplicates in red")...',
     action: 'Generate Macro',

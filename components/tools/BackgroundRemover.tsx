@@ -45,7 +45,7 @@ const BackgroundRemover: React.FC = () => {
     const watermarked = await addWatermarkToImage(resultImage);
     const link = document.createElement('a');
     link.href = watermarked;
-    link.download = `nano-remove-result.png`;
+    link.download = `ai-remove-result.png`;
     link.click();
   };
 
@@ -54,7 +54,7 @@ const BackgroundRemover: React.FC = () => {
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Eraser className="w-8 h-8 text-rose-500" />
-          Nano Remove
+          AI Remove
         </h2>
         <div className="flex flex-col items-center gap-1">
            <p className="text-slate-600 dark:text-slate-400">Isolate your subject with AI-powered background removal.</p>

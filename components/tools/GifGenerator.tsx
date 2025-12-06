@@ -80,7 +80,7 @@ const GifGenerator: React.FC = () => {
           <Lock className="w-10 h-10 text-rose-500" />
         </div>
         <div className="space-y-4">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Unlock Nano GIF</h2>
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Unlock AI GIF</h2>
           <p className="text-slate-600 dark:text-slate-400">
             This feature is powered by the advanced <strong>Veo</strong> model. 
             To create animations, you must select a valid paid API key (GCP project).
@@ -111,7 +111,7 @@ const GifGenerator: React.FC = () => {
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Film className="w-8 h-8 text-rose-500" />
-          Nano GIF
+          AI GIF
         </h2>
         <div className="flex flex-col items-center gap-1">
            <p className="text-slate-600 dark:text-slate-400">Generate videos from text or animate images.</p>
@@ -227,7 +227,7 @@ const GifGenerator: React.FC = () => {
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none md:pointer-events-auto">
                  <a 
                   href={videoUrl} 
-                  download="nano-animation.mp4"
+                  download="ai-animation.mp4"
                   className="bg-white text-black px-6 py-3 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform"
                 >
                   <Download className="w-5 h-5" />

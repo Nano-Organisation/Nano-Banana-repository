@@ -71,7 +71,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                   <div className="space-y-1">
                      <div className="flex items-center gap-2 font-bold text-white">
                         {hasKey ? <CheckCircle className="w-4 h-4 text-green-500" /> : <AlertTriangle className="w-4 h-4 text-amber-500" />}
-                        {hasKey ? 'Nano Pro Active' : 'Free Tier / Restricted'}
+                        {hasKey ? 'AI Pro Active' : 'Free Tier / Restricted'}
                      </div>
                      <p className="text-xs text-slate-400 leading-relaxed">
                         {hasKey 
@@ -104,7 +104,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             
             <div className="bg-slate-950/50 rounded-xl p-4 border border-slate-800 space-y-4">
                <p className="text-xs text-slate-500">
-                  Nano stores saved characters, game scores, and preferences locally on your device. We do not track your usage data.
+                  Data (characters, scores, preferences) is stored locally on your device. We do not track your usage data.
                </p>
                <button 
                   onClick={handleClearData}
@@ -120,7 +120,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         
         {/* Footer */}
         <div className="p-4 bg-slate-950 border-t border-slate-800 text-center">
-           <p className="text-xs text-slate-600">Nano Banana Suite v2.5.0</p>
+           <p className="text-xs text-slate-600">Digital Gentry AI Suite v2.5.0</p>
         </div>
 
       </div>

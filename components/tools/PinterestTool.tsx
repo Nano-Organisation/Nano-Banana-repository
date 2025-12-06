@@ -77,7 +77,7 @@ const PinterestTool: React.FC = () => {
     const watermarked = await addWatermarkToImage(resultImage);
     const link = document.createElement('a');
     link.href = watermarked;
-    link.download = `nano-pin-${selectedStyle.id}.png`;
+    link.download = `ai-pin-${selectedStyle.id}.png`;
     link.click();
   };
 
@@ -86,7 +86,7 @@ const PinterestTool: React.FC = () => {
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Pin className="w-8 h-8 text-red-500" />
-          Nano Pinterest
+          AI Pinterest
         </h2>
         <div className="flex flex-col items-center gap-1">
            <p className="text-slate-600 dark:text-slate-400">Generate viral-worthy, vertical images tailored for Pinterest.</p>

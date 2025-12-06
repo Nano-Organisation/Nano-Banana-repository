@@ -62,7 +62,7 @@ const DesignTool: React.FC = () => {
     const watermarked = await addWatermarkToImage(imgUrl);
     const link = document.createElement('a');
     link.href = watermarked;
-    link.download = `nano-design-${selectedStyle.id}-${index + 1}.png`;
+    link.download = `ai-design-${selectedStyle.id}-${index + 1}.png`;
     link.click();
   };
 
@@ -71,7 +71,7 @@ const DesignTool: React.FC = () => {
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <PenTool className="w-8 h-8 text-fuchsia-500" />
-          Nano Design
+          AI Design
           <span className="text-xs font-normal bg-fuchsia-100 dark:bg-fuchsia-900/30 text-fuchsia-600 dark:text-fuchsia-400 px-2 py-1 rounded-full border border-fuchsia-200 dark:border-fuchsia-800 ml-2">
              Model: gemini-2.5-flash-image
           </span>
