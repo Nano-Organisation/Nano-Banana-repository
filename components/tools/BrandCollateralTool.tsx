@@ -1,28 +1,46 @@
 
 import React, { useState } from 'react';
-import { Briefcase, RefreshCw, Palette, Type, PenTool, Image as ImageIcon, Download } from 'lucide-react';
-import { generateBrandIdentity, generateImageWithGemini } from '../../services/geminiService';
+import { Briefcase, RefreshCw, Palette, Type, PenTool, Image as ImageIcon, Download, Layout, FileText, Presentation, Calendar } from 'lucide-react';
+import { generateBrandIdentity, generateImageWithGemini, regenerateBrandPalette, regenerateBrandTypography } from '../../services/geminiService';
 import { BrandIdentity, LoadingState } from '../../types';
 import { addWatermarkToImage } from '../../utils/watermark';
+
+const PERSONALITIES = [
+  'Premium & Luxury',
+  'Minimalist & Clean',
+  'Bold & Disruptive',
+  'Playful & Friendly',
+  'Trustworthy & Corporate',
+  'Eco-Friendly & Organic',
+  'Tech & Futuristic'
+];
 
 const BrandCollateralTool: React.FC = () => {
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('');
   const [vibe, setVibe] = useState('');
+  const [personality, setPersonality] = useState(PERSONALITIES[0]);
+  const [prefColours, setPrefColours] = useState('');
+  const [prefFonts, setPrefFonts] = useState('');
+  
   const [brandData, setBrandData] = useState<BrandIdentity | null>(null);
   const [logoImage, setLogoImage] = useState<string | null>(null);
+  const [templateImages, setTemplateImages] = useState<{ [key: string]: string }>({});
+  
   const [status, setStatus] = useState<LoadingState>('idle');
   const [logoStatus, setLogoStatus] = useState<LoadingState>('idle');
+  const [templateStatus, setTemplateStatus] = useState<LoadingState>('idle');
 
   const handleGenerate = async () => {
     if (!companyName.trim() || !industry.trim()) return;
     setStatus('loading');
     setBrandData(null);
     setLogoImage(null);
+    setTemplateImages({});
     setLogoStatus('idle');
 
     try {
-      const result = await generateBrandIdentity(companyName, industry, vibe);
+      const result = await generateBrandIdentity(companyName, industry, vibe, personality, prefColours, prefFonts);
       setBrandData(result);
       setStatus('success');
     } catch (e) {
@@ -31,11 +49,30 @@ const BrandCollateralTool: React.FC = () => {
     }
   };
 
+  const handleRegeneratePalette = async () => {
+    if (!brandData) return;
+    try {
+      const newPalette = await regenerateBrandPalette(brandData);
+      setBrandData(prev => prev ? { ...prev, colorPalette: newPalette.colorPalette } : null);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleRegenerateTypography = async () => {
+    if (!brandData) return;
+    try {
+      const newType = await regenerateBrandTypography(brandData);
+      setBrandData(prev => prev ? { ...prev, fontPairing: newType.fontPairing } : null);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleGenerateLogo = async () => {
     if (!brandData) return;
     setLogoStatus('loading');
     try {
-      // Enhance prompt for logo specific quality
       const prompt = `Professional logo design for "${brandData.companyName}". ${brandData.logoPrompt}. Vector style, minimalist, white background, high quality.`;
       const img = await generateImageWithGemini(prompt, '1:1');
       setLogoImage(img);
@@ -46,12 +83,30 @@ const BrandCollateralTool: React.FC = () => {
     }
   };
 
-  const handleDownloadLogo = async () => {
-    if (!logoImage) return;
-    const watermarked = await addWatermarkToImage(logoImage);
+  const handleGenerateTemplate = async (type: 'stationary' | 'ppt' | 'calendar') => {
+    if (!brandData) return;
+    setTemplateStatus('loading');
+    try {
+      let prompt = '';
+      if (type === 'stationary') prompt = `Corporate stationary mockup including business cards and letterhead for "${brandData.companyName}". ${brandData.stationaryPrompt}`;
+      if (type === 'ppt') prompt = `Professional PowerPoint presentation title slide design for "${brandData.companyName}". ${brandData.pptTemplatePrompt}`;
+      if (type === 'calendar') prompt = `Branded desk calendar design for "${brandData.companyName}". ${brandData.calendarPrompt}`;
+
+      const img = await generateImageWithGemini(prompt, '16:9');
+      setTemplateImages(prev => ({ ...prev, [type]: img }));
+      setTemplateStatus('success');
+    } catch (e) {
+      console.error(e);
+      setTemplateStatus('error');
+    }
+  };
+
+  const handleDownloadImage = async (url: string, prefix: string) => {
+    if (!url) return;
+    const watermarked = await addWatermarkToImage(url);
     const link = document.createElement('a');
     link.href = watermarked;
-    link.download = `${companyName.replace(/\s+/g, '_')}_logo.png`;
+    link.download = `${companyName.replace(/\s+/g, '_')}_${prefix}.png`;
     link.click();
   };
 
@@ -63,7 +118,7 @@ const BrandCollateralTool: React.FC = () => {
           Nano Brand
         </h2>
         <div className="flex flex-col items-center gap-1">
-           <p className="text-slate-600 dark:text-slate-400">Generate a complete brand identity package.</p>
+           <p className="text-slate-600 dark:text-slate-400">Generate a complete brand identity package with templates.</p>
            <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
               Model: gemini-2.5-flash
            </span>
@@ -93,19 +148,51 @@ const BrandCollateralTool: React.FC = () => {
               />
             </div>
             <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Brand Personality</label>
+              <select 
+                value={personality}
+                onChange={(e) => setPersonality(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                {PERSONALITIES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500 uppercase">Vibe / Values</label>
               <textarea 
                 value={vibe}
                 onChange={(e) => setVibe(e.target.value)}
-                placeholder="e.g. Modern, Trustworthy, Eco-friendly, Minimalist..."
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500 h-24 resize-none"
+                placeholder="e.g. Innovative, Sustainable, Community-driven..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500 h-20 resize-none"
               />
+            </div>
+            
+            {/* Optional Preferences */}
+            <div className="pt-2 border-t border-slate-800 space-y-4">
+               <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Preferred Colours (Optional)</label>
+                  <input 
+                    value={prefColours}
+                    onChange={(e) => setPrefColours(e.target.value)}
+                    placeholder="e.g. Navy Blue and Gold"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+               </div>
+               <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Preferred Fonts (Optional)</label>
+                  <input 
+                    value={prefFonts}
+                    onChange={(e) => setPrefFonts(e.target.value)}
+                    placeholder="e.g. Serif headings, Sans-serif body"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+               </div>
             </div>
 
             <button
               onClick={handleGenerate}
               disabled={!companyName || !industry || status === 'loading'}
-              className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-900/20"
+              className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-900/20 mt-2"
             >
               {status === 'loading' ? <RefreshCw className="animate-spin" /> : <Palette />}
               Generate Brand Kit
@@ -140,11 +227,16 @@ const BrandCollateralTool: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 {/* COLORS */}
-                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
-                    <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 flex items-center gap-2">
-                       <Palette className="w-4 h-4" /> Color Palette
-                    </h3>
+                 {/* COLOURS */}
+                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg relative group">
+                    <div className="flex justify-between items-center mb-4">
+                       <h3 className="text-sm font-bold text-slate-500 uppercase flex items-center gap-2">
+                          <Palette className="w-4 h-4" /> Colour Palette
+                       </h3>
+                       <button onClick={handleRegeneratePalette} className="text-xs text-orange-500 hover:text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                          <RefreshCw className="w-3 h-3" /> Regenerate
+                       </button>
+                    </div>
                     <div className="space-y-3">
                        {brandData.colorPalette.map((color, idx) => (
                           <div key={idx} className="flex items-center gap-4 bg-slate-950 p-2 rounded-lg border border-slate-800">
@@ -163,10 +255,15 @@ const BrandCollateralTool: React.FC = () => {
 
                  {/* FONTS & VOICE */}
                  <div className="space-y-6">
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
-                       <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 flex items-center gap-2">
-                          <Type className="w-4 h-4" /> Typography
-                       </h3>
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg relative group">
+                       <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-sm font-bold text-slate-500 uppercase flex items-center gap-2">
+                             <Type className="w-4 h-4" /> Typography
+                          </h3>
+                          <button onClick={handleRegenerateTypography} className="text-xs text-orange-500 hover:text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                             <RefreshCw className="w-3 h-3" /> Regenerate
+                          </button>
+                       </div>
                        <div className="space-y-3">
                           <div>
                              <span className="text-xs text-slate-500 block mb-1">Heading Font</span>
@@ -220,7 +317,7 @@ const BrandCollateralTool: React.FC = () => {
                        <>
                           <img src={logoImage} alt="Logo" className="w-full h-full object-contain" />
                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                             <button onClick={handleDownloadLogo} className="text-white font-bold flex items-center gap-1">
+                             <button onClick={() => handleDownloadImage(logoImage, 'logo')} className="text-white font-bold flex items-center gap-1">
                                 <Download className="w-4 h-4" /> Save
                              </button>
                           </div>
@@ -228,6 +325,86 @@ const BrandCollateralTool: React.FC = () => {
                     ) : (
                        <span className="text-xs text-slate-500 text-center px-4">Click Visualize to generate</span>
                     )}
+                 </div>
+              </div>
+
+              {/* STATIONARY & TEMPLATES */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
+                 <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                    <Layout className="w-5 h-5 text-orange-500" /> Visual Assets & Templates
+                 </h3>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Stationary */}
+                    <div className="space-y-3">
+                       <div className="aspect-video bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center relative group overflow-hidden">
+                          {templateImages.stationary ? (
+                             <>
+                                <img src={templateImages.stationary} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                   <button onClick={() => handleDownloadImage(templateImages.stationary, 'stationary')} className="text-white font-bold flex items-center gap-1">
+                                      <Download className="w-4 h-4" /> Save
+                                   </button>
+                                </div>
+                             </>
+                          ) : (
+                             <FileText className="w-8 h-8 text-slate-700" />
+                          )}
+                       </div>
+                       <div className="flex justify-between items-center">
+                          <span className="text-sm font-bold text-slate-400">Stationary</span>
+                          <button onClick={() => handleGenerateTemplate('stationary')} className="text-xs text-orange-500 hover:text-orange-400 font-bold">
+                             {templateImages.stationary ? <RefreshCw className="w-4 h-4" /> : 'Generate'}
+                          </button>
+                       </div>
+                    </div>
+
+                    {/* PPT */}
+                    <div className="space-y-3">
+                       <div className="aspect-video bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center relative group overflow-hidden">
+                          {templateImages.ppt ? (
+                             <>
+                                <img src={templateImages.ppt} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                   <button onClick={() => handleDownloadImage(templateImages.ppt, 'ppt')} className="text-white font-bold flex items-center gap-1">
+                                      <Download className="w-4 h-4" /> Save
+                                   </button>
+                                </div>
+                             </>
+                          ) : (
+                             <Presentation className="w-8 h-8 text-slate-700" />
+                          )}
+                       </div>
+                       <div className="flex justify-between items-center">
+                          <span className="text-sm font-bold text-slate-400">PPT Slide</span>
+                          <button onClick={() => handleGenerateTemplate('ppt')} className="text-xs text-orange-500 hover:text-orange-400 font-bold">
+                             {templateImages.ppt ? <RefreshCw className="w-4 h-4" /> : 'Generate'}
+                          </button>
+                       </div>
+                    </div>
+
+                    {/* Calendar */}
+                    <div className="space-y-3">
+                       <div className="aspect-video bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center relative group overflow-hidden">
+                          {templateImages.calendar ? (
+                             <>
+                                <img src={templateImages.calendar} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                   <button onClick={() => handleDownloadImage(templateImages.calendar, 'calendar')} className="text-white font-bold flex items-center gap-1">
+                                      <Download className="w-4 h-4" /> Save
+                                   </button>
+                                </div>
+                             </>
+                          ) : (
+                             <Calendar className="w-8 h-8 text-slate-700" />
+                          )}
+                       </div>
+                       <div className="flex justify-between items-center">
+                          <span className="text-sm font-bold text-slate-400">Calendar</span>
+                          <button onClick={() => handleGenerateTemplate('calendar')} className="text-xs text-orange-500 hover:text-orange-400 font-bold">
+                             {templateImages.calendar ? <RefreshCw className="w-4 h-4" /> : 'Generate'}
+                          </button>
+                       </div>
+                    </div>
                  </div>
               </div>
 

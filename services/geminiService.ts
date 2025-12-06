@@ -932,11 +932,17 @@ export const generateHiddenMessage = async (secret: string, topic: string): Prom
 /**
  * Brand Identity Generator
  */
-export const generateBrandIdentity = async (companyName: string, industry: string, vibe: string): Promise<BrandIdentity> => {
+export const generateBrandIdentity = async (companyName: string, industry: string, vibe: string, personality?: string, preferredColours?: string, preferredFonts?: string): Promise<BrandIdentity> => {
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Generate a comprehensive brand identity for a company named "${companyName}". Industry: ${industry}. Vibe/Values: ${vibe}.`,
+        contents: `Generate a comprehensive brand identity for a company named "${companyName}". Industry: ${industry}. 
+        Vibe/Values: ${vibe}.
+        ${personality ? `Brand Personality: ${personality}.` : ''}
+        ${preferredColours ? `Preferred Colours: ${preferredColours}.` : ''}
+        ${preferredFonts ? `Preferred Fonts: ${preferredFonts}.` : ''}
+        
+        Also provide specific image prompts to generate stationary mockups and templates consistent with this brand.`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -965,9 +971,71 @@ export const generateBrandIdentity = async (companyName: string, industry: strin
                         },
                         required: ['heading', 'body']
                     },
-                    logoPrompt: { type: Type.STRING, description: "A detailed prompt to generate a logo for this brand." }
+                    logoPrompt: { type: Type.STRING, description: "A detailed prompt to generate a logo for this brand." },
+                    stationaryPrompt: { type: Type.STRING, description: "Prompt for business cards and letterhead mockup." },
+                    pptTemplatePrompt: { type: Type.STRING, description: "Prompt for a corporate PowerPoint slide mockup." },
+                    calendarPrompt: { type: Type.STRING, description: "Prompt for a branded desk calendar design." }
                 },
-                required: ['companyName', 'missionStatement', 'slogan', 'brandVoice', 'colorPalette', 'fontPairing', 'logoPrompt']
+                required: ['companyName', 'missionStatement', 'slogan', 'brandVoice', 'colorPalette', 'fontPairing', 'logoPrompt', 'stationaryPrompt', 'pptTemplatePrompt', 'calendarPrompt']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+export const regenerateBrandPalette = async (baseIdentity: BrandIdentity): Promise<{ colorPalette: { name: string, hex: string }[] }> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Regenerate ONLY the color palette for the brand "${baseIdentity.companyName}".
+        Original Vibe: ${baseIdentity.brandVoice}.
+        Provide 4 new cohesive colors.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    colorPalette: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                name: { type: Type.STRING },
+                                hex: { type: Type.STRING }
+                            },
+                            required: ['name', 'hex']
+                        }
+                    }
+                },
+                required: ['colorPalette']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+export const regenerateBrandTypography = async (baseIdentity: BrandIdentity): Promise<{ fontPairing: { heading: string, body: string } }> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Regenerate ONLY the font pairing for the brand "${baseIdentity.companyName}".
+        Original Vibe: ${baseIdentity.brandVoice}.
+        Provide a new Heading and Body font combination.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    fontPairing: {
+                        type: Type.OBJECT,
+                        properties: {
+                            heading: { type: Type.STRING },
+                            body: { type: Type.STRING }
+                        },
+                        required: ['heading', 'body']
+                    }
+                },
+                required: ['fontPairing']
             }
         }
     });

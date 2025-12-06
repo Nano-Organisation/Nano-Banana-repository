@@ -209,6 +209,10 @@ export interface BrandIdentity {
   fontPairing: { heading: string; body: string };
   logoPrompt: string;
   brandVoice: string;
+  // Template Prompts
+  stationaryPrompt: string;
+  pptTemplatePrompt: string;
+  calendarPrompt: string;
 }
 
 export interface UGCSection {
