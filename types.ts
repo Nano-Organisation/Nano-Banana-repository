@@ -40,7 +40,8 @@ export enum ToolId {
   Magic = 'MAGIC',
   Cipher = 'CIPHER',
   BrandCollateral = 'BRAND_COLLATERAL',
-  UGCAds = 'UGC_ADS'
+  UGCAds = 'UGC_ADS',
+  LiveNotetaker = 'LIVE_NOTETAKER'
 }
 
 export interface ToolConfig {

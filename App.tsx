@@ -40,7 +40,8 @@ import MagicTool from './components/tools/MagicTool';
 import CipherTool from './components/tools/CipherTool';
 import BrandCollateralTool from './components/tools/BrandCollateralTool';
 import UGCAdsTool from './components/tools/UGCAdsTool';
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X } from 'lucide-react';
+import LiveNotetaker from './components/tools/LiveNotetaker';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -70,6 +71,15 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.LiveNotetaker,
+    title: "AI Note Taker",
+    description: "Live dictation with auto-summarization.",
+    icon: ClipboardList,
+    color: "teal",
+    gradient: "from-teal-500 to-cyan-600",
+    releaseDate: '2025-12-07'
   },
   {
     id: ToolId.BrandCollateral,
@@ -439,6 +449,8 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.LiveNotetaker:
+        return <LiveNotetaker />;
       case ToolId.BrandCollateral:
         return <BrandCollateralTool />;
       case ToolId.UGCAds:
