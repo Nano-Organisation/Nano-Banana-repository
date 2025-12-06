@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ToolId } from './types';
 import Layout from './components/Layout';
@@ -606,7 +605,6 @@ const App: React.FC = () => {
   return (
     <Layout 
       onBack={currentTool !== ToolId.Dashboard ? () => setCurrentTool(ToolId.Dashboard) : undefined}
-      onGoHome={() => setCurrentTool(ToolId.Dashboard)}
       title={currentTool !== ToolId.Dashboard ? TOOLS.find(t => t.id === currentTool)?.title : undefined}
     >
       {renderTool()}
