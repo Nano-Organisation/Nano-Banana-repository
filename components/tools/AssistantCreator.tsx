@@ -49,6 +49,10 @@ const AssistantCreator: React.FC = () => {
           const transcript = event.results[0][0].transcript;
           if (transcript) setInputValue(prev => prev ? `${prev} ${transcript}` : transcript);
         };
+        recognition.onerror = (event: any) => {
+          console.error("Speech recognition error", event.error);
+          setIsListening(false);
+        };
         recognitionRef.current = recognition;
       }
     }
@@ -144,7 +148,7 @@ const AssistantCreator: React.FC = () => {
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
             <Bot className="w-10 h-10 text-cyan-500" />
-            Nano Assistant Creator
+            AI Assistant Creator
           </h2>
           <p className="text-slate-600 dark:text-slate-400">Design your own specialized AI companion.</p>
         </div>

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, FileText, RefreshCw, StopCircle, Play, CheckCircle, ClipboardList, ThumbsUp, ThumbsDown, Copy, Check } from 'lucide-react';
+import { Mic, MicOff, FileText, RefreshCw, StopCircle, Play, CheckCircle, ClipboardList, ThumbsUp, ThumbsDown, Copy, Check, AlertTriangle } from 'lucide-react';
 import { generateTextWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 
@@ -11,6 +11,7 @@ const LiveNotetaker: React.FC = () => {
   const [status, setStatus] = useState<LoadingState>('idle');
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const recognitionRef = useRef<any>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -42,9 +43,18 @@ const LiveNotetaker: React.FC = () => {
         recognition.onerror = (event: any) => {
           console.error("Speech recognition error", event.error);
           setIsListening(false);
+          if (event.error === 'network') {
+             setError("Network error: Speech recognition service unreachable. Please check your internet connection.");
+          } else if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+             setError("Microphone access denied. Please allow permissions.");
+          } else {
+             setError(`Speech error: ${event.error}`);
+          }
         };
         
         recognitionRef.current = recognition;
+      } else {
+        setError("Speech recognition not supported in this browser. Try Chrome.");
       }
     }
     
@@ -58,14 +68,20 @@ const LiveNotetaker: React.FC = () => {
   }, [transcript]);
 
   const toggleListening = () => {
+    setError(null);
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
       handleSummarize();
     } else {
-      setSummary(''); // Clear old summary if starting fresh, or keep? Let's keep for now but maybe clear if user clears.
-      recognitionRef.current?.start();
-      setIsListening(true);
+      setSummary(''); 
+      try {
+        recognitionRef.current?.start();
+        setIsListening(true);
+      } catch (e) {
+        console.error(e);
+        setError("Could not start recording. Please refresh.");
+      }
     }
   };
 
@@ -97,6 +113,7 @@ const LiveNotetaker: React.FC = () => {
     setTranscript('');
     setSummary('');
     setStatus('idle');
+    setError(null);
     if (isListening) {
         recognitionRef.current?.stop();
         setIsListening(false);
@@ -129,6 +146,13 @@ const LiveNotetaker: React.FC = () => {
            </span>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-center gap-3 text-red-500 max-w-xl mx-auto">
+           <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+           <p className="text-sm font-medium">{error}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         

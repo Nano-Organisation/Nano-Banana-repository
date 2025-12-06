@@ -59,6 +59,11 @@ const ChatInterface: React.FC = () => {
         recognition.onerror = (event: any) => {
           console.error("Speech recognition error", event.error);
           setIsListening(false);
+          if (event.error === 'network') {
+             alert("Speech Recognition Error: Please check your internet connection.");
+          } else if (event.error === 'not-allowed') {
+             alert("Microphone access denied. Please allow permissions in your browser settings.");
+          }
         };
         recognition.onresult = (event: any) => {
           const transcript = event.results[0][0].transcript;
