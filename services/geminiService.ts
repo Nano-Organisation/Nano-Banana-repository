@@ -4,7 +4,7 @@ import {
   MemeData, QuizData, RiddleData, StorybookData, SocialSettings, 
   SocialCampaign, PromptAnalysis, DailyTip, HelpfulList, PodcastScript,
   EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, AffirmationPlan,
-  BrandIdentity, UGCScript
+  BrandIdentity, UGCScript, WealthAnalysis
 } from "../types";
 
 const getAiClient = () => {
@@ -1083,6 +1083,90 @@ export const generateUGCScript = async (product: string, audience: string, painP
                     }
                 },
                 required: ['title', 'targetAudience', 'totalDuration', 'sections']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+/**
+ * AI Poetry
+ */
+export const generatePoem = async (topic: string, style: string): Promise<string> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Write a poem about "${topic}". Style: ${style}.`
+    });
+    return response.text || "";
+};
+
+/**
+ * Daily Joke
+ */
+export const generateDailyJoke = async (dayIndex: number): Promise<string> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Generate a unique, funny, clean joke for Day ${dayIndex}. It can be a pun, a one-liner, or a short story.`
+    });
+    return response.text || "";
+};
+
+/**
+ * AI Quotes
+ */
+export const generateQuote = async (category?: string): Promise<string> => {
+    const ai = getAiClient();
+    const prompt = category ? `Give me a famous quote about ${category}.` : "Give me a famous, inspiring quote.";
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `${prompt} Format: "Quote" - Author`
+    });
+    return response.text || "";
+};
+
+/**
+ * AI Connections
+ */
+export const generateConnectionFact = async (person?: string): Promise<string> => {
+    const ai = getAiClient();
+    const prompt = person 
+        ? `Tell me a surprising "Did you know?" fact about a connection between ${person} and another famous historical or modern figure.` 
+        : `Tell me a surprising "Did you know?" fact about a connection between two famous people.`;
+    
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt
+    });
+    return response.text || "";
+};
+
+/**
+ * Wealth Calculator
+ */
+export const analyzeWealthPath = async (personName: string): Promise<WealthAnalysis> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Analyze how ${personName} became rich.
+        CRITICAL: You must explicitly state if they came from a wealthy family, had connections, or started with significant capital (Privilege).
+        Then, outline the key factors of their success.
+        Finally, provide a realistic, actionable path for a normal person to try and emulate their success strategies, acknowledging the gap in resources.`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    personName: { type: Type.STRING },
+                    estimatedNetWorth: { type: Type.STRING },
+                    originStart: { type: Type.STRING, enum: ["Wealthy", "Upper Middle Class", "Middle Class", "Working Class", "Poverty", "Unknown"] },
+                    privilegeAnalysis: { type: Type.STRING, description: "Detailed analysis of their starting point and advantages." },
+                    keySuccessFactors: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    actionableSteps: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    realityCheck: { type: Type.STRING }
+                },
+                required: ['personName', 'estimatedNetWorth', 'originStart', 'privilegeAnalysis', 'keySuccessFactors', 'actionableSteps', 'realityCheck']
             }
         }
     });

@@ -43,7 +43,14 @@ import BrandCollateralTool from './components/tools/BrandCollateralTool';
 import UGCAdsTool from './components/tools/UGCAdsTool';
 import LiveNotetaker from './components/tools/LiveNotetaker';
 import StudioTool from './components/tools/StudioTool';
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay } from 'lucide-react';
+// New Imports
+import PoetryTool from './components/tools/PoetryTool';
+import DailyJokeTool from './components/tools/DailyJokeTool';
+import QuoteTool from './components/tools/QuoteTool';
+import ConnectionsTool from './components/tools/ConnectionsTool';
+import WealthCalculator from './components/tools/WealthCalculator';
+
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -182,6 +189,51 @@ const TOOLS = [
     color: "fuchsia",
     gradient: "from-fuchsia-500 to-purple-600",
     releaseDate: '2025-12-07'
+  },
+  {
+    id: ToolId.Poetry,
+    title: "AI Poetry",
+    description: "Generate poetry in any style, from Haiku to Sonnet.",
+    icon: Feather,
+    color: "fuchsia",
+    gradient: "from-fuchsia-500 to-pink-600",
+    releaseDate: '2025-12-08'
+  },
+  {
+    id: ToolId.DailyJoke,
+    title: "AI Jokes",
+    description: "Get your unique AI-generated joke of the day.",
+    icon: Laugh,
+    color: "yellow",
+    gradient: "from-yellow-400 to-amber-500",
+    releaseDate: '2025-12-08'
+  },
+  {
+    id: ToolId.Quotes,
+    title: "AI Quotes",
+    description: "Find inspiration with famous quotes on any topic.",
+    icon: Quote,
+    color: "cyan",
+    gradient: "from-cyan-500 to-blue-500",
+    releaseDate: '2025-12-08'
+  },
+  {
+    id: ToolId.Connections,
+    title: "AI Connections",
+    description: "Discover surprising links between famous people.",
+    icon: Network,
+    color: "violet",
+    gradient: "from-violet-500 to-purple-600",
+    releaseDate: '2025-12-08'
+  },
+  {
+    id: ToolId.WealthCalculator,
+    title: "AI Wealth Path",
+    description: "Analyze how the rich got rich and how to emulate them.",
+    icon: DollarSign,
+    color: "green",
+    gradient: "from-green-600 to-emerald-700",
+    releaseDate: '2025-12-08'
   },
   {
     id: ToolId.ImageToPrompt,
@@ -567,6 +619,16 @@ const App: React.FC = () => {
         return <CodeHub />;
       case ToolId.AutomationHub:
         return <AutomationHub />;
+      case ToolId.Poetry:
+        return <PoetryTool />;
+      case ToolId.DailyJoke:
+        return <DailyJokeTool />;
+      case ToolId.Quotes:
+        return <QuoteTool />;
+      case ToolId.Connections:
+        return <ConnectionsTool />;
+      case ToolId.WealthCalculator:
+        return <WealthCalculator />;
       default:
         return renderDashboard();
     }

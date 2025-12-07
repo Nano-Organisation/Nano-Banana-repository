@@ -43,7 +43,12 @@ export enum ToolId {
   UGCAds = 'UGC_ADS',
   LiveNotetaker = 'LIVE_NOTETAKER',
   SecurityBox = 'SECURITY_BOX',
-  Studio = 'STUDIO'
+  Studio = 'STUDIO',
+  Poetry = 'POETRY',
+  DailyJoke = 'DAILY_JOKE',
+  Quotes = 'QUOTES',
+  Connections = 'CONNECTIONS',
+  WealthCalculator = 'WEALTH_CALCULATOR'
 }
 
 export interface ToolConfig {
@@ -230,4 +235,14 @@ export interface UGCScript {
   targetAudience: string;
   totalDuration: string;
   sections: UGCSection[];
+}
+
+export interface WealthAnalysis {
+  personName: string;
+  estimatedNetWorth: string;
+  originStart: string; // "Wealthy", "Middle Class", "Poverty"
+  privilegeAnalysis: string; // Description of family wealth/connections
+  keySuccessFactors: string[];
+  actionableSteps: string[]; // Steps for a normal person
+  realityCheck: string; // The "gap" between them and us
 }
