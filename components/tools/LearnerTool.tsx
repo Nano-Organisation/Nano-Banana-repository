@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
-import { BookOpen, Mic, Play, RefreshCw, FileText } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { BookOpen, Mic, Play, RefreshCw, FileText, Upload, AlertCircle } from 'lucide-react';
 import { generateLearnerBrief, generateSpeechWithGemini } from '../../services/geminiService';
 import { LoadingState, LearnerBrief } from '../../types';
+import { extractTextFromPDF } from '../../utils/pdfParser';
 
 const LearnerTool: React.FC = () => {
   const [text, setText] = useState('');
@@ -10,6 +11,31 @@ const LearnerTool: React.FC = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<LoadingState>('idle');
   const [audioStatus, setAudioStatus] = useState<LoadingState>('idle');
+  const [isParsing, setIsParsing] = useState(false);
+  
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+        alert('Please upload a valid PDF file.');
+        return;
+    }
+
+    setIsParsing(true);
+    try {
+        const extracted = await extractTextFromPDF(file);
+        setText(extracted);
+    } catch (err) {
+        console.error(err);
+        alert('Failed to read PDF. Please try copying the text manually.');
+    }
+    setIsParsing(false);
+    // Reset input
+    if (fileRef.current) fileRef.current.value = '';
+  };
 
   const handleProcess = async () => {
     if (!text.trim()) return;
@@ -54,11 +80,23 @@ const LearnerTool: React.FC = () => {
         {/* INPUT */}
         <div className="space-y-6">
            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-4">
-              <label className="text-sm font-bold text-slate-500 uppercase">Paste Text or Paper Content</label>
+              <div className="flex justify-between items-center">
+                 <label className="text-sm font-bold text-slate-500 uppercase">Input Content</label>
+                 <button 
+                    onClick={() => fileRef.current?.click()}
+                    className="text-xs flex items-center gap-1 text-emerald-500 hover:text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1.5 rounded-lg transition-colors"
+                    disabled={isParsing}
+                 >
+                    {isParsing ? <RefreshCw className="w-3 h-3 animate-spin"/> : <Upload className="w-3 h-3" />}
+                    {isParsing ? 'Reading PDF...' : 'Upload PDF'}
+                 </button>
+                 <input type="file" ref={fileRef} onChange={handleFileUpload} accept=".pdf" className="hidden" />
+              </div>
+              
               <textarea 
                  value={text}
                  onChange={(e) => setText(e.target.value)}
-                 placeholder="Paste the abstract or full text of the research paper here..."
+                 placeholder="Paste text or upload a PDF..."
                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 h-96 resize-none custom-scrollbar"
               />
               <button
@@ -84,7 +122,7 @@ const LearnerTool: React.FC = () => {
            {!data && status !== 'loading' && (
               <div className="h-full flex flex-col items-center justify-center text-slate-500 bg-slate-900 border-2 border-dashed border-slate-800 rounded-2xl p-12 min-h-[400px]">
                  <FileText className="w-16 h-16 opacity-20 mb-4" />
-                 <p>Paste text to generate your learning brief.</p>
+                 <p>Upload a PDF or paste text to start.</p>
               </div>
            )}
 

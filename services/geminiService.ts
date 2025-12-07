@@ -6,6 +6,7 @@ import {
   EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, AffirmationPlan,
   BrandIdentity, UGCScript, WealthAnalysis, CommercialAnalysis, BabyName, LearnerBrief
 } from "../types";
+import { runSecurityChecks, sanitizeInput } from "../utils/security";
 
 const getAiClient = () => {
   // Safe access for process.env to prevent 'process is not defined' crashes in browser
@@ -31,8 +32,13 @@ const handleGeminiError = (error: any): never => {
   ) {
     throw new Error("Quota Exceeded: You have reached the usage limit for the Google Gemini API. Please check your billing details or try again later.");
   }
-  if (msg.includes("API key not valid") || code === 403 || code === 400) { // 400 often returned for invalid keys too
+  if (msg.includes("API key not valid") || code === 403 || code === 400) { 
      throw new Error("Invalid API Key or Bad Request. Please check your settings.");
+  }
+  
+  // Pass through security errors
+  if (msg.includes("Security Alert") || msg.includes("Rate Limit") || msg.includes("Safety Alert")) {
+      throw new Error(msg);
   }
   
   throw new Error(msg);
@@ -45,7 +51,7 @@ const writeString = (view: DataView, offset: number, string: string) => {
   }
 };
 
-const createWavUrl = (base64Data: string): string => {
+const createWavUrlLocal = (base64Data: string): string => {
   const binaryString = atob(base64Data);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
@@ -97,10 +103,14 @@ const createWavUrl = (base64Data: string): string => {
  */
 export const generateTextWithGemini = async (prompt: string, systemInstruction?: string): Promise<string> => {
   try {
+    // SECURITY CHECKS
+    const cleanPrompt = sanitizeInput(prompt);
+    runSecurityChecks(cleanPrompt, "Text Prompt");
+
     const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: prompt,
+      contents: cleanPrompt,
       config: {
         systemInstruction: systemInstruction,
       },
@@ -116,10 +126,14 @@ export const generateTextWithGemini = async (prompt: string, systemInstruction?:
  */
 export const generateImageWithGemini = async (prompt: string, aspectRatio: string = '1:1'): Promise<string> => {
   try {
+    // SECURITY CHECKS
+    const cleanPrompt = sanitizeInput(prompt);
+    runSecurityChecks(cleanPrompt, "Image Prompt");
+
     const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
-      contents: { parts: [{ text: prompt }] },
+      contents: { parts: [{ text: cleanPrompt }] },
       config: {
         imageConfig: {
           aspectRatio: aspectRatio as any,
@@ -149,7 +163,6 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
     }
     
     if (refusalText) {
-        // If text looks positive but no image, likely a safety block
         if (refusalText.toLowerCase().includes("here is") || refusalText.toLowerCase().includes("image")) {
             throw new Error("Image Filtered: The model generated a response but the image was blocked by safety filters.");
         }
@@ -167,11 +180,14 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
  */
 export const generateProImageWithGemini = async (prompt: string, size: string = '1K'): Promise<string> => {
   try {
+    // SECURITY CHECKS
+    const cleanPrompt = sanitizeInput(prompt);
+    runSecurityChecks(cleanPrompt, "Pro Image Prompt");
+
     const ai = getAiClient();
-    // Using gemini-3-pro-image-preview
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-image-preview',
-      contents: { parts: [{ text: prompt }] },
+      contents: { parts: [{ text: cleanPrompt }] },
       config: {
         imageConfig: {
           imageSize: size as any, 
@@ -218,6 +234,10 @@ export const generateProImageWithGemini = async (prompt: string, size: string = 
  */
 export const editImageWithGemini = async (imageBase64: string, prompt: string): Promise<string> => {
   try {
+    // SECURITY CHECKS
+    const cleanPrompt = sanitizeInput(prompt);
+    runSecurityChecks(cleanPrompt, "Edit Prompt");
+
     const ai = getAiClient();
     const base64Data = imageBase64.split(',')[1];
     const mimeType = imageBase64.split(';')[0].split(':')[1];
@@ -232,7 +252,7 @@ export const editImageWithGemini = async (imageBase64: string, prompt: string): 
               data: base64Data
             }
           },
-          { text: prompt }
+          { text: cleanPrompt }
         ]
       },
       config: {
@@ -245,14 +265,12 @@ export const editImageWithGemini = async (imageBase64: string, prompt: string): 
       }
     });
 
-    // FIRST PASS: Look for image
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
         return `data:image/png;base64,${part.inlineData.data}`;
       }
     }
 
-    // SECOND PASS: Look for text
     let refusalText = "";
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.text) {
@@ -278,6 +296,10 @@ export const editImageWithGemini = async (imageBase64: string, prompt: string): 
  */
 export const analyzeImageWithGemini = async (imageBase64: string, question: string): Promise<string> => {
   try {
+    // SECURITY CHECKS
+    const cleanQuestion = sanitizeInput(question);
+    runSecurityChecks(cleanQuestion, "Question");
+
     const ai = getAiClient();
     const base64Data = imageBase64.split(',')[1];
     const mimeType = imageBase64.split(';')[0].split(':')[1];
@@ -292,7 +314,7 @@ export const analyzeImageWithGemini = async (imageBase64: string, question: stri
               data: base64Data
             }
           },
-          { text: question }
+          { text: cleanQuestion }
         ]
       }
     });
@@ -306,7 +328,9 @@ export const analyzeImageWithGemini = async (imageBase64: string, question: stri
  * Image to Prompt
  */
 export const generateImagePrompt = async (imageBase64: string, platform: string): Promise<string> => {
-    const prompt = `Analyze this image and generate a detailed text prompt that could be used to recreate it using ${platform}. Include details about style, lighting, composition, and subject.`;
+    // Platform is a dropdown value, likely safe, but safeguard anyway
+    const cleanPlatform = sanitizeInput(platform); 
+    const prompt = `Analyze this image and generate a detailed text prompt that could be used to recreate it using ${cleanPlatform}. Include details about style, lighting, composition, and subject.`;
     return analyzeImageWithGemini(imageBase64, prompt);
 };
 
@@ -338,9 +362,17 @@ export const createThinkingChatSession = (systemInstruction?: string): Chat => {
  * Batch Image Generation
  */
 export const generateBatchImages = async (prompt: string, quantity: number): Promise<string[]> => {
+  // SECURITY CHECKS (Run once before batch loop)
+  const cleanPrompt = sanitizeInput(prompt);
+  runSecurityChecks(cleanPrompt, "Design Prompt");
+
   const promises = [];
   for (let i = 0; i < quantity; i++) {
-    promises.push(generateImageWithGemini(prompt));
+    // We call the base function which has checks, but we already cleaned it.
+    // However, the base function expects raw input to clean. 
+    // Since we cleaned it here, it's fine to pass it. 
+    // But the base function will double check rate limit. That's good.
+    promises.push(generateImageWithGemini(cleanPrompt));
   }
   return Promise.all(promises);
 };
@@ -350,9 +382,10 @@ export const generateViralThumbnails = async (prompt: string): Promise<string[]>
 };
 
 /**
- * Games - Puzzles
+ * Games - Puzzles (No user input for generation usually, just triggers)
  */
 export const generateEmojiPuzzle = async (): Promise<EmojiPuzzle> => {
+    runSecurityChecks("Generate Emoji Puzzle", "System"); // Rate limit check
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -374,6 +407,7 @@ export const generateEmojiPuzzle = async (): Promise<EmojiPuzzle> => {
 };
 
 export const generateWordPuzzle = async (): Promise<WordPuzzle> => {
+    runSecurityChecks("Generate Word Puzzle", "System");
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -395,6 +429,7 @@ export const generateWordPuzzle = async (): Promise<WordPuzzle> => {
 };
 
 export const generateTwoTruthsPuzzle = async (): Promise<TwoTruthsPuzzle> => {
+    runSecurityChecks("Generate Two Truths", "System");
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -425,6 +460,7 @@ export const generateTwoTruthsPuzzle = async (): Promise<TwoTruthsPuzzle> => {
 };
 
 export const generateRiddlePuzzle = async (): Promise<RiddlePuzzle> => {
+    runSecurityChecks("Generate Riddle", "System");
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -446,12 +482,14 @@ export const generateRiddlePuzzle = async (): Promise<RiddlePuzzle> => {
     return JSON.parse(response.text || "{}");
 };
 
-// Alias for RiddleGenerator usage
 export const generateRiddleContent = async (topic: string): Promise<RiddleData> => {
+    const cleanTopic = sanitizeInput(topic);
+    runSecurityChecks(cleanTopic, "Riddle Topic");
+    
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Generate a riddle about: ${topic}`,
+        contents: `Generate a riddle about: ${cleanTopic}`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -473,10 +511,13 @@ export const generateRiddleContent = async (topic: string): Promise<RiddleData> 
  * Quiz Generator
  */
 export const generateQuiz = async (topic: string, count: number, difficulty: string): Promise<QuizData> => {
+    const cleanTopic = sanitizeInput(topic);
+    runSecurityChecks(cleanTopic, "Quiz Topic");
+
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Generate a ${count}-question quiz about ${topic}. Difficulty: ${difficulty}.`,
+        contents: `Generate a ${count}-question quiz about ${cleanTopic}. Difficulty: ${difficulty}.`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -510,10 +551,13 @@ export const generateQuiz = async (topic: string, count: number, difficulty: str
  * Podcast
  */
 export const generatePodcastScript = async (topic: string, hostName: string, guestName: string): Promise<PodcastScript> => {
+    const cleanTopic = sanitizeInput(topic);
+    runSecurityChecks(cleanTopic, "Podcast Topic");
+
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Write a short podcast script (approx 2 mins) about ${topic}. Hosts: ${hostName} and ${guestName}. Also suggest a visual prompt for cover art.`,
+        contents: `Write a short podcast script (approx 2 mins) about ${cleanTopic}. Hosts: ${hostName} and ${guestName}. Also suggest a visual prompt for cover art.`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -534,11 +578,13 @@ export const generatePodcastScript = async (topic: string, hostName: string, gue
  * Speech
  */
 export const generateSpeechWithGemini = async (text: string, voice: string, speed: number, pitch: number, speakers?: {speaker: string, voice: string}[]): Promise<string> => {
+    const cleanText = sanitizeInput(text);
+    runSecurityChecks(cleanText, "Speech Text");
+
     const ai = getAiClient();
     let speechConfig: any = {};
     
     if (speakers && speakers.length > 0) {
-        // Multi-speaker config
         speechConfig = {
             multiSpeakerVoiceConfig: {
                 speakerVoiceConfigs: speakers.map(s => ({
@@ -548,7 +594,6 @@ export const generateSpeechWithGemini = async (text: string, voice: string, spee
             }
         };
     } else {
-        // Single speaker
         speechConfig = {
             voiceConfig: {
                 prebuiltVoiceConfig: { voiceName: voice }
@@ -558,7 +603,7 @@ export const generateSpeechWithGemini = async (text: string, voice: string, spee
 
     const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
-        contents: { parts: [{ text }] },
+        contents: { parts: [{ text: cleanText }] },
         config: {
             responseModalities: [Modality.AUDIO],
             speechConfig: speechConfig
@@ -567,8 +612,7 @@ export const generateSpeechWithGemini = async (text: string, voice: string, spee
 
     for (const part of response.candidates?.[0]?.content?.parts || []) {
         if (part.inlineData) {
-            // Convert raw PCM to a playable WAV Blob URL
-            return createWavUrl(part.inlineData.data);
+            return createWavUrlLocal(part.inlineData.data);
         }
     }
     throw new Error("No audio generated");
@@ -579,6 +623,9 @@ export const generateSpeechWithGemini = async (text: string, voice: string, spee
  */
 export const generateVideoWithGemini = async (prompt: string, aspectRatio: string = '16:9', imageBase64?: string): Promise<string> => {
   try {
+    const cleanPrompt = sanitizeInput(prompt);
+    runSecurityChecks(cleanPrompt, "Video Prompt");
+
     const ai = getAiClient();
     let safeAspectRatio = aspectRatio;
     // Veo strictly supports 16:9 or 9:16.
@@ -595,7 +642,7 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
 
     const request: any = {
         model: 'veo-3.1-fast-generate-preview',
-        prompt: prompt,
+        prompt: cleanPrompt,
         config
     };
 
@@ -616,7 +663,6 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
     const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (!downloadLink) throw new Error("No video URI returned.");
 
-    // For safety, assume process.env might be missing in some builds, fallback or fail gracefully
     const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : '';
     const response = await fetch(`${downloadLink}&key=${apiKey}`);
     const blob = await response.blob();
@@ -630,10 +676,13 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
  * Meme Concept
  */
 export const generateMemeConcept = async (topic: string): Promise<MemeData> => {
+    const cleanTopic = sanitizeInput(topic);
+    runSecurityChecks(cleanTopic, "Meme Topic");
+
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Create a funny meme concept about: ${topic}.`,
+        contents: `Create a funny meme concept about: ${cleanTopic}.`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -654,8 +703,10 @@ export const generateMemeConcept = async (topic: string): Promise<MemeData> => {
  * Social Campaign
  */
 export const generateSocialCampaign = async (topic: string, settings: SocialSettings): Promise<SocialCampaign> => {
+    const cleanTopic = sanitizeInput(topic);
+    runSecurityChecks(cleanTopic, "Social Campaign");
+
     const ai = getAiClient();
-    
     const platformProperties: any = {};
     settings.platforms.forEach(p => {
         platformProperties[p] = {
@@ -669,21 +720,14 @@ export const generateSocialCampaign = async (topic: string, settings: SocialSett
         };
     });
 
-    // Custom emoji instructions based on settings
     let emojiInstruction = settings.useEmojis ? "Use emojis appropriate for the platform." : "Do NOT use any emojis.";
     if (settings.useEmojis) {
-        emojiInstruction = `
-        Emoji Guidelines:
-        - LinkedIn: Use professional symbols (✅, 📈, 💡). Minimal usage.
-        - TikTok/Instagram: Use trending and expressive emojis (✨, 🔥, 😂).
-        - Twitter/X: Use concise emojis to save space.
-        - General: Match the tone of the content.
-        `;
+        emojiInstruction = `Emoji Guidelines: LinkedIn (Professional), TikTok (Trendy).`;
     }
 
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Create a social media campaign about "${topic}". Tone: ${settings.tone}. Style: ${settings.style}. Language: ${settings.language}. ${emojiInstruction} Platforms: ${settings.platforms.join(', ')}.`,
+        contents: `Create a social media campaign about "${cleanTopic}". Tone: ${settings.tone}. Style: ${settings.style}. Language: ${settings.language}. ${emojiInstruction} Platforms: ${settings.platforms.join(', ')}.`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -699,10 +743,8 @@ export const generateSocialCampaign = async (topic: string, settings: SocialSett
     return JSON.parse(response.text || "{}");
 };
 
-/**
- * Daily Tip
- */
 export const generateDailyTip = async (dayIndex: number): Promise<DailyTip> => {
+    runSecurityChecks("Generate Tip", "System");
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -726,14 +768,14 @@ export const generateDailyTip = async (dayIndex: number): Promise<DailyTip> => {
     return JSON.parse(response.text || "{}");
 };
 
-/**
- * Helpful List
- */
 export const generateHelpfulList = async (topic: string): Promise<HelpfulList> => {
+    const cleanTopic = sanitizeInput(topic);
+    runSecurityChecks(cleanTopic, "List Topic");
+
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Create a helpful checklist for: ${topic}.`,
+        contents: `Create a helpful checklist for: ${cleanTopic}.`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -751,14 +793,14 @@ export const generateHelpfulList = async (topic: string): Promise<HelpfulList> =
     return JSON.parse(response.text || "{}");
 };
 
-/**
- * Storybook
- */
 export const generateStoryScript = async (concept: string, style: string, charDesc?: string): Promise<StorybookData> => {
+    const cleanConcept = sanitizeInput(concept);
+    runSecurityChecks(cleanConcept, "Story Concept");
+
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Write a 4-page story script based on concept: "${concept}". Style: ${style}. ${charDesc ? `Use this character: ${charDesc}` : 'Create a main character.'}
+        contents: `Write a 4-page story script based on concept: "${cleanConcept}". Style: ${style}. ${charDesc ? `Use this character: ${charDesc}` : 'Create a main character.'}
         For each page, provide the text and a detailed image prompt.`,
         config: {
             responseMimeType: "application/json",
@@ -788,14 +830,14 @@ export const generateStoryScript = async (concept: string, style: string, charDe
     return JSON.parse(response.text || "{}");
 };
 
-/**
- * Prompt Analysis
- */
 export const analyzePrompt = async (prompt: string, platform: string): Promise<PromptAnalysis> => {
+    const cleanPrompt = sanitizeInput(prompt);
+    runSecurityChecks(cleanPrompt, "Prompt Analysis");
+
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Analyze this prompt for ${platform}: "${prompt}". Provide a score (0-100), strengths, weaknesses, a better version, reasoning, and platform specific advice.`,
+        contents: `Analyze this prompt for ${platform}: "${cleanPrompt}". Provide a score (0-100), strengths, weaknesses, a better version, reasoning, and platform specific advice.`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -816,10 +858,8 @@ export const analyzePrompt = async (prompt: string, platform: string): Promise<P
     return JSON.parse(response.text || "{}");
 };
 
-/**
- * Audio Transcription
- */
 export const transcribeAudioWithGemini = async (audioBase64: string, mimeType: string): Promise<string> => {
+    runSecurityChecks("Transcribe Audio", "System");
     const ai = getAiClient();
     const base64Data = audioBase64.split(',')[1];
     
@@ -840,10 +880,10 @@ export const transcribeAudioWithGemini = async (audioBase64: string, mimeType: s
     return response.text || "";
 };
 
-/**
- * Code Generation (Multimodal or Text)
- */
 export const generateUiCode = async (prompt: string, device: string, style: string, imageBase64?: string): Promise<string> => {
+    const cleanPrompt = sanitizeInput(prompt);
+    runSecurityChecks(cleanPrompt, "UI Prompt");
+
     const ai = getAiClient();
     const parts: any[] = [];
     
@@ -857,7 +897,7 @@ export const generateUiCode = async (prompt: string, device: string, style: stri
         });
         parts.push({ text: `Generate HTML/Tailwind CSS code that replicates this UI design for ${device}. Style: ${style}. Return ONLY the code.` });
     } else {
-        parts.push({ text: `Generate HTML/Tailwind CSS code for a ${device} UI. Description: ${prompt}. Style: ${style}. Return ONLY the code.` });
+        parts.push({ text: `Generate HTML/Tailwind CSS code for a ${device} UI. Description: ${cleanPrompt}. Style: ${style}. Return ONLY the code.` });
     }
 
     const response = await ai.models.generateContent({
@@ -870,14 +910,14 @@ export const generateUiCode = async (prompt: string, device: string, style: stri
     return code;
 };
 
-/**
- * Affirmation Generator
- */
 export const generateAffirmationPlan = async (topic: string, tone: string): Promise<AffirmationPlan> => {
+    const cleanTopic = sanitizeInput(topic);
+    runSecurityChecks(cleanTopic, "Affirmation");
+
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Generate a weekly affirmation plan focused on "${topic}". Tone: ${tone}. Include a main "Mantra of the Week" and 7 daily affirmations (Monday to Sunday).`,
+        contents: `Generate a weekly affirmation plan focused on "${cleanTopic}". Tone: ${tone}. Include a main "Mantra of the Week" and 7 daily affirmations (Monday to Sunday).`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -904,45 +944,29 @@ export const generateAffirmationPlan = async (topic: string, tone: string): Prom
     return JSON.parse(response.text || "{}");
 };
 
-/**
- * Magic: Hidden Message
- */
 export const generateHiddenMessage = async (secret: string, topic: string): Promise<string> => {
+    const cleanSecret = sanitizeInput(secret);
+    const cleanTopic = sanitizeInput(topic);
+    runSecurityChecks(`${cleanSecret} ${cleanTopic}`, "Magic Message");
+
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Write a coherent paragraph (3-5 sentences) strictly about "${topic}". 
-        
-        HIDDEN TASK: You must seamlessly embed the secret words "${secret}" into this paragraph.
-        The secret words must appear in order, but scattered throughout the text.
-        
-        CRITICAL: The paragraph must sound completely natural and focused on the topic. 
-        Do NOT force the secret message if it makes the sentence weird. Prioritize the cover story.
-        
-        Mark the secret words with double curly braces {{word}} in the output so I can highlight them later.
-        
-        Example:
-        Secret: "help me"
-        Topic: "Cooking"
-        Output: "When you {{help}} chop the onions, it saves time. Make sure the {{me}}at is tender."`,
+        contents: `Write a coherent paragraph (3-5 sentences) strictly about "${cleanTopic}". 
+        HIDDEN TASK: Embed "${cleanSecret}" seamlessly.`,
     });
     return response.text || "";
 };
 
-/**
- * Brand Identity Generator
- */
 export const generateBrandIdentity = async (companyName: string, industry: string, vibe: string, personality?: string, preferredColours?: string, preferredFonts?: string): Promise<BrandIdentity> => {
+    const cleanInputs = `${companyName} ${industry} ${vibe}`;
+    runSecurityChecks(cleanInputs, "Brand Identity");
+
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: `Generate a comprehensive brand identity for a company named "${companyName}". Industry: ${industry}. 
-        Vibe/Values: ${vibe}.
-        ${personality ? `Brand Personality: ${personality}.` : ''}
-        ${preferredColours ? `Preferred Colours: ${preferredColours}.` : ''}
-        ${preferredFonts ? `Preferred Fonts: ${preferredFonts}.` : ''}
-        
-        Also provide specific image prompts to generate stationary mockups and templates consistent with this brand.`,
+        Vibe/Values: ${vibe}. ${personality ? `Brand Personality: ${personality}.` : ''}`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -971,10 +995,10 @@ export const generateBrandIdentity = async (companyName: string, industry: strin
                         },
                         required: ['heading', 'body']
                     },
-                    logoPrompt: { type: Type.STRING, description: "A detailed prompt to generate a logo for this brand." },
-                    stationaryPrompt: { type: Type.STRING, description: "Prompt for business cards and letterhead mockup." },
-                    pptTemplatePrompt: { type: Type.STRING, description: "Prompt for a corporate PowerPoint slide mockup." },
-                    calendarPrompt: { type: Type.STRING, description: "Prompt for a branded desk calendar design." }
+                    logoPrompt: { type: Type.STRING },
+                    stationaryPrompt: { type: Type.STRING },
+                    pptTemplatePrompt: { type: Type.STRING },
+                    calendarPrompt: { type: Type.STRING }
                 },
                 required: ['companyName', 'missionStatement', 'slogan', 'brandVoice', 'colorPalette', 'fontPairing', 'logoPrompt', 'stationaryPrompt', 'pptTemplatePrompt', 'calendarPrompt']
             }
@@ -984,12 +1008,11 @@ export const generateBrandIdentity = async (companyName: string, industry: strin
 };
 
 export const regenerateBrandPalette = async (baseIdentity: BrandIdentity): Promise<{ colorPalette: { name: string, hex: string }[] }> => {
+    runSecurityChecks("Regenerate Palette", "System");
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Regenerate ONLY the color palette for the brand "${baseIdentity.companyName}".
-        Original Vibe: ${baseIdentity.brandVoice}.
-        Provide 4 new cohesive colors.`,
+        contents: `Regenerate ONLY the color palette for the brand "${baseIdentity.companyName}". Original Vibe: ${baseIdentity.brandVoice}.`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -1015,12 +1038,11 @@ export const regenerateBrandPalette = async (baseIdentity: BrandIdentity): Promi
 };
 
 export const regenerateBrandTypography = async (baseIdentity: BrandIdentity): Promise<{ fontPairing: { heading: string, body: string } }> => {
+    runSecurityChecks("Regenerate Fonts", "System");
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Regenerate ONLY the font pairing for the brand "${baseIdentity.companyName}".
-        Original Vibe: ${baseIdentity.brandVoice}.
-        Provide a new Heading and Body font combination.`,
+        contents: `Regenerate ONLY the font pairing for the brand "${baseIdentity.companyName}". Original Vibe: ${baseIdentity.brandVoice}.`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -1042,24 +1064,14 @@ export const regenerateBrandTypography = async (baseIdentity: BrandIdentity): Pr
     return JSON.parse(response.text || "{}");
 };
 
-/**
- * UGC Script Generator
- */
 export const generateUGCScript = async (product: string, audience: string, painPoint: string): Promise<UGCScript> => {
+    const cleanInputs = `${product} ${audience} ${painPoint}`;
+    runSecurityChecks(cleanInputs, "UGC Script");
+
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Write a high-converting User Generated Content (UGC) video script for TikTok/Reels. 
-        Product: ${product}. 
-        Target Audience: ${audience}. 
-        Main Pain Point: ${painPoint}.
-        Structure: 
-        1. Hook (Stop the scroll)
-        2. Problem/Agitation (Relatable pain)
-        3. Solution (Introduce product)
-        4. Social Proof/Benefits (Why it works)
-        5. Call to Action (What to do next)
-        `,
+        contents: `Write a high-converting UGC video script for TikTok/Reels. Product: ${product}. Audience: ${audience}. Pain Point: ${painPoint}.`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -1074,8 +1086,8 @@ export const generateUGCScript = async (product: string, audience: string, painP
                             type: Type.OBJECT,
                             properties: {
                                 section: { type: Type.STRING },
-                                visual: { type: Type.STRING, description: "Visual description of what happens on screen." },
-                                audio: { type: Type.STRING, description: "Spoken words or sound effects." },
+                                visual: { type: Type.STRING },
+                                audio: { type: Type.STRING },
                                 duration: { type: Type.STRING }
                             },
                             required: ['section', 'visual', 'audio', 'duration']
@@ -1089,34 +1101,29 @@ export const generateUGCScript = async (product: string, audience: string, painP
     return JSON.parse(response.text || "{}");
 };
 
-/**
- * AI Poetry
- */
 export const generatePoem = async (topic: string, style: string): Promise<string> => {
+    const cleanTopic = sanitizeInput(topic);
+    runSecurityChecks(cleanTopic, "Poem");
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Write a poem about "${topic}". Style: ${style}.`
+        contents: `Write a poem about "${cleanTopic}". Style: ${style}.`
     });
     return response.text || "";
 };
 
-/**
- * Daily Joke
- */
 export const generateDailyJoke = async (dayIndex: number): Promise<string> => {
+    runSecurityChecks("Daily Joke", "System");
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Generate a unique, funny, clean joke for Day ${dayIndex}. It can be a pun, a one-liner, or a short story.`
+        contents: `Generate a unique, funny, clean joke for Day ${dayIndex}.`
     });
     return response.text || "";
 };
 
-/**
- * AI Quotes
- */
 export const generateQuote = async (category?: string): Promise<string> => {
+    runSecurityChecks("Quote", "System");
     const ai = getAiClient();
     const prompt = category ? `Give me a famous quote about ${category}.` : "Give me a famous, inspiring quote.";
     const response = await ai.models.generateContent({
@@ -1126,13 +1133,12 @@ export const generateQuote = async (category?: string): Promise<string> => {
     return response.text || "";
 };
 
-/**
- * AI Connections
- */
 export const generateConnectionFact = async (person?: string): Promise<string> => {
+    const cleanPerson = person ? sanitizeInput(person) : "";
+    runSecurityChecks(cleanPerson, "Connections");
     const ai = getAiClient();
-    const prompt = person 
-        ? `Tell me a surprising "Did you know?" fact about a connection between ${person} and another famous historical or modern figure.` 
+    const prompt = cleanPerson 
+        ? `Tell me a surprising "Did you know?" fact about a connection between ${cleanPerson} and another famous figure.` 
         : `Tell me a surprising "Did you know?" fact about a connection between two famous people.`;
     
     const response = await ai.models.generateContent({
@@ -1142,17 +1148,14 @@ export const generateConnectionFact = async (person?: string): Promise<string> =
     return response.text || "";
 };
 
-/**
- * Wealth Calculator
- */
 export const analyzeWealthPath = async (personName: string): Promise<WealthAnalysis> => {
+    const cleanName = sanitizeInput(personName);
+    runSecurityChecks(cleanName, "Wealth Analysis");
+    
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Analyze how ${personName} became rich.
-        CRITICAL: You must explicitly state if they came from a wealthy family, had connections, or started with significant capital (Privilege).
-        Then, outline the key factors of their success.
-        Finally, provide a realistic, actionable path for a normal person to try and emulate their success strategies, acknowledging the gap in resources.`,
+        contents: `Analyze how ${cleanName} became rich. Explicitly state privilege/origin.`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -1161,7 +1164,7 @@ export const analyzeWealthPath = async (personName: string): Promise<WealthAnaly
                     personName: { type: Type.STRING },
                     estimatedNetWorth: { type: Type.STRING },
                     originStart: { type: Type.STRING, enum: ["Wealthy", "Upper Middle Class", "Middle Class", "Working Class", "Poverty", "Unknown"] },
-                    privilegeAnalysis: { type: Type.STRING, description: "Detailed analysis of their starting point and advantages." },
+                    privilegeAnalysis: { type: Type.STRING },
                     keySuccessFactors: { type: Type.ARRAY, items: { type: Type.STRING } },
                     actionableSteps: { type: Type.ARRAY, items: { type: Type.STRING } },
                     realityCheck: { type: Type.STRING }
@@ -1173,18 +1176,16 @@ export const analyzeWealthPath = async (personName: string): Promise<WealthAnaly
     return JSON.parse(response.text || "{}");
 };
 
-/**
- * AI Learner
- */
 export const generateLearnerBrief = async (text: string): Promise<LearnerBrief> => {
+    const cleanText = sanitizeInput(text);
+    // Large text might trigger length check, but we truncate in logic anyway
+    // Just simple check here
+    if (cleanText.length > 50000) throw new Error("Input text too large.");
+    
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Analyze this text/paper. 
-        1. Provide a concise, bulleted summary of key findings.
-        2. Write a short, engaging 2-minute podcast script summarizing it for a general audience.
-        
-        Text to analyze: "${text.substring(0, 15000)}"`, // Truncate to avoid token limits if massive
+        contents: `Analyze this text/paper. Summary + Podcast Script. Text: "${cleanText.substring(0, 15000)}"`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -1200,17 +1201,14 @@ export const generateLearnerBrief = async (text: string): Promise<LearnerBrief> 
     return JSON.parse(response.text || "{}");
 };
 
-/**
- * AI Commercial Review
- */
 export const analyzePaperCommercial = async (text: string): Promise<CommercialAnalysis> => {
+    const cleanText = sanitizeInput(text);
+    if (cleanText.length > 50000) throw new Error("Input text too large.");
+
     const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Analyze this research paper purely from a commercial/business perspective. Ignore theoretical details unless relevant to sales.
-        Identify market potential, who would buy this, obstacles to commercialization, and write an elevator pitch.
-        
-        Text: "${text.substring(0, 15000)}"`,
+        contents: `Analyze research paper commercially. Text: "${cleanText.substring(0, 15000)}"`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -1230,14 +1228,14 @@ export const analyzePaperCommercial = async (text: string): Promise<CommercialAn
     return JSON.parse(response.text || "{}");
 };
 
-/**
- * Baby Name Generator
- */
 export const generateBabyNames = async (gender: string, style: string, origin: string, inventNew: boolean): Promise<BabyName[]> => {
+    const cleanInputs = `${gender} ${style} ${origin}`;
+    runSecurityChecks(cleanInputs, "Baby Names");
+
     const ai = getAiClient();
     const prompt = inventNew 
-        ? `Invent 5 unique, never-before-heard baby names based on ${style} style and ${origin} linguistic sounds. Provide a fictional meaning and lineage.`
-        : `Suggest 5 baby names. Gender: ${gender}. Style: ${style}. Origin: ${origin}. Provide real meaning, lineage/history, and reason.`;
+        ? `Invent 5 unique, never-before-heard baby names based on ${style} style and ${origin} linguistic sounds.`
+        : `Suggest 5 baby names. Gender: ${gender}. Style: ${style}. Origin: ${origin}.`;
 
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',

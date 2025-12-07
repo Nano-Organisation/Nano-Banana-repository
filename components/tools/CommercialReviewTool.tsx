@@ -1,13 +1,38 @@
 
-import React, { useState } from 'react';
-import { Briefcase, RefreshCw, TrendingUp, AlertTriangle, Target, DollarSign } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Briefcase, RefreshCw, TrendingUp, AlertTriangle, Target, DollarSign, Upload } from 'lucide-react';
 import { analyzePaperCommercial } from '../../services/geminiService';
 import { LoadingState, CommercialAnalysis } from '../../types';
+import { extractTextFromPDF } from '../../utils/pdfParser';
 
 const CommercialReviewTool: React.FC = () => {
   const [text, setText] = useState('');
   const [data, setData] = useState<CommercialAnalysis | null>(null);
   const [status, setStatus] = useState<LoadingState>('idle');
+  const [isParsing, setIsParsing] = useState(false);
+  
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+        alert('Please upload a valid PDF file.');
+        return;
+    }
+
+    setIsParsing(true);
+    try {
+        const extracted = await extractTextFromPDF(file);
+        setText(extracted);
+    } catch (err) {
+        console.error(err);
+        alert('Failed to read PDF. Please try copying the text manually.');
+    }
+    setIsParsing(false);
+    if (fileRef.current) fileRef.current.value = '';
+  };
 
   const handleAnalyze = async () => {
     if (!text.trim()) return;
@@ -34,10 +59,23 @@ const CommercialReviewTool: React.FC = () => {
       </div>
 
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-4">
+         <div className="flex justify-between items-center">
+             <label className="text-sm font-bold text-slate-500 uppercase">Paper Content</label>
+             <button 
+                onClick={() => fileRef.current?.click()}
+                className="text-xs flex items-center gap-1 text-blue-500 hover:text-blue-400 font-bold bg-blue-500/10 px-3 py-1.5 rounded-lg transition-colors"
+                disabled={isParsing}
+             >
+                {isParsing ? <RefreshCw className="w-3 h-3 animate-spin"/> : <Upload className="w-3 h-3" />}
+                {isParsing ? 'Reading...' : 'Upload PDF'}
+             </button>
+             <input type="file" ref={fileRef} onChange={handleFileUpload} accept=".pdf" className="hidden" />
+         </div>
+
          <textarea 
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Paste research paper abstract or content here..."
+            placeholder="Paste research paper abstract, upload PDF, or enter text here..."
             className="w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 h-40 resize-none"
          />
          <button
