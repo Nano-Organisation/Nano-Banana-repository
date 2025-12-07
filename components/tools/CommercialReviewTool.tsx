@@ -4,6 +4,7 @@ import { Briefcase, RefreshCw, TrendingUp, AlertTriangle, Target, DollarSign, Up
 import { analyzePaperCommercial } from '../../services/geminiService';
 import { LoadingState, CommercialAnalysis } from '../../types';
 import { extractTextFromPDF } from '../../utils/pdfParser';
+import { runFileSecurityChecks } from '../../utils/security';
 
 const CommercialReviewTool: React.FC = () => {
   const [text, setText] = useState('');
@@ -17,18 +18,14 @@ const CommercialReviewTool: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.type !== 'application/pdf') {
-        alert('Please upload a valid PDF file.');
-        return;
-    }
-
-    setIsParsing(true);
     try {
+        await runFileSecurityChecks(file, 'pdf');
+        setIsParsing(true);
         const extracted = await extractTextFromPDF(file);
         setText(extracted);
-    } catch (err) {
+    } catch (err: any) {
         console.error(err);
-        alert('Failed to read PDF. Please try copying the text manually.');
+        alert(err.message || 'Failed to read PDF.');
     }
     setIsParsing(false);
     if (fileRef.current) fileRef.current.value = '';

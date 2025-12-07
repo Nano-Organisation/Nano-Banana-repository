@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Film, Download, RefreshCw, Lock, Smartphone, Monitor, Image as ImageIcon, Square, Upload } from 'lucide-react';
 import { generateVideoWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
+import { runFileSecurityChecks } from '../../utils/security';
 
 const GifGenerator: React.FC = () => {
   const [prompt, setPrompt] = useState('');
@@ -18,7 +19,6 @@ const GifGenerator: React.FC = () => {
     checkKey();
   }, []);
 
-  // Access aistudio from window with loose typing to avoid conflicts with global types
   const getAIStudio = () => (window as any).aistudio;
 
   const checkKey = async () => {
@@ -39,22 +39,27 @@ const GifGenerator: React.FC = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-        const reader = new FileReader();
-        reader.onload = () => setInputImage(reader.result as string);
-        reader.readAsDataURL(file);
+        try {
+            await runFileSecurityChecks(file, 'image');
+            const reader = new FileReader();
+            reader.onload = () => setInputImage(reader.result as string);
+            reader.readAsDataURL(file);
+        } catch (err: any) {
+            alert(err.message);
+            e.target.value = '';
+        }
     }
   };
 
   const handleGenerate = async () => {
-    if (!prompt.trim() && !inputImage) return; // Allow generation if only image + prompt
+    if (!prompt.trim() && !inputImage) return; 
     setStatus('loading');
     setVideoUrl(null);
     
     const aiStudio = getAIStudio();
-    // Safety check just before call
     if (aiStudio && !(await aiStudio.hasSelectedApiKey())) {
        setStatus('error');
        setHasKey(false);
@@ -62,7 +67,6 @@ const GifGenerator: React.FC = () => {
     }
 
     try {
-      // Use image as base if provided
       const finalPrompt = prompt || (inputImage ? "Animate this image" : "");
       const url = await generateVideoWithGemini(finalPrompt, aspectRatio, inputImage || undefined);
       setVideoUrl(url);
@@ -122,7 +126,6 @@ const GifGenerator: React.FC = () => {
       </div>
 
       <div className="flex flex-col md:flex-row gap-6">
-        {/* Input */}
         <div className="flex-1 space-y-4">
           <div className="flex justify-between items-center">
             <label className="block text-sm font-medium text-slate-400">Format</label>
@@ -154,7 +157,6 @@ const GifGenerator: React.FC = () => {
             </div>
           </div>
           
-          {/* Image Upload for Video */}
           <div 
              onClick={() => fileRef.current?.click()}
              className={`
@@ -202,7 +204,6 @@ const GifGenerator: React.FC = () => {
           </button>
         </div>
 
-        {/* Output */}
         <div className={`
           flex-1 bg-slate-900 rounded-2xl border border-slate-700 overflow-hidden flex items-center justify-center relative group transition-all mx-auto
           ${aspectRatio === '9:16' ? 'aspect-[9/16] max-w-sm w-full' : aspectRatio === '1:1' ? 'aspect-square max-w-md w-full' : 'aspect-video w-full'}
@@ -215,7 +216,6 @@ const GifGenerator: React.FC = () => {
             </div>
           ) : videoUrl ? (
             <>
-              {/* Loop the video to simulate a GIF */}
               <video 
                 src={videoUrl} 
                 autoPlay 

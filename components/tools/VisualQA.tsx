@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { Eye, Send, Upload, RefreshCw, Copy, Check, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { analyzeImageWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
+import { runFileSecurityChecks } from '../../utils/security';
 
 const VisualQA: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
@@ -13,16 +14,22 @@ const VisualQA: React.FC = () => {
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result as string);
-        setAnswer('');
-        setStatus('idle');
-      };
-      reader.readAsDataURL(file);
+      try {
+        await runFileSecurityChecks(file, 'image');
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImage(reader.result as string);
+          setAnswer('');
+          setStatus('idle');
+        };
+        reader.readAsDataURL(file);
+      } catch (err: any) {
+        alert(err.message);
+        e.target.value = '';
+      }
     }
   };
 

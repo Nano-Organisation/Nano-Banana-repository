@@ -4,6 +4,7 @@ import { Bot, Mic, MicOff, Image as ImageIcon, Send, RefreshCw, Settings, Trash2
 import { Chat } from "@google/genai";
 import { createChatSession } from '../../services/geminiService';
 import { ChatMessage, LoadingState } from '../../types';
+import { runFileSecurityChecks } from '../../utils/security';
 
 interface AssistantConfig {
   name: string;
@@ -33,7 +34,6 @@ const AssistantCreator: React.FC = () => {
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- Voice Setup ---
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -85,12 +85,18 @@ const AssistantCreator: React.FC = () => {
     setMode('create');
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = () => setInputImage(reader.result as string);
-      reader.readAsDataURL(file);
+      try {
+        await runFileSecurityChecks(file, 'image');
+        const reader = new FileReader();
+        reader.onload = () => setInputImage(reader.result as string);
+        reader.readAsDataURL(file);
+      } catch (err: any) {
+        alert(err.message);
+        e.target.value = '';
+      }
     }
   };
 
@@ -103,13 +109,12 @@ const AssistantCreator: React.FC = () => {
     if ((!inputValue.trim() && !inputImage) || !chatSessionRef.current || status === 'loading') return;
 
     const userText = inputValue.trim();
-    const currentImage = inputImage; // Capture image state
+    const currentImage = inputImage; 
     
     setInputValue('');
     setInputImage(null);
     setStatus('loading');
 
-    // Add user message to UI
     setMessages(prev => [...prev, { 
       role: 'user', 
       text: userText, 
@@ -118,9 +123,6 @@ const AssistantCreator: React.FC = () => {
 
     try {
       let response;
-      
-      // Construct message payload
-      // Note: We use the SDK's loose typing for message content to support parts
       if (currentImage) {
         const base64Data = currentImage.split(',')[1];
         const parts = [
@@ -212,7 +214,6 @@ const AssistantCreator: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4 h-[calc(100vh-140px)] flex flex-col animate-fade-in">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-slate-900/50 rounded-xl border border-slate-800 backdrop-blur-sm flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
@@ -232,7 +233,6 @@ const AssistantCreator: React.FC = () => {
         </button>
       </div>
 
-      {/* Chat Area */}
       <div className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl relative">
         <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
           {messages.map((msg, idx) => (
@@ -277,7 +277,6 @@ const AssistantCreator: React.FC = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
         <div className="p-4 bg-slate-950 border-t border-slate-800">
           {inputImage && (
             <div className="mb-3 flex items-center gap-3 bg-slate-900 w-fit px-3 py-2 rounded-lg border border-slate-800 animate-fade-in-up">
@@ -293,7 +292,7 @@ const AssistantCreator: React.FC = () => {
               onClick={() => {
                 setMessages([]);
                 chatSessionRef.current = null;
-                handleCreate(); // Re-init
+                handleCreate(); 
               }}
               className="p-3 text-slate-400 hover:text-white hover:bg-slate-900 rounded-xl transition-colors mb-[2px]"
               title="Clear Chat"

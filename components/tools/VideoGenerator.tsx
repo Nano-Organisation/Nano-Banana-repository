@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Film, Download, RefreshCw, Lock, Smartphone, Monitor, Upload, Video, AlertTriangle } from 'lucide-react';
 import { generateVideoWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
+import { runFileSecurityChecks } from '../../utils/security';
 
 const VideoGenerator: React.FC = () => {
   const [prompt, setPrompt] = useState('');
@@ -39,19 +40,24 @@ const VideoGenerator: React.FC = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-        const reader = new FileReader();
-        reader.onload = () => setInputImage(reader.result as string);
-        reader.readAsDataURL(file);
+        try {
+            await runFileSecurityChecks(file, 'image');
+            const reader = new FileReader();
+            reader.onload = () => setInputImage(reader.result as string);
+            reader.readAsDataURL(file);
+        } catch (err: any) {
+            alert(err.message);
+            e.target.value = '';
+        }
     }
   };
 
   const handleGenerate = async () => {
     if (!prompt.trim() && !inputImage) return;
     
-    // API Check
     const aiStudio = getAIStudio();
     if (aiStudio && !(await aiStudio.hasSelectedApiKey())) {
        handleSelectKey();
@@ -113,11 +119,9 @@ const VideoGenerator: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Controls */}
         <div className="space-y-6">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-6">
              
-             {/* Ratios */}
              <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase">Aspect Ratio</label>
                 <div className="flex gap-3">
@@ -142,7 +146,6 @@ const VideoGenerator: React.FC = () => {
                 </div>
              </div>
 
-             {/* Image Upload */}
              <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase">Input Image (Optional)</label>
                 <div 
@@ -175,7 +178,6 @@ const VideoGenerator: React.FC = () => {
                 </div>
              </div>
 
-             {/* Prompt */}
              <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase">Prompt</label>
                 <textarea
@@ -197,7 +199,6 @@ const VideoGenerator: React.FC = () => {
           </div>
         </div>
 
-        {/* Output */}
         <div className="flex flex-col justify-center">
            {status === 'loading' ? (
               <div className="text-center space-y-4 p-8 bg-slate-900/50 border border-slate-800 border-dashed rounded-2xl">

@@ -4,6 +4,7 @@ import { BookOpen, Mic, Play, RefreshCw, FileText, Upload, AlertCircle } from 'l
 import { generateLearnerBrief, generateSpeechWithGemini } from '../../services/geminiService';
 import { LoadingState, LearnerBrief } from '../../types';
 import { extractTextFromPDF } from '../../utils/pdfParser';
+import { runFileSecurityChecks } from '../../utils/security';
 
 const LearnerTool: React.FC = () => {
   const [text, setText] = useState('');
@@ -19,21 +20,16 @@ const LearnerTool: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.type !== 'application/pdf') {
-        alert('Please upload a valid PDF file.');
-        return;
-    }
-
-    setIsParsing(true);
     try {
+        await runFileSecurityChecks(file, 'pdf');
+        setIsParsing(true);
         const extracted = await extractTextFromPDF(file);
         setText(extracted);
-    } catch (err) {
+    } catch (err: any) {
         console.error(err);
-        alert('Failed to read PDF. Please try copying the text manually.');
+        alert(err.message || 'Failed to read PDF.');
     }
     setIsParsing(false);
-    // Reset input
     if (fileRef.current) fileRef.current.value = '';
   };
 

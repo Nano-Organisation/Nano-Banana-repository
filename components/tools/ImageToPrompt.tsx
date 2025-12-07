@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, Image as ImageIcon, RefreshCw, Copy, Check, Scan, Eye } from 'lucide-react';
 import { generateImagePrompt } from '../../services/geminiService';
 import { LoadingState } from '../../types';
+import { runFileSecurityChecks } from '../../utils/security';
 
 const PLATFORMS = ['Description', 'Midjourney', 'Stable Diffusion', 'DALL-E 3'];
 
@@ -14,16 +15,22 @@ const ImageToPrompt: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result as string);
-        setOutput('');
-        setStatus('idle');
-      };
-      reader.readAsDataURL(file);
+      try {
+        await runFileSecurityChecks(file, 'image');
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImage(reader.result as string);
+          setOutput('');
+          setStatus('idle');
+        };
+        reader.readAsDataURL(file);
+      } catch (err: any) {
+        alert(err.message);
+        e.target.value = '';
+      }
     }
   };
 
@@ -61,7 +68,6 @@ const ImageToPrompt: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Upload Section */}
         <div className="space-y-6">
           <div 
             onClick={() => fileRef.current?.click()}
@@ -121,7 +127,6 @@ const ImageToPrompt: React.FC = () => {
           </button>
         </div>
 
-        {/* Result Section */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col relative">
           <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800">
             <h3 className="font-bold text-white flex items-center gap-2">

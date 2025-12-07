@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { FileAudio, Upload, RefreshCw, Copy, Check, FileText, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { transcribeAudioWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
+import { runFileSecurityChecks } from '../../utils/security';
 
 const AudioTranscriber: React.FC = () => {
   const [audioFile, setAudioFile] = useState<string | null>(null);
@@ -14,25 +15,26 @@ const AudioTranscriber: React.FC = () => {
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check file size (Gemini has limits, keep it reasonable for client-side demo, e.g. < 20MB)
-      if (file.size > 20 * 1024 * 1024) {
-        alert("File size too large. Please upload an audio file smaller than 20MB.");
-        return;
+      try {
+        await runFileSecurityChecks(file, 'audio');
+        
+        setFileName(file.name);
+        setMimeType(file.type);
+        
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setAudioFile(reader.result as string);
+          setTranscript('');
+          setStatus('idle');
+        };
+        reader.readAsDataURL(file);
+      } catch (err: any) {
+        alert(err.message);
+        e.target.value = '';
       }
-
-      setFileName(file.name);
-      setMimeType(file.type);
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAudioFile(reader.result as string);
-        setTranscript('');
-        setStatus('idle');
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -133,7 +135,7 @@ const AudioTranscriber: React.FC = () => {
             </h3>
             {transcript && (
                <div className="flex items-center gap-3">
-                  <div className="flex bg-slate-950 rounded-lg p-0.5 border border-slate-800">
+                  <div className="flex bg-slate-900 rounded-lg p-0.5 border border-slate-800">
                     <button 
                       onClick={() => toggleFeedback('up')} 
                       className={`p-1.5 rounded hover:bg-slate-800 transition-colors ${feedback === 'up' ? 'text-green-500' : 'text-slate-500'}`}

@@ -4,6 +4,7 @@ import { Upload, Wand2, Download, RefreshCw, Image as ImageIcon } from 'lucide-r
 import { editImageWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 import { addWatermarkToImage } from '../../utils/watermark';
+import { runFileSecurityChecks } from '../../utils/security';
 
 const ImageEditor: React.FC = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
@@ -12,16 +13,22 @@ const ImageEditor: React.FC = () => {
   const [status, setStatus] = useState<LoadingState>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setOriginalImage(reader.result as string);
-        setResultImage(null);
-        setStatus('idle');
-      };
-      reader.readAsDataURL(file);
+      try {
+        await runFileSecurityChecks(file, 'image');
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setOriginalImage(reader.result as string);
+          setResultImage(null);
+          setStatus('idle');
+        };
+        reader.readAsDataURL(file);
+      } catch (err: any) {
+        alert(err.message);
+        e.target.value = ''; // Reset input
+      }
     }
   };
 
@@ -94,7 +101,7 @@ const ImageEditor: React.FC = () => {
                   <Upload className="w-6 h-6 text-slate-400" />
                 </div>
                 <p className="font-medium text-slate-300">Upload an image</p>
-                <p className="text-sm text-slate-500">PNG, JPG up to 5MB</p>
+                <p className="text-sm text-slate-500">PNG, JPG up to 10MB</p>
               </div>
             )}
             <input 
