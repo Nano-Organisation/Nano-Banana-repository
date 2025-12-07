@@ -43,14 +43,18 @@ import BrandCollateralTool from './components/tools/BrandCollateralTool';
 import UGCAdsTool from './components/tools/UGCAdsTool';
 import LiveNotetaker from './components/tools/LiveNotetaker';
 import StudioTool from './components/tools/StudioTool';
-// New Imports
 import PoetryTool from './components/tools/PoetryTool';
 import DailyJokeTool from './components/tools/DailyJokeTool';
 import QuoteTool from './components/tools/QuoteTool';
 import ConnectionsTool from './components/tools/ConnectionsTool';
 import WealthCalculator from './components/tools/WealthCalculator';
+// New Imports
+import LearnerTool from './components/tools/LearnerTool';
+import CommercialReviewTool from './components/tools/CommercialReviewTool';
+import MeetingBooker from './components/tools/MeetingBooker';
+import BabyNameTool from './components/tools/BabyNameTool';
 
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign, CalendarCheck, Baby } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -81,6 +85,42 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.Learner,
+    title: "AI Learner",
+    description: "Summarize papers and turn them into podcasts.",
+    icon: BookOpen,
+    color: "emerald",
+    gradient: "from-emerald-500 to-green-600",
+    releaseDate: '2025-12-09'
+  },
+  {
+    id: ToolId.CommercialReview,
+    title: "AI Commercial",
+    description: "Analyze research papers for market viability.",
+    icon: DollarSign,
+    color: "blue",
+    gradient: "from-blue-600 to-indigo-700",
+    releaseDate: '2025-12-09'
+  },
+  {
+    id: ToolId.MeetingBooker,
+    title: "AI Meet",
+    description: "Book meetings without storing any data.",
+    icon: CalendarCheck,
+    color: "cyan",
+    gradient: "from-cyan-500 to-sky-600",
+    releaseDate: '2025-12-09'
+  },
+  {
+    id: ToolId.BabyNames,
+    title: "AI Names",
+    description: "Suggest or invent names with deep lineage.",
+    icon: Baby,
+    color: "pink",
+    gradient: "from-pink-400 to-rose-500",
+    releaseDate: '2025-12-09'
   },
   {
     id: ToolId.LiveNotetaker,
@@ -537,6 +577,14 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.Learner:
+        return <LearnerTool />;
+      case ToolId.CommercialReview:
+        return <CommercialReviewTool />;
+      case ToolId.MeetingBooker:
+        return <MeetingBooker />;
+      case ToolId.BabyNames:
+        return <BabyNameTool />;
       case ToolId.LiveNotetaker:
         return <LiveNotetaker />;
       case ToolId.BrandCollateral:

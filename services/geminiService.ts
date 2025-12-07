@@ -4,7 +4,7 @@ import {
   MemeData, QuizData, RiddleData, StorybookData, SocialSettings, 
   SocialCampaign, PromptAnalysis, DailyTip, HelpfulList, PodcastScript,
   EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, AffirmationPlan,
-  BrandIdentity, UGCScript, WealthAnalysis
+  BrandIdentity, UGCScript, WealthAnalysis, CommercialAnalysis, BabyName, LearnerBrief
 } from "../types";
 
 const getAiClient = () => {
@@ -1171,4 +1171,95 @@ export const analyzeWealthPath = async (personName: string): Promise<WealthAnaly
         }
     });
     return JSON.parse(response.text || "{}");
+};
+
+/**
+ * AI Learner
+ */
+export const generateLearnerBrief = async (text: string): Promise<LearnerBrief> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Analyze this text/paper. 
+        1. Provide a concise, bulleted summary of key findings.
+        2. Write a short, engaging 2-minute podcast script summarizing it for a general audience.
+        
+        Text to analyze: "${text.substring(0, 15000)}"`, // Truncate to avoid token limits if massive
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    summary: { type: Type.STRING },
+                    podcastScript: { type: Type.STRING }
+                },
+                required: ['summary', 'podcastScript']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+/**
+ * AI Commercial Review
+ */
+export const analyzePaperCommercial = async (text: string): Promise<CommercialAnalysis> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Analyze this research paper purely from a commercial/business perspective. Ignore theoretical details unless relevant to sales.
+        Identify market potential, who would buy this, obstacles to commercialization, and write an elevator pitch.
+        
+        Text: "${text.substring(0, 15000)}"`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    title: { type: Type.STRING },
+                    marketPotential: { type: Type.STRING },
+                    monetizationStrategies: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    targetIndustries: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    commercialHurdles: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    elevatorPitch: { type: Type.STRING }
+                },
+                required: ['title', 'marketPotential', 'monetizationStrategies', 'targetIndustries', 'commercialHurdles', 'elevatorPitch']
+            }
+        }
+    });
+    return JSON.parse(response.text || "{}");
+};
+
+/**
+ * Baby Name Generator
+ */
+export const generateBabyNames = async (gender: string, style: string, origin: string, inventNew: boolean): Promise<BabyName[]> => {
+    const ai = getAiClient();
+    const prompt = inventNew 
+        ? `Invent 5 unique, never-before-heard baby names based on ${style} style and ${origin} linguistic sounds. Provide a fictional meaning and lineage.`
+        : `Suggest 5 baby names. Gender: ${gender}. Style: ${style}. Origin: ${origin}. Provide real meaning, lineage/history, and reason.`;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.ARRAY,
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        name: { type: Type.STRING },
+                        gender: { type: Type.STRING },
+                        origin: { type: Type.STRING },
+                        meaning: { type: Type.STRING },
+                        lineage: { type: Type.STRING },
+                        reason: { type: Type.STRING }
+                    },
+                    required: ['name', 'gender', 'origin', 'meaning', 'lineage', 'reason']
+                }
+            }
+        }
+    });
+    return JSON.parse(response.text || "[]");
 };

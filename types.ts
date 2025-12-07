@@ -48,7 +48,11 @@ export enum ToolId {
   DailyJoke = 'DAILY_JOKE',
   Quotes = 'QUOTES',
   Connections = 'CONNECTIONS',
-  WealthCalculator = 'WEALTH_CALCULATOR'
+  WealthCalculator = 'WEALTH_CALCULATOR',
+  Learner = 'LEARNER',
+  CommercialReview = 'COMMERCIAL_REVIEW',
+  MeetingBooker = 'MEETING_BOOKER',
+  BabyNames = 'BABY_NAMES'
 }
 
 export interface ToolConfig {
@@ -245,4 +249,27 @@ export interface WealthAnalysis {
   keySuccessFactors: string[];
   actionableSteps: string[]; // Steps for a normal person
   realityCheck: string; // The "gap" between them and us
+}
+
+export interface CommercialAnalysis {
+  title: string;
+  marketPotential: string;
+  monetizationStrategies: string[];
+  targetIndustries: string[];
+  commercialHurdles: string[];
+  elevatorPitch: string;
+}
+
+export interface BabyName {
+  name: string;
+  gender: string;
+  origin: string;
+  meaning: string;
+  lineage: string; // Historical context
+  reason: string; // Why it was suggested
+}
+
+export interface LearnerBrief {
+  summary: string; // Bulleted summary
+  podcastScript: string; // Script for TTS
 }
