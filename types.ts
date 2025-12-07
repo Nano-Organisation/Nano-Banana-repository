@@ -52,7 +52,8 @@ export enum ToolId {
   Learner = 'LEARNER',
   CommercialReview = 'COMMERCIAL_REVIEW',
   MeetingBooker = 'MEETING_BOOKER',
-  BabyNames = 'BABY_NAMES'
+  BabyNames = 'BABY_NAMES',
+  AetherEdit = 'AETHER_EDIT'
 }
 
 export interface ToolConfig {

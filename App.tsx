@@ -53,8 +53,9 @@ import LearnerTool from './components/tools/LearnerTool';
 import CommercialReviewTool from './components/tools/CommercialReviewTool';
 import MeetingBooker from './components/tools/MeetingBooker';
 import BabyNameTool from './components/tools/BabyNameTool';
+import AetherEditTool from './components/tools/AetherEditTool';
 
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign, CalendarCheck, Baby } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign, CalendarCheck, Baby, Clapperboard } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -85,6 +86,15 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.AetherEdit,
+    title: "AetherEdit",
+    description: "AI-Powered Video & Sound Editor with real-time effects.",
+    icon: Clapperboard,
+    color: "cyan",
+    gradient: "from-cyan-500 to-blue-600",
+    releaseDate: '2025-12-10'
   },
   {
     id: ToolId.Learner,
@@ -577,6 +587,8 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.AetherEdit:
+        return <AetherEditTool />;
       case ToolId.Learner:
         return <LearnerTool />;
       case ToolId.CommercialReview:
