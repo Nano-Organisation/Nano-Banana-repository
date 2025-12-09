@@ -53,7 +53,8 @@ export enum ToolId {
   CommercialReview = 'COMMERCIAL_REVIEW',
   MeetingBooker = 'MEETING_BOOKER',
   BabyNames = 'BABY_NAMES',
-  AetherEdit = 'AETHER_EDIT'
+  AetherEdit = 'AETHER_EDIT',
+  AI360 = 'AI_360'
 }
 
 export interface ToolConfig {
@@ -273,4 +274,13 @@ export interface BabyName {
 export interface LearnerBrief {
   summary: string; // Bulleted summary
   podcastScript: string; // Script for TTS
+}
+
+export interface AI360Response {
+  status: "accepted" | "rejected" | "needs_clarification";
+  reason: string;
+  safety_categories: string[];
+  clarification_question: string | null;
+  generation_prompt: string | null;
+  style: "realistic" | "stylized" | "neutral" | null;
 }

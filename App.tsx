@@ -54,8 +54,9 @@ import CommercialReviewTool from './components/tools/CommercialReviewTool';
 import MeetingBooker from './components/tools/MeetingBooker';
 import BabyNameTool from './components/tools/BabyNameTool';
 import AetherEditTool from './components/tools/AetherEditTool';
+import AI360Tool from './components/tools/AI360Tool';
 
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign, CalendarCheck, Baby, Clapperboard } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign, CalendarCheck, Baby, Clapperboard, Box } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -86,6 +87,15 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.AI360,
+    title: "AI 360",
+    description: "3D-GEN Orchestrator for structured 3D prompts.",
+    icon: Box,
+    color: "blue",
+    gradient: "from-blue-600 to-indigo-700",
+    releaseDate: '2025-12-10'
   },
   {
     id: ToolId.AetherEdit,
@@ -587,6 +597,8 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.AI360:
+        return <AI360Tool />;
       case ToolId.AetherEdit:
         return <AetherEditTool />;
       case ToolId.Learner:
