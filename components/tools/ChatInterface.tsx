@@ -210,13 +210,29 @@ const ChatInterface: React.FC = () => {
               </div>
               
               <div className="flex flex-col gap-1 max-w-[80%]">
+                {/* Thinking Indicator Label for Model Messages */}
+                {msg.role === 'model' && msg.isThinking && (
+                   <div className="flex items-center gap-1.5 ml-1 mb-0.5 opacity-90 animate-fade-in">
+                      <BrainCircuit className="w-3 h-3 text-purple-400" />
+                      <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Thought Process</span>
+                   </div>
+                )}
+
                 <div className={`
-                  rounded-2xl px-5 py-3 text-sm leading-relaxed whitespace-pre-wrap shadow-md
+                  rounded-2xl px-5 py-3 text-sm leading-relaxed whitespace-pre-wrap shadow-md relative group
                   ${msg.role === 'user' 
                     ? 'bg-slate-800 text-slate-100 rounded-tr-none' 
-                    : 'bg-slate-950/50 border border-slate-800 text-slate-300 rounded-tl-none'}
+                    : msg.isThinking
+                        ? 'bg-purple-900/10 border border-purple-500/30 text-purple-100 rounded-tl-none shadow-[0_0_10px_rgba(168,85,247,0.05)]'
+                        : 'bg-slate-950/50 border border-slate-800 text-slate-300 rounded-tl-none'}
                 `}>
                   {msg.text}
+                  {/* Subtle pulse indicator for thinking messages */}
+                  {msg.role === 'model' && msg.isThinking && (
+                    <div className="absolute top-3 right-3 opacity-30">
+                       <BrainCircuit className="w-4 h-4 text-purple-500" />
+                    </div>
+                  )}
                 </div>
                 
                 {msg.role === 'model' && (
@@ -247,11 +263,21 @@ const ChatInterface: React.FC = () => {
                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg ${isThinkingMode ? 'bg-purple-600' : 'bg-green-600'}`}>
                  <Bot className="w-5 h-5 text-white" />
                </div>
-               <div className="bg-slate-950/50 border border-slate-800 rounded-2xl rounded-tl-none px-5 py-4 flex items-center gap-2">
-                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                 {isThinkingMode && <span className="text-xs text-purple-400 ml-2 animate-pulse">Reasoning...</span>}
+               <div className={`
+                  rounded-2xl rounded-tl-none px-5 py-4 flex items-center gap-3
+                  ${isThinkingMode ? 'bg-purple-900/10 border border-purple-500/20' : 'bg-slate-950/50 border border-slate-800'}
+               `}>
+                 <div className="flex gap-1">
+                    <div className={`w-2 h-2 rounded-full animate-bounce ${isThinkingMode ? 'bg-purple-400' : 'bg-slate-500'}`} style={{ animationDelay: '0ms' }}></div>
+                    <div className={`w-2 h-2 rounded-full animate-bounce ${isThinkingMode ? 'bg-purple-400' : 'bg-slate-500'}`} style={{ animationDelay: '150ms' }}></div>
+                    <div className={`w-2 h-2 rounded-full animate-bounce ${isThinkingMode ? 'bg-purple-400' : 'bg-slate-500'}`} style={{ animationDelay: '300ms' }}></div>
+                 </div>
+                 {isThinkingMode && (
+                    <div className="flex items-center gap-2 border-l border-purple-500/30 pl-3">
+                       <BrainCircuit className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+                       <span className="text-xs font-medium text-purple-300 animate-pulse">Deep Reasoning...</span>
+                    </div>
+                 )}
                </div>
             </div>
           )}
