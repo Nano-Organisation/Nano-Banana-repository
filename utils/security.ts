@@ -113,7 +113,7 @@ export const runSecurityChecks = (input: string, context: string = "Input"): voi
 // FILE SECURITY SECTION
 // ==========================================
 
-const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_MB = 50;
 
 /**
  * Check file size
@@ -142,15 +142,15 @@ export const scanForMalwarePatterns = (file: File): boolean => {
  * Magic Number Validation
  * Reads the first few bytes of the file to ensure the content matches the extension.
  */
-export const validateMagicNumbers = async (file: File, type: 'image' | 'pdf' | 'audio'): Promise<boolean> => {
+export const validateMagicNumbers = async (file: File, type: 'image' | 'pdf' | 'audio' | 'video'): Promise<boolean> => {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onloadend = (e) => {
       if (!e.target?.result) return resolve(false);
-      const arr = (new Uint8Array(e.target.result as ArrayBuffer)).subarray(0, 4);
+      const arr = new Uint8Array(e.target.result as ArrayBuffer);
       let header = "";
       for (let i = 0; i < arr.length; i++) {
-        header += arr[i].toString(16).toUpperCase();
+        header += arr[i].toString(16).toUpperCase().padStart(2, '0');
       }
 
       // Signatures
@@ -160,6 +160,7 @@ export const validateMagicNumbers = async (file: File, type: 'image' | 'pdf' | '
       // GIF: 47 49 46 38
       // ID3 (MP3): 49 44 33
       // RIFF (WAV): 52 49 46 46
+      // WebM: 1A 45 DF A3
       
       if (type === 'pdf') {
         resolve(header.startsWith("25504446"));
@@ -174,13 +175,24 @@ export const validateMagicNumbers = async (file: File, type: 'image' | 'pdf' | '
         resolve(
           header.startsWith("494433") || // MP3 ID3
           header.startsWith("52494646") || // WAV RIFF
-          header.startsWith("FFF") // MP3 Frame Sync (often FFFB or FFF3)
+          header.startsWith("FFF") // MP3 Frame Sync
         );
+      } else if (type === 'video') {
+        // WebM
+        if (header.startsWith("1A45DFA3")) return resolve(true);
+        
+        // MP4/MOV usually have 'ftyp' starting at byte 4 (index 4..7)
+        // Check bytes 4-7 for 'ftyp' (Hex: 66 74 79 70)
+        // Note: header string has 2 chars per byte. Index 4 is char index 8.
+        const ftyp = header.substring(8, 16);
+        if (ftyp === "66747970") return resolve(true);
+        
+        resolve(false);
       } else {
         resolve(true);
       }
     };
-    reader.readAsArrayBuffer(file.slice(0, 4));
+    reader.readAsArrayBuffer(file.slice(0, 12));
   });
 };
 
@@ -205,7 +217,7 @@ export const validateImageDimensions = (file: File): Promise<boolean> => {
 /**
  * Master File Security Check
  */
-export const runFileSecurityChecks = async (file: File, type: 'image' | 'pdf' | 'audio'): Promise<void> => {
+export const runFileSecurityChecks = async (file: File, type: 'image' | 'pdf' | 'audio' | 'video'): Promise<void> => {
   if (!validateFileSize(file)) {
     throw new Error(`Security Alert: File too large. Max size is ${MAX_FILE_SIZE_MB}MB.`);
   }
@@ -215,9 +227,16 @@ export const runFileSecurityChecks = async (file: File, type: 'image' | 'pdf' | 
   }
 
   const isValidMagic = await validateMagicNumbers(file, type);
-  // Audio magic numbers are flaky in browser, so we're lenient there, but strict for PDF/Images
+  // Audio/Video magic numbers can be complex, usually we are strict for PDF/Images
+  // But strictness helps security. 
   if (!isValidMagic && type !== 'audio') { 
-    throw new Error(`Security Alert: File type mismatch. The file content does not match its extension.`);
+     // We are slightly lenient on audio as before, but strict on video/image/pdf
+     if (type === 'video') {
+        throw new Error(`Security Alert: Invalid video file format. Supported formats: MP4, MOV, WebM.`);
+     }
+     if (type === 'image' || type === 'pdf') {
+        throw new Error(`Security Alert: File type mismatch. The file content does not match its extension.`);
+     }
   }
 
   if (type === 'image') {

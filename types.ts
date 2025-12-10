@@ -54,7 +54,10 @@ export enum ToolId {
   MeetingBooker = 'MEETING_BOOKER',
   BabyNames = 'BABY_NAMES',
   AetherEdit = 'AETHER_EDIT',
-  AI360 = 'AI_360'
+  AI360 = 'AI_360',
+  DreamInterpreter = 'DREAM_INTERPRETER',
+  LinkedInCarousel = 'LINKEDIN_CAROUSEL',
+  CalendarCreator = 'CALENDAR_CREATOR'
 }
 
 export interface ToolConfig {
@@ -283,4 +286,24 @@ export interface AI360Response {
   clarification_question: string | null;
   generation_prompt: string | null;
   style: "realistic" | "stylized" | "neutral" | null;
+}
+
+export interface DreamAnalysis {
+  title: string;
+  interpretation: string;
+  symbols: string[];
+  visualPrompt: string;
+  lucidityScore: number;
+}
+
+export interface CarouselSlide {
+  title: string;
+  content: string;
+  type: 'intro' | 'content' | 'outro';
+}
+
+export interface CarouselData {
+  topic: string;
+  authorHandle: string;
+  slides: CarouselSlide[];
 }

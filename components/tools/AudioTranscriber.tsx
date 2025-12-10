@@ -1,14 +1,15 @@
 
 import React, { useState, useRef } from 'react';
-import { FileAudio, Upload, RefreshCw, Copy, Check, FileText, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { transcribeAudioWithGemini } from '../../services/geminiService';
+import { FileAudio, Upload, RefreshCw, Copy, Check, FileText, ThumbsUp, ThumbsDown, Video } from 'lucide-react';
+import { transcribeMediaWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
 
 const AudioTranscriber: React.FC = () => {
-  const [audioFile, setAudioFile] = useState<string | null>(null);
+  const [mediaFile, setMediaFile] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
+  const [fileType, setFileType] = useState<'audio' | 'video'>('audio');
   const [transcript, setTranscript] = useState('');
   const [status, setStatus] = useState<LoadingState>('idle');
   const [copied, setCopied] = useState(false);
@@ -19,14 +20,16 @@ const AudioTranscriber: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        await runFileSecurityChecks(file, 'audio');
+        const type = file.type.startsWith('video') ? 'video' : 'audio';
+        await runFileSecurityChecks(file, type);
         
         setFileName(file.name);
         setMimeType(file.type);
+        setFileType(type);
         
         const reader = new FileReader();
         reader.onloadend = () => {
-          setAudioFile(reader.result as string);
+          setMediaFile(reader.result as string);
           setTranscript('');
           setStatus('idle');
         };
@@ -39,11 +42,11 @@ const AudioTranscriber: React.FC = () => {
   };
 
   const handleTranscribe = async () => {
-    if (!audioFile) return;
+    if (!mediaFile) return;
     setStatus('loading');
     setFeedback(null);
     try {
-      const result = await transcribeAudioWithGemini(audioFile, mimeType);
+      const result = await transcribeMediaWithGemini(mediaFile, mimeType);
       setTranscript(result);
       setStatus('success');
     } catch (e) {
@@ -67,13 +70,13 @@ const AudioTranscriber: React.FC = () => {
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
-          <FileAudio className="w-8 h-8 text-sky-500" />
-          Nano Scribe
+          {fileType === 'video' ? <Video className="w-8 h-8 text-sky-500" /> : <FileAudio className="w-8 h-8 text-sky-500" />}
+          AI Media Scribe
           <span className="text-xs font-normal bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 px-2 py-1 rounded-full border border-sky-200 dark:border-sky-800 ml-2">
              Model: gemini-2.5-flash
           </span>
         </h2>
-        <p className="text-slate-600 dark:text-slate-400">Accurate audio transcription powered by Gemini.</p>
+        <p className="text-slate-600 dark:text-slate-400">Accurate audio & video transcription powered by Gemini.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -84,19 +87,19 @@ const AudioTranscriber: React.FC = () => {
             onClick={() => fileRef.current?.click()}
             className={`
               aspect-square rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative transition-all
-              ${audioFile ? 'border-sky-500 bg-sky-900/10' : 'border-slate-700 hover:border-sky-500 hover:bg-slate-800'}
+              ${mediaFile ? 'border-sky-500 bg-sky-900/10' : 'border-slate-700 hover:border-sky-500 hover:bg-slate-800'}
             `}
           >
-            {audioFile ? (
+            {mediaFile ? (
               <div className="text-center p-6 space-y-2">
                 <div className="w-16 h-16 bg-sky-500/20 text-sky-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <FileAudio className="w-8 h-8" />
+                  {fileType === 'video' ? <Video className="w-8 h-8" /> : <FileAudio className="w-8 h-8" />}
                 </div>
                 <p className="font-bold text-sky-400 truncate max-w-[200px]">{fileName}</p>
                 <button 
                    onClick={(e) => {
                       e.stopPropagation();
-                      setAudioFile(null);
+                      setMediaFile(null);
                       setTranscript('');
                       if (fileRef.current) fileRef.current.value = '';
                    }}
@@ -110,16 +113,16 @@ const AudioTranscriber: React.FC = () => {
                 <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-2">
                   <Upload className="w-8 h-8 text-slate-400" />
                 </div>
-                <p className="font-medium text-slate-300">Upload Audio</p>
-                <p className="text-xs text-slate-500">MP3, WAV, M4A</p>
+                <p className="font-medium text-slate-300">Upload Media</p>
+                <p className="text-xs text-slate-500">Audio (MP3, WAV) or Video (MP4, MOV)</p>
               </div>
             )}
-            <input type="file" ref={fileRef} className="hidden" onChange={handleUpload} accept="audio/*" />
+            <input type="file" ref={fileRef} className="hidden" onChange={handleUpload} accept="audio/*,video/*" />
           </div>
 
           <button 
             onClick={handleTranscribe}
-            disabled={!audioFile || status === 'loading'}
+            disabled={!mediaFile || status === 'loading'}
             className="w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-sky-900/20"
           >
             {status === 'loading' ? <RefreshCw className="animate-spin" /> : <FileText />}
@@ -165,7 +168,7 @@ const AudioTranscriber: React.FC = () => {
             {status === 'loading' ? (
               <div className="flex flex-col items-center justify-center h-full space-y-4">
                  <div className="w-12 h-12 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
-                 <p className="text-sky-400 animate-pulse">Listening and transcribing...</p>
+                 <p className="text-sky-400 animate-pulse">Processing media and transcribing...</p>
               </div>
             ) : transcript ? (
               <div className="prose prose-invert prose-sm max-w-none">
@@ -173,8 +176,8 @@ const AudioTranscriber: React.FC = () => {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-slate-600 text-center">
-                 <FileAudio className="w-16 h-16 opacity-20 mb-4" />
-                 <p>Upload an audio file to see the transcription here.</p>
+                 {fileType === 'video' ? <Video className="w-16 h-16 opacity-20 mb-4" /> : <FileAudio className="w-16 h-16 opacity-20 mb-4" />}
+                 <p>Upload a file to see the transcription here.</p>
               </div>
             )}
           </div>
