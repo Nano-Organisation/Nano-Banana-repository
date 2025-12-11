@@ -1,6 +1,6 @@
 
-import React, { useState, useRef } from 'react';
-import { Box, Upload, Send, RefreshCw, AlertTriangle, CheckCircle, HelpCircle, Copy, Video, Play } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Box, Upload, Send, RefreshCw, AlertTriangle, CheckCircle, HelpCircle, Copy, Video, Play, Lock } from 'lucide-react';
 import { generate3DOrchestration, generateVideoWithGemini } from '../../services/geminiService';
 import { LoadingState, AI360Response } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
@@ -12,9 +12,36 @@ const AI360Tool: React.FC = () => {
   const [status, setStatus] = useState<LoadingState>('idle');
   const [videoStatus, setVideoStatus] = useState<LoadingState>('idle');
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [hasKey, setHasKey] = useState(false);
   
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    checkKey();
+  }, []);
+
+  const getAIStudio = () => (window as any).aistudio;
+
+  const checkKey = async () => {
+    const aiStudio = getAIStudio();
+    if (aiStudio) {
+      const selected = await aiStudio.hasSelectedApiKey();
+      setHasKey(!!selected);
+    } else {
+      // Fallback for dev environments without the wrapper
+      setHasKey(true);
+    }
+  };
+
+  const handleSelectKey = async () => {
+    const aiStudio = getAIStudio();
+    if (aiStudio) {
+      await aiStudio.openSelectKey();
+      await checkKey();
+    }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -39,14 +66,16 @@ const AI360Tool: React.FC = () => {
     setResult(null);
     setPreviewVideoUrl(null);
     setVideoStatus('idle');
+    setErrorMessage(null);
 
     try {
       const data = await generate3DOrchestration(input, image || undefined);
       setResult(data);
       setStatus('success');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       setStatus('error');
+      setErrorMessage(e.message || "Failed to analyze request.");
     }
   };
 
@@ -58,18 +87,43 @@ const AI360Tool: React.FC = () => {
     }
   };
 
-  // Optional: Use Veo to visualize the prompt as a rotating video
+  // Use Veo to visualize the prompt as a rotating video
   const handleGeneratePreview = async () => {
     if (!result?.generation_prompt) return;
+    
+    // API Key Check
+    const aiStudio = getAIStudio();
+    if (aiStudio && !(await aiStudio.hasSelectedApiKey())) {
+       await handleSelectKey();
+       // Re-check after dialog closes
+       if (!(await aiStudio.hasSelectedApiKey())) return;
+       setHasKey(true);
+    }
+
     setVideoStatus('loading');
+    setErrorMessage(null);
+    setPreviewVideoUrl(null);
+    
     try {
       // Veo works best with 16:9 for cinematic rotation
-      const url = await generateVideoWithGemini(result.generation_prompt, '16:9');
-      setPreviewVideoUrl(url);
+      const previewPrompt = `Cinematic 360 degree turntable rotation video of: ${result.generation_prompt}. High resolution, neutral studio lighting, seamless loop.`;
+      
+      const generatedUrl = await generateVideoWithGemini(previewPrompt, '16:9');
+      
+      // Fetch Blob to handle potential auth/network errors before display
+      const response = await fetch(generatedUrl);
+      if (!response.ok) {
+         throw new Error(`Failed to load video. Status: ${response.status}. Please check your API key permissions.`);
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      
+      setPreviewVideoUrl(objectUrl);
       setVideoStatus('success');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       setVideoStatus('error');
+      setErrorMessage(e.message || "Failed to generate preview video. Please try again.");
     }
   };
 
@@ -111,7 +165,7 @@ const AI360Tool: React.FC = () => {
                <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Describe the 3D object you want to generate..."
+                  placeholder="Describe the 3D object you want to generate (e.g. 'A futuristic combat helmet')..."
                   className="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-24"
                />
             </div>
@@ -125,6 +179,14 @@ const AI360Tool: React.FC = () => {
                Validate & Orchestrate
             </button>
          </div>
+
+         {/* Error Display */}
+         {errorMessage && (
+            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-center gap-3 text-red-400">
+               <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+               <p className="text-sm">{errorMessage}</p>
+            </div>
+         )}
 
          {/* Result Area */}
          {result && (
@@ -181,39 +243,46 @@ const AI360Tool: React.FC = () => {
                {result.status === 'accepted' && result.generation_prompt && (
                   <div className="space-y-4">
                      <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 relative group">
+                        <div className="text-xs text-slate-500 font-bold uppercase mb-2">Orchestrated 3D Prompt</div>
                         <p className="font-mono text-sm text-green-300 whitespace-pre-wrap">{result.generation_prompt}</p>
                         <button 
                            onClick={handleCopyPrompt}
                            className="absolute top-2 right-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white p-2 rounded-lg transition-colors"
+                           title="Copy Prompt"
                         >
                            {copied ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                         </button>
                      </div>
                      
                      {/* Preview Button using Veo */}
-                     {!previewVideoUrl && (
+                     {!previewVideoUrl && videoStatus !== 'loading' && (
                         <button 
                            onClick={handleGeneratePreview}
-                           disabled={videoStatus === 'loading'}
-                           className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl border border-slate-700 flex items-center justify-center gap-2 transition-colors"
+                           className={`w-full font-bold py-3 rounded-xl border flex items-center justify-center gap-2 transition-colors ${
+                              !hasKey 
+                              ? 'bg-slate-800 border-amber-500/50 text-amber-500 hover:bg-slate-700' 
+                              : 'bg-slate-800 hover:bg-slate-700 text-white border-slate-700'
+                           }`}
                         >
-                           {videoStatus === 'loading' ? <RefreshCw className="animate-spin w-4 h-4" /> : <Video className="w-4 h-4" />}
+                           {!hasKey ? <Lock className="w-4 h-4" /> : <Video className="w-4 h-4" />}
                            Generate 3D Preview (Veo)
                         </button>
                      )}
 
                      {videoStatus === 'loading' && (
-                        <div className="text-center text-sm text-slate-400 animate-pulse">
-                           Rendering 360° rotation preview...
+                        <div className="text-center text-sm text-slate-400 animate-pulse bg-slate-950/50 p-6 rounded-xl border border-slate-800 border-dashed flex flex-col items-center gap-2">
+                           <RefreshCw className="w-8 h-8 animate-spin text-blue-500"/>
+                           <p>Rendering and Downloading Preview...</p>
+                           <p className="text-xs opacity-50">This may take up to a minute.</p>
                         </div>
                      )}
 
                      {previewVideoUrl && (
-                        <div className="aspect-video bg-black rounded-xl overflow-hidden border border-slate-800 relative group">
-                           <video src={previewVideoUrl} autoPlay loop muted playsInline className="w-full h-full object-contain" />
-                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <span className="bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
-                                 AI 360 Preview
+                        <div className="aspect-video bg-black rounded-xl overflow-hidden border border-slate-800 relative group shadow-2xl">
+                           <video src={previewVideoUrl} autoPlay loop muted playsInline controls className="w-full h-full object-contain" />
+                           <div className="absolute top-2 left-2 pointer-events-none">
+                              <span className="bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded backdrop-blur-sm border border-white/10">
+                                 AI 360 PREVIEW
                               </span>
                            </div>
                         </div>

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Download, RefreshCw, ChevronLeft, ChevronRight, Image as ImageIcon, Type, Palette, CheckCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, RefreshCw, ChevronLeft, ChevronRight, Image as ImageIcon, Type, Palette, CheckCircle, Plus, X, Trash2, Settings } from 'lucide-react';
 import { generateCalendarThemeImage } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 import jsPDF from 'jspdf';
@@ -30,8 +30,10 @@ const HOLIDAYS: Record<string, { month: number, day: number, name: string }[]> =
   global: [
     { month: 0, day: 1, name: "New Year's Day" },
     { month: 1, day: 14, name: "Valentine's Day" },
+    { month: 2, day: 17, name: "St. Patrick's Day" },
     { month: 9, day: 31, name: "Halloween" },
-    { month: 11, day: 25, name: "Christmas" },
+    { month: 10, day: 11, name: "Remembrance Day" },
+    { month: 11, day: 25, name: "Christmas Day" },
     { month: 11, day: 31, name: "New Year's Eve" }
   ]
 };
@@ -43,9 +45,16 @@ const CalendarCreator: React.FC = () => {
   const [selectedStyle, setSelectedStyle] = useState('claymation');
   const [selectedFont, setSelectedFont] = useState('sans');
   const [showImage, setShowImage] = useState(true);
+  const [showHolidays, setShowHolidays] = useState(true);
   
   const [headerImage, setHeaderImage] = useState<string | null>(null);
   const [imageStatus, setImageStatus] = useState<LoadingState>('idle');
+
+  // Custom Events State
+  // Key format: "YYYY-MM-DD"
+  const [events, setEvents] = useState<Record<string, string[]>>({});
+  const [activeDay, setActiveDay] = useState<number | null>(null); // Day currently being edited
+  const [newEventText, setNewEventText] = useState('');
 
   // Computed Properties
   const styleConfig = STYLES.find(s => s.id === selectedStyle) || STYLES[0];
@@ -69,12 +78,14 @@ const CalendarCreator: React.FC = () => {
     calendarGrid.push(i);
   }
 
+  const getEventKey = (day: number) => `${year}-${month}-${day}`;
+
   // --- Image Generation ---
   const handleGenerateImage = async () => {
     if (!showImage) return;
     setImageStatus('loading');
     try {
-      const img = await generateCalendarThemeImage(MONTHS[month], selectedStyle);
+      const img = await generateCalendarThemeImage(MONTHS[month], year, selectedStyle);
       setHeaderImage(img);
       setImageStatus('success');
     } catch (e) {
@@ -83,16 +94,30 @@ const CalendarCreator: React.FC = () => {
     }
   };
 
-  // Auto-generate image when style/month changes if image mode is on
-  useEffect(() => {
-    if (showImage && imageStatus !== 'loading') {
-       // Debounce slightly or just let user click generate? 
-       // For better UX, let's make it manual or explicit trigger to save API calls, 
-       // but initially empty.
-       // Let's reset the image when month changes so they know to regenerate or keep old
-       // setHeaderImage(null); 
-    }
-  }, [month, selectedStyle]);
+  // --- Event Management ---
+  const handleAddEvent = () => {
+    if (!activeDay || !newEventText.trim()) return;
+    const key = getEventKey(activeDay);
+    setEvents(prev => ({
+      ...prev,
+      [key]: [...(prev[key] || []), newEventText.trim()]
+    }));
+    setNewEventText('');
+  };
+
+  const handleDeleteEvent = (day: number, idx: number) => {
+    const key = getEventKey(day);
+    setEvents(prev => {
+      const currentList = [...(prev[key] || [])];
+      currentList.splice(idx, 1);
+      if (currentList.length === 0) {
+        const newState = { ...prev };
+        delete newState[key];
+        return newState;
+      }
+      return { ...prev, [key]: currentList };
+    });
+  };
 
   const nextMonth = () => {
     if (month === 11) {
@@ -112,7 +137,15 @@ const CalendarCreator: React.FC = () => {
     }
   };
 
+  const handleDateInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.value) return;
+    const [y, m] = e.target.value.split('-');
+    setYear(parseInt(y));
+    setMonth(parseInt(m) - 1); // Input month is 1-based, JS is 0-based
+  };
+
   const getHoliday = (day: number) => {
+    if (!showHolidays) return null;
     return HOLIDAYS.global.find(h => h.month === month && h.day === day);
   };
 
@@ -173,17 +206,39 @@ const CalendarCreator: React.FC = () => {
        
        // Day Number
        doc.setFontSize(12);
+       doc.setFont('helvetica', 'normal');
+       doc.setTextColor(styleConfig.text);
        doc.text(dayCount.toString(), currentX + 2, currentY + 6);
+
+       let contentY = currentY + 12;
 
        // Holiday?
        const hol = getHoliday(dayCount);
        if (hol) {
           doc.setFontSize(7);
-          doc.setTextColor(200, 0, 0);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(200, 0, 0); // Red for holidays
           const splitText = doc.splitTextToSize(hol.name, cellWidth - 4);
-          doc.text(splitText, currentX + 2, currentY + 15);
-          doc.setTextColor(styleConfig.text);
+          doc.text(splitText, currentX + 2, contentY);
+          contentY += (splitText.length * 3) + 2;
+          doc.setTextColor(styleConfig.text); // Reset color
        }
+
+       // Custom Events
+       const key = getEventKey(dayCount);
+       const dayEvents = events[key] || [];
+       dayEvents.forEach(evt => {
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0, 0, 150); // Dark Blue for user events
+          const splitText = doc.splitTextToSize(evt, cellWidth - 4);
+          
+          // Check for overflow (simple check)
+          if (contentY + (splitText.length * 3) < currentY + cellHeight) {
+             doc.text(splitText, currentX + 2, contentY);
+             contentY += (splitText.length * 3) + 1;
+          }
+       });
 
        dayCount++;
        currentX += cellWidth;
@@ -204,14 +259,14 @@ const CalendarCreator: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
+    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in relative">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <CalendarIcon className="w-8 h-8 text-indigo-500" />
           AI Calendar
         </h2>
         <div className="flex flex-col items-center gap-1">
-           <p className="text-slate-600 dark:text-slate-400">Design custom monthly calendars with AI-generated art.</p>
+           <p className="text-slate-600 dark:text-slate-400">Design custom calendars with holidays and personal events.</p>
            <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
               Model: gemini-2.5-flash-image
            </span>
@@ -224,14 +279,23 @@ const CalendarCreator: React.FC = () => {
         <div className="lg:col-span-1 space-y-6">
            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-6">
               
-              {/* Navigation */}
-              <div className="flex items-center justify-between bg-slate-950 p-2 rounded-xl border border-slate-800">
-                 <button onClick={prevMonth} className="p-2 hover:bg-slate-800 rounded-lg text-white transition-colors"><ChevronLeft /></button>
-                 <div className="text-center">
-                    <div className="font-bold text-white text-lg">{MONTHS[month]}</div>
-                    <div className="text-xs text-slate-400 font-mono">{year}</div>
+              {/* Date Selection */}
+              <div className="space-y-2">
+                 <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">Target Month</label>
+                 <div className="flex gap-2">
+                    <button onClick={prevMonth} className="p-3 bg-slate-950 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors">
+                       <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <input 
+                       type="month" 
+                       value={`${year}-${(month + 1).toString().padStart(2, '0')}`}
+                       onChange={handleDateInput}
+                       className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 text-white text-sm focus:outline-none focus:border-indigo-500 font-mono"
+                    />
+                    <button onClick={nextMonth} className="p-3 bg-slate-950 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors">
+                       <ChevronRight className="w-4 h-4" />
+                    </button>
                  </div>
-                 <button onClick={nextMonth} className="p-2 hover:bg-slate-800 rounded-lg text-white transition-colors"><ChevronRight /></button>
               </div>
 
               {/* Style Selector */}
@@ -251,10 +315,33 @@ const CalendarCreator: React.FC = () => {
                  </div>
               </div>
 
-              {/* Font & Toggle */}
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2"><Type className="w-3 h-3"/> Font</label>
+              {/* Toggles */}
+              <div className="space-y-3">
+                 <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2"><Settings className="w-3 h-3"/> Options</label>
+                 
+                 <div className="flex items-center justify-between bg-slate-950 p-3 rounded-lg border border-slate-700">
+                    <span className="text-sm text-slate-300">Show Image</span>
+                    <button 
+                       onClick={() => setShowImage(!showImage)}
+                       className={`w-10 h-5 rounded-full relative transition-colors ${showImage ? 'bg-green-500' : 'bg-slate-700'}`}
+                    >
+                       <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${showImage ? 'translate-x-5' : ''}`}></div>
+                    </button>
+                 </div>
+
+                 <div className="flex items-center justify-between bg-slate-950 p-3 rounded-lg border border-slate-700">
+                    <span className="text-sm text-slate-300">International Holidays</span>
+                    <button 
+                       onClick={() => setShowHolidays(!showHolidays)}
+                       className={`w-10 h-5 rounded-full relative transition-colors ${showHolidays ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                    >
+                       <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${showHolidays ? 'translate-x-5' : ''}`}></div>
+                    </button>
+                 </div>
+                 
+                 {/* Font Selector */}
+                 <div className="space-y-1 pt-2">
+                    <label className="text-[10px] font-bold text-slate-600 uppercase">Font Family</label>
                     <select 
                        value={selectedFont} 
                        onChange={(e) => setSelectedFont(e.target.value)}
@@ -262,15 +349,6 @@ const CalendarCreator: React.FC = () => {
                     >
                        {FONTS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
                     </select>
-                 </div>
-                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2"><ImageIcon className="w-3 h-3"/> Header Image</label>
-                    <button 
-                       onClick={() => setShowImage(!showImage)}
-                       className={`w-full py-2 rounded-lg text-xs font-bold transition-all border ${showImage ? 'bg-green-600 border-green-500 text-white' : 'bg-slate-950 border-slate-700 text-slate-400'}`}
-                    >
-                       {showImage ? 'Enabled' : 'Disabled'}
-                    </button>
                  </div>
               </div>
 
@@ -282,7 +360,7 @@ const CalendarCreator: React.FC = () => {
                     className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg"
                  >
                     {imageStatus === 'loading' ? <RefreshCw className="animate-spin w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
-                    Generate {MONTHS[month]} Art
+                    Generate Theme Art
                  </button>
               )}
 
@@ -337,6 +415,8 @@ const CalendarCreator: React.FC = () => {
                     {calendarGrid.map((day, i) => {
                        if (!day) return <div key={i} className="aspect-square"></div>;
                        const holiday = getHoliday(day);
+                       const eventKey = getEventKey(day);
+                       const dayEvents = events[eventKey] || [];
                        
                        // Specific Styles
                        const isClay = selectedStyle === 'claymation';
@@ -345,20 +425,33 @@ const CalendarCreator: React.FC = () => {
                        return (
                           <div 
                              key={i} 
+                             onClick={() => setActiveDay(day)}
                              className={`
-                                aspect-square p-2 relative flex flex-col justify-between transition-all hover:scale-105
-                                ${isClay ? 'rounded-2xl shadow-[inset_-2px_-2px_6px_rgba(0,0,0,0.1),inset_2px_2px_6px_rgba(255,255,255,0.5)] bg-opacity-50' : ''}
+                                aspect-square p-2 relative flex flex-col transition-all cursor-pointer group
+                                ${isClay ? 'rounded-2xl shadow-[inset_-2px_-2px_6px_rgba(0,0,0,0.1),inset_2px_2px_6px_rgba(255,255,255,0.5)] bg-opacity-50 hover:bg-opacity-80' : ''}
                                 ${isCyber ? 'border border-cyan-500/30 rounded bg-slate-900/50 hover:border-cyan-400 hover:shadow-[0_0_10px_rgba(34,211,238,0.3)]' : ''}
-                                ${selectedStyle === 'minimal' ? 'border border-gray-200' : ''}
-                                ${selectedStyle === 'corporate' ? 'bg-white shadow-sm border border-slate-100 rounded' : ''}
+                                ${selectedStyle === 'minimal' ? 'border border-gray-200 hover:bg-gray-50' : ''}
+                                ${selectedStyle === 'corporate' ? 'bg-white shadow-sm border border-slate-100 rounded hover:shadow-md' : ''}
+                                ${selectedStyle === 'watercolor' ? 'hover:bg-orange-50' : ''}
                              `}
                           >
-                             <span className="font-bold text-lg">{day}</span>
-                             {holiday && (
-                                <span className={`text-[8px] leading-tight font-bold ${isCyber ? 'text-pink-500' : 'text-red-500'}`}>
-                                   {holiday.name}
-                                </span>
-                             )}
+                             <span className="font-bold text-lg leading-none">{day}</span>
+                             
+                             <div className="flex-1 overflow-hidden mt-1 flex flex-col justify-end">
+                                {holiday && (
+                                   <span className={`text-[9px] leading-tight font-bold truncate mb-0.5 ${isCyber ? 'text-pink-500' : 'text-red-500'}`}>
+                                      {holiday.name}
+                                   </span>
+                                )}
+                                {dayEvents.map((evt, idx) => (
+                                   <div key={idx} className={`h-1.5 w-full rounded-full mb-0.5 ${isCyber ? 'bg-cyan-500' : 'bg-indigo-400'}`} title={evt}></div>
+                                ))}
+                             </div>
+                             
+                             {/* Hover Hint */}
+                             <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100">
+                                <Plus className="w-3 h-3 opacity-50" />
+                             </div>
                           </div>
                        );
                     })}
@@ -368,6 +461,70 @@ const CalendarCreator: React.FC = () => {
         </div>
 
       </div>
+
+      {/* EVENT MODAL */}
+      {activeDay !== null && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-4">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+               <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                     <CalendarIcon className="w-4 h-4 text-indigo-500" />
+                     {MONTHS[month]} {activeDay}, {year}
+                  </h3>
+                  <button onClick={() => setActiveDay(null)} className="text-slate-500 hover:text-white transition-colors">
+                     <X className="w-5 h-5" />
+                  </button>
+               </div>
+               
+               <div className="p-4 space-y-4">
+                  {/* Add Event Form */}
+                  <div className="flex gap-2">
+                     <input 
+                        value={newEventText}
+                        onChange={(e) => setNewEventText(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddEvent()}
+                        placeholder="Add event..."
+                        className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+                        autoFocus
+                     />
+                     <button 
+                        onClick={handleAddEvent}
+                        disabled={!newEventText.trim()}
+                        className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white p-2 rounded-lg transition-colors"
+                     >
+                        <Plus className="w-5 h-5" />
+                     </button>
+                  </div>
+
+                  {/* List Events */}
+                  <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                     {getHoliday(activeDay) && (
+                        <div className="bg-red-900/20 border border-red-500/20 p-2 rounded-lg flex items-center gap-2 text-red-300 text-xs font-bold">
+                           <CheckCircle className="w-3 h-3" /> {getHoliday(activeDay)?.name} (Holiday)
+                        </div>
+                     )}
+                     
+                     {(events[getEventKey(activeDay)] || []).map((evt, idx) => (
+                        <div key={idx} className="bg-slate-800 p-2 rounded-lg flex justify-between items-center text-sm text-slate-300 group">
+                           <span>{evt}</span>
+                           <button 
+                              onClick={() => handleDeleteEvent(activeDay, idx)}
+                              className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                           >
+                              <Trash2 className="w-4 h-4" />
+                           </button>
+                        </div>
+                     ))}
+                     
+                     {!getHoliday(activeDay) && (!events[getEventKey(activeDay)] || events[getEventKey(activeDay)].length === 0) && (
+                        <p className="text-center text-slate-600 text-xs py-4">No events scheduled.</p>
+                     )}
+                  </div>
+               </div>
+            </div>
+         </div>
+      )}
+
     </div>
   );
 };

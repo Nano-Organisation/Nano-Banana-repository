@@ -529,7 +529,11 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
     const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (!downloadLink) throw new Error("Video generation failed.");
     
-    return `${downloadLink}&key=${process.env.API_KEY}`;
+    // Safely get the API key from process.env if available
+    const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : '';
+    if (!apiKey) throw new Error("API Key is missing for video download.");
+
+    return `${downloadLink}&key=${apiKey}`;
 };
 
 export const generateSpeechWithGemini = async (text: string, voiceName: string, speed: number = 1.0, pitch: number = 0, multiSpeaker?: any): Promise<string> => {
@@ -565,18 +569,21 @@ export const generateSpeechWithGemini = async (text: string, voiceName: string, 
     return `data:audio/wav;base64,${base64Audio}`; 
 };
 
-export const generateCalendarThemeImage = async (month: string, style: string): Promise<string> => {
+export const generateCalendarThemeImage = async (month: string, year: number, style: string): Promise<string> => {
     const cleanStyle = sanitizeInput(style);
     let prompt = "";
+    const timeContext = `${month} ${year}`;
     
     if (cleanStyle.toLowerCase().includes("claymation")) {
-        prompt = `A cute, high-quality claymation scene for the month of ${month}. Soft rounded clay textures, plasticine style, bright pastel colors, stop-motion aesthetic, miniature world feel.`;
+        prompt = `A cute, high-quality claymation scene for ${timeContext}. Soft rounded clay textures, plasticine style, bright pastel colors, stop-motion aesthetic, miniature world feel. If text is included, it must say "${year}".`;
     } else if (cleanStyle.toLowerCase().includes("cyberpunk")) {
-        prompt = `Futuristic cyberpunk cityscape for the month of ${month}. Neon lights, dark atmosphere, glowing calendar grid holograms, high tech, cinematic.`;
+        prompt = `Futuristic cyberpunk cityscape for ${timeContext}. Neon lights, dark atmosphere, glowing calendar grid holograms, high tech, cinematic. If text is included, it must say "${year}".`;
     } else if (cleanStyle.toLowerCase().includes("watercolor")) {
-        prompt = `Beautiful soft watercolor painting for ${month}. Artistic, flowing colors, paper texture visible, gentle seasonal theme.`;
+        prompt = `Beautiful soft watercolor painting for ${timeContext}. Artistic, flowing colors, paper texture visible, gentle seasonal theme. If text is included, it must say "${year}".`;
+    } else if (cleanStyle.toLowerCase().includes("minimalist")) {
+        prompt = `Minimalist graphic design for calendar header ${timeContext}. Clean lines, typography focus, ample whitespace, modern aesthetic. If text is included, it must say "${year}".`;
     } else {
-        prompt = `Artistic header image for a calendar representing ${month}. Style: ${cleanStyle}. High quality, aesthetic.`;
+        prompt = `Artistic header image for a calendar representing ${timeContext}. Style: ${cleanStyle}. High quality, aesthetic. If text is included, it must say "${year}".`;
     }
 
     return generateImageWithGemini(prompt, '16:9');
@@ -643,8 +650,114 @@ export const generatePoem = async (topic: string, style: string): Promise<string
   });
   return response.text || "";
 };
-export const generateDailyJoke = async (d: number): Promise<string> => { return ""; };
-export const generateQuote = async (c: string): Promise<string> => { return ""; };
-export const generateConnectionFact = async (p: string): Promise<string> => { return ""; };
-export const generate3DOrchestration = async (p: string, i?: string): Promise<AI360Response> => { return {} as AI360Response; };
-export const analyzeDream = async (d: string, l: string): Promise<DreamAnalysis> => { return {} as DreamAnalysis; };
+
+export const generateDailyJoke = async (d: number): Promise<string> => {
+  try {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `You are a comedian. Tell me a creative, witty, and clean joke for "Day ${d}" of my app. Ensure it is not a cliché.`
+    });
+    return response.text || "Why did the developer quit his job? He didn't get arrays.";
+  } catch (e) {
+    console.error(e);
+    return "My humor module is recharging. Please try again later!";
+  }
+};
+
+export const generateQuote = async (category: string): Promise<string> => {
+  const cleanCategory = sanitizeInput(category);
+  const ai = getAiClient();
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Give me a profound and inspiring quote about "${cleanCategory}". Include the author's name. Format: "Quote" - Author`
+    });
+    return response.text || "The only way to do great work is to love what you do. - Steve Jobs";
+  } catch (e) {
+    return "Success is not final, failure is not fatal: it is the courage to continue that counts. - Winston Churchill";
+  }
+};
+
+export const generateConnectionFact = async (person: string): Promise<string> => {
+  const cleanPerson = sanitizeInput(person) || "Kevin Bacon";
+  const ai = getAiClient();
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Tell me a surprising or obscure connection fact involving ${cleanPerson} and another famous historical or modern figure. Keep it short and interesting.`
+    });
+    return response.text || "";
+  } catch (e) {
+    return "";
+  }
+};
+
+export const generate3DOrchestration = async (promptInput: string, imageBase64?: string): Promise<AI360Response> => {
+  const ai = getAiClient();
+  const parts: any[] = [];
+  if (imageBase64) {
+      parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64.split(',')[1] } });
+  }
+  parts.push({ text: `Analyze this request for 3D asset generation: "${promptInput}".
+  
+  Your goal: Orchestrate the generation of a 3D model prompt.
+  
+  1. Safety Check: If the request asks for NSFW, violence, or prohibited content, reject it.
+  2. Clarity Check: If the request is too vague (e.g. "make a thing"), ask for clarification.
+  3. Optimization: If safe and clear, create a highly detailed, technical prompt for a 3D generator (like Point-E or similar) describing the object from all angles, texture, and style.
+  
+  Return JSON.` });
+
+  const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: { parts },
+      config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                  status: { type: Type.STRING, enum: ["accepted", "rejected", "needs_clarification"] },
+                  reason: { type: Type.STRING },
+                  safety_categories: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  clarification_question: { type: Type.STRING, nullable: true },
+                  generation_prompt: { type: Type.STRING, nullable: true },
+                  style: { type: Type.STRING, enum: ["realistic", "stylized", "neutral"], nullable: true }
+              },
+              required: ["status", "reason"]
+          }
+      }
+  });
+  return JSON.parse(response.text || "{}");
+};
+
+export const analyzeDream = async (dream: string, lens: string): Promise<DreamAnalysis> => {
+  const ai = getAiClient();
+  const prompt = `Analyze this dream through the lens of ${lens}: "${dream}".
+  Provide a JSON response with:
+  - title: Creative title for the dream.
+  - interpretation: Deep psychological or spiritual meaning.
+  - symbols: Array of key symbols identified.
+  - lucidityScore: A number from 1-100 indicating clarity/awareness.
+  - visualPrompt: A detailed image generation prompt to visualize this dream scene.
+  `;
+  
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: prompt,
+    config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+                title: { type: Type.STRING },
+                interpretation: { type: Type.STRING },
+                symbols: { type: Type.ARRAY, items: { type: Type.STRING } },
+                lucidityScore: { type: Type.NUMBER },
+                visualPrompt: { type: Type.STRING }
+            }
+        }
+    }
+  });
+  return JSON.parse(response.text || "{}");
+};
