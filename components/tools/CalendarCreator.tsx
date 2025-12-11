@@ -11,7 +11,15 @@ const STYLES = [
   { id: 'minimal', label: 'Minimalist', desc: 'Clean lines, typography focus', bg: '#ffffff', text: '#1e293b' },
   { id: 'cyberpunk', label: 'Cyberpunk', desc: 'Neon glows, dark mode', bg: '#0f172a', text: '#22d3ee' },
   { id: 'watercolor', label: 'Watercolor', desc: 'Organic textures, soft art', bg: '#fff7ed', text: '#431407' },
-  { id: 'corporate', label: 'Corporate', desc: 'Professional, structured', bg: '#f8fafc', text: '#334155' }
+  { id: 'corporate', label: 'Corporate', desc: 'Professional, structured', bg: '#f8fafc', text: '#334155' },
+  { id: 'cutout', label: 'Cutout Animation', desc: 'Layered paper art aesthetic', bg: '#fff1f2', text: '#be123c' },
+  { id: 'animation', label: 'Animation', desc: 'Vibrant modern cartoon style', bg: '#f0f9ff', text: '#0369a1' },
+  { id: 'rotoscope', label: 'Rotoscope', desc: 'Realistic traced hand-drawn look', bg: '#fafaf9', text: '#1c1917' },
+  { id: 'typography', label: 'Typography', desc: 'Kinetic text-focused art', bg: '#171717', text: '#facc15' },
+  { id: 'classic2d', label: 'Classic 2D', desc: 'Traditional hand-drawn frame style', bg: '#eff6ff', text: '#1e3a8a' },
+  { id: 'pixilation', label: 'Pixilation', desc: 'Stop-motion with live subjects', bg: '#f3e8ff', text: '#6b21a8' },
+  { id: 'silhouette', label: 'Silhouette', desc: 'High contrast shadow art', bg: '#020617', text: '#e2e8f0' },
+  { id: 'stopmotion', label: 'Stop Motion', desc: 'Physical object animation style', bg: '#fffbeb', text: '#b45309' }
 ];
 
 const FONTS = [
