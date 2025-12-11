@@ -9,10 +9,24 @@ import {
 } from "../types";
 import { runSecurityChecks, sanitizeInput } from "../utils/security";
 
+const getApiKey = (): string => {
+  // 1. Check process.env (Standard Node/Webpack/Compatible)
+  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+    return process.env.API_KEY;
+  }
+  // 2. Check import.meta.env (Vite Standard)
+  // @ts-ignore
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    // @ts-ignore
+    if (import.meta.env.VITE_API_KEY) return import.meta.env.VITE_API_KEY;
+    // @ts-ignore
+    if (import.meta.env.API_KEY) return import.meta.env.API_KEY;
+  }
+  return '';
+};
+
 const getAiClient = () => {
-  // Safe access for process.env to prevent 'process is not defined' crashes in browser
-  const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : '';
-  return new GoogleGenAI({ apiKey: apiKey });
+  return new GoogleGenAI({ apiKey: getApiKey() });
 };
 
 const handleGeminiError = (error: any): never => {
@@ -529,9 +543,8 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
     const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (!downloadLink) throw new Error("Video generation failed.");
     
-    // Safely get the API key from process.env if available
-    const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : '';
-    if (!apiKey) throw new Error("API Key is missing for video download.");
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("API key is missing. Please provide a valid API key.");
 
     return `${downloadLink}&key=${apiKey}`;
 };
