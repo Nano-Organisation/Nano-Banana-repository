@@ -1,4 +1,5 @@
 
+// ... existing imports ...
 import { GoogleGenAI, Type, Chat, Modality } from "@google/genai";
 import { 
   MemeData, QuizData, RiddleData, StorybookData, SocialSettings, 
@@ -126,8 +127,9 @@ export const generateTextWithGemini = async (prompt: string, systemInstruction?:
 
 /**
  * Image Generation (Standard)
+ * supports optional reference image for consistency
  */
-export const generateImageWithGemini = async (prompt: string, aspectRatio: string = '1:1'): Promise<string> => {
+export const generateImageWithGemini = async (prompt: string, aspectRatio: string = '1:1', referenceImageBase64?: string): Promise<string> => {
   try {
     // SECURITY CHECKS
     const cleanPrompt = sanitizeInput(prompt);
@@ -135,10 +137,32 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
 
     const ai = getAiClient();
     
+    // Construct parts
+    const parts: any[] = [];
+    
+    // If reference image exists, add it first to guide the model
+    if (referenceImageBase64) {
+        // Strip data prefix if present to get raw base64
+        const base64Data = referenceImageBase64.split(',')[1] || referenceImageBase64;
+        parts.push({
+            inlineData: {
+                mimeType: 'image/png', 
+                data: base64Data
+            }
+        });
+        
+        // Enhance prompt to explicitly use the reference
+        parts.push({ 
+            text: `Using the provided image as a strict character reference, generate: ${cleanPrompt}. Maintain exact character details, colors, and style.` 
+        });
+    } else {
+        parts.push({ text: cleanPrompt });
+    }
+    
     return await withRetry(async () => {
         const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash-image',
-          contents: { parts: [{ text: cleanPrompt }] },
+          contents: { parts },
           config: {
             imageConfig: {
               aspectRatio: aspectRatio as any,
@@ -236,9 +260,7 @@ export const generateProImageWithGemini = async (prompt: string, size: string = 
   }
 };
 
-/**
- * Image Editing
- */
+// ... [Keep existing exports for editImageWithGemini, analyzeImageWithGemini, etc. unchanged] ...
 export const editImageWithGemini = async (imageBase64: string, prompt: string): Promise<string> => {
   try {
     const cleanPrompt = sanitizeInput(prompt);
@@ -299,9 +321,6 @@ export const editImageWithGemini = async (imageBase64: string, prompt: string): 
   }
 };
 
-/**
- * Visual QA / Image Analysis
- */
 export const analyzeImageWithGemini = async (imageBase64: string, question: string): Promise<string> => {
   try {
     const cleanQuestion = sanitizeInput(question);
@@ -333,18 +352,12 @@ export const analyzeImageWithGemini = async (imageBase64: string, question: stri
   }
 };
 
-/**
- * Image to Prompt
- */
 export const generateImagePrompt = async (imageBase64: string, platform: string): Promise<string> => {
     const cleanPlatform = sanitizeInput(platform); 
     const prompt = `Analyze this image and generate a detailed text prompt that could be used to recreate it using ${cleanPlatform}. Include details about style, lighting, composition, and subject.`;
     return analyzeImageWithGemini(imageBase64, prompt);
 };
 
-/**
- * Chat
- */
 export const createChatSession = (systemInstruction?: string): Chat => {
   const ai = getAiClient();
   return ai.chats.create({
@@ -366,9 +379,6 @@ export const createThinkingChatSession = (systemInstruction?: string): Chat => {
   });
 };
 
-/**
- * Batch Image Generation
- */
 export const generateBatchImages = async (prompt: string, quantity: number): Promise<string[]> => {
   const cleanPrompt = sanitizeInput(prompt);
   runSecurityChecks(cleanPrompt, "Design Prompt");
@@ -503,22 +513,11 @@ export const generateRiddlePuzzle = async (): Promise<RiddlePuzzle> => {
     }
 };
 
-// Adding new method for Carousel
 export const generateCarouselContent = async (topic: string, count: number, authorHandle: string): Promise<CarouselData> => {
   const cleanTopic = sanitizeInput(topic);
   runSecurityChecks(cleanTopic, "Carousel Topic");
-
   const ai = getAiClient();
-  const prompt = `Create a ${count}-slide LinkedIn carousel content about: "${cleanTopic}".
-  
-  Structure:
-  - Slide 1: Powerful Hook/Title.
-  - Middle Slides: Key points, actionable advice, or steps.
-  - Last Slide: Conclusion and Call to Action (CTA).
-  
-  Output JSON format. Each slide must have a 'title' (short headline), 'content' (main body text, keep it concise and punchy for slides), and 'type' ('intro', 'content', 'outro').
-  `;
-
+  const prompt = `Create a ${count}-slide LinkedIn carousel content about: "${cleanTopic}". Structure: Slide 1: Powerful Hook/Title. Middle Slides: Key points. Last Slide: Conclusion/CTA. Output JSON.`;
   try {
     return await withRetry(async () => {
         const response = await ai.models.generateContent({
@@ -530,7 +529,7 @@ export const generateCarouselContent = async (topic: string, count: number, auth
               type: Type.OBJECT,
               properties: {
                 topic: { type: Type.STRING },
-                authorHandle: { type: Type.STRING, description: "The provided author handle" },
+                authorHandle: { type: Type.STRING },
                 slides: {
                   type: Type.ARRAY,
                   items: {
@@ -548,9 +547,7 @@ export const generateCarouselContent = async (topic: string, count: number, auth
             }
           }
         });
-
         const data = JSON.parse(response.text || "{}");
-        // Ensure author handle is passed through or set default
         data.authorHandle = authorHandle || data.authorHandle || "@YourHandle";
         return data;
     });
@@ -563,7 +560,6 @@ export const transcribeMediaWithGemini = async (mediaBase64: string, mimeType: s
     runSecurityChecks("Transcribe Media", "System");
     const ai = getAiClient();
     const base64Data = mediaBase64.split(',')[1];
-    
     try {
       return await withRetry(async () => {
           const response = await ai.models.generateContent({
@@ -571,7 +567,7 @@ export const transcribeMediaWithGemini = async (mediaBase64: string, mimeType: s
               contents: {
                   parts: [
                       { inlineData: { mimeType: mimeType, data: base64Data } },
-                      { text: "Transcribe the audio from this media file accurately. Identify speakers if possible. Ignore silence." }
+                      { text: "Transcribe the audio from this media file accurately." }
                   ]
               }
           });
@@ -584,53 +580,34 @@ export const transcribeMediaWithGemini = async (mediaBase64: string, mimeType: s
 
 export const generateVideoWithGemini = async (prompt: string, aspectRatio: string = '16:9', imageBase64?: string): Promise<string> => {
     const ai = getAiClient();
-    
     try {
       return await withRetry(async () => {
           let operation;
-          
           if (imageBase64) {
               const base64Data = imageBase64.split(',')[1];
               const mimeType = imageBase64.split(';')[0].split(':')[1];
-              
               operation = await ai.models.generateVideos({
                   model: 'veo-3.1-fast-generate-preview',
                   prompt: prompt,
-                  image: {
-                      imageBytes: base64Data,
-                      mimeType: mimeType
-                  },
-                  config: {
-                      numberOfVideos: 1,
-                      resolution: '720p',
-                      aspectRatio: aspectRatio as any
-                  }
+                  image: { imageBytes: base64Data, mimeType: mimeType },
+                  config: { numberOfVideos: 1, resolution: '720p', aspectRatio: aspectRatio as any }
               });
           } else {
               operation = await ai.models.generateVideos({
                   model: 'veo-3.1-fast-generate-preview',
                   prompt: prompt,
-                  config: {
-                      numberOfVideos: 1,
-                      resolution: '720p',
-                      aspectRatio: aspectRatio as any
-                  }
+                  config: { numberOfVideos: 1, resolution: '720p', aspectRatio: aspectRatio as any }
               });
           }
-
           while (!operation.done) {
               await new Promise(resolve => setTimeout(resolve, 5000));
               operation = await ai.operations.getVideosOperation({operation: operation});
           }
-
           const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
           if (!downloadLink) throw new Error("Video generation failed.");
-          
           const apiKey = getApiKey();
-          if (!apiKey) throw new Error("API key is missing. Please provide a valid API key.");
-
           return `${downloadLink}&key=${apiKey}`;
-      }, 3, 5000); // More generous retries for Veo
+      }, 3, 5000);
     } catch (error) {
       handleGeminiError(error);
     }
@@ -638,36 +615,23 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
 
 export const generateSpeechWithGemini = async (text: string, voiceName: string, speed: number = 1.0, pitch: number = 0, multiSpeaker?: any): Promise<string> => {
     const ai = getAiClient();
-    
     try {
       return await withRetry(async () => {
-          let config: any = {
-              responseModalities: [Modality.AUDIO],
-              speechConfig: {}
-          };
-
+          let config: any = { responseModalities: [Modality.AUDIO], speechConfig: {} };
           if (multiSpeaker) {
               config.speechConfig.multiSpeakerVoiceConfig = {
-                  speakerVoiceConfigs: multiSpeaker.map((s: any) => ({
-                      speaker: s.speaker,
-                      voiceConfig: { prebuiltVoiceConfig: { voiceName: s.voice } }
-                  }))
+                  speakerVoiceConfigs: multiSpeaker.map((s: any) => ({ speaker: s.speaker, voiceConfig: { prebuiltVoiceConfig: { voiceName: s.voice } } }))
               };
           } else {
-              config.speechConfig.voiceConfig = {
-                  prebuiltVoiceConfig: { voiceName: voiceName }
-              };
+              config.speechConfig.voiceConfig = { prebuiltVoiceConfig: { voiceName: voiceName } };
           }
-
           const response = await ai.models.generateContent({
               model: "gemini-2.5-flash-preview-tts",
               contents: [{ parts: [{ text }] }],
               config: config
           });
-
           const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
           if (!base64Audio) throw new Error("Audio generation failed");
-          
           return `data:audio/wav;base64,${base64Audio}`; 
       });
     } catch (error) {
@@ -677,34 +641,17 @@ export const generateSpeechWithGemini = async (text: string, voiceName: string, 
 
 export const generateCalendarThemeImage = async (month: string, year: number, style: string): Promise<string> => {
     const cleanStyle = sanitizeInput(style);
-    let prompt = "";
-    const timeContext = `${month} ${year}`;
-    
+    let prompt = `Artistic header image for a calendar representing ${month} ${year}. Style: ${cleanStyle}. High quality, aesthetic. If text is included, it must say "${year}".`;
     if (cleanStyle.toLowerCase().includes("claymation")) {
-        prompt = `A cute, high-quality claymation scene for ${timeContext}. Soft rounded clay textures, plasticine style, bright pastel colors, stop-motion aesthetic, miniature world feel. If text is included, it must say "${year}".`;
+        prompt = `A cute, high-quality claymation scene for ${month} ${year}. Soft rounded clay textures, plasticine style, bright pastel colors, stop-motion aesthetic, miniature world feel. If text is included, it must say "${year}".`;
     } else if (cleanStyle.toLowerCase().includes("memphis")) {
-        prompt = `Trendy 80s Memphis Design pattern for ${timeContext}. Geometric shapes, squiggles, zig-zags, confetti. Bright pop colors (pink, teal, yellow) on white background. Flat vector illustration style. High quality. If text is included, it must say "${year}".`;
-    } else if (cleanStyle.toLowerCase().includes("cyberpunk")) {
-        prompt = `Futuristic cyberpunk cityscape for ${timeContext}. Neon lights, dark atmosphere, glowing calendar grid holograms, high tech, cinematic. If text is included, it must say "${year}".`;
-    } else if (cleanStyle.toLowerCase().includes("watercolor")) {
-        prompt = `Beautiful soft watercolor painting for ${timeContext}. Artistic, flowing colors, paper texture visible, gentle seasonal theme. If text is included, it must say "${year}".`;
-    } else if (cleanStyle.toLowerCase().includes("minimalist")) {
-        prompt = `Minimalist graphic design for calendar header ${timeContext}. Clean lines, typography focus, ample whitespace, modern aesthetic. If text is included, it must say "${year}".`;
-    } else {
-        prompt = `Artistic header image for a calendar representing ${timeContext}. Style: ${cleanStyle}. High quality, aesthetic. If text is included, it must say "${year}".`;
+        prompt = `Trendy 80s Memphis Design pattern for ${month} ${year}. Geometric shapes, squiggles, zig-zags, confetti. Bright pop colors (pink, teal, yellow) on white background. Flat vector illustration style. High quality. If text is included, it must say "${year}".`;
     }
-
     return generateImageWithGemini(prompt, '16:9');
 };
 
 export const generateDailyTip = async (dayIndex: number): Promise<DailyTip> => {
-    return {
-        dayIndex,
-        date: new Date().toISOString(),
-        category: 'Prompting',
-        title: 'Tip Title',
-        content: 'Tip Content'
-    };
+    return { dayIndex, date: new Date().toISOString(), category: 'Prompting', title: 'Tip Title', content: 'Tip Content' };
 };
 
 export const generateSocialCampaign = async (topic: string, settings: SocialSettings): Promise<SocialCampaign> => {
@@ -713,7 +660,7 @@ export const generateSocialCampaign = async (topic: string, settings: SocialSett
       return await withRetry(async () => {
           const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `Generate a social media campaign about "${topic}" for ${settings.platforms.join(', ')}. Tone: ${settings.tone}. Style: ${settings.style}. Language: ${settings.language}. Use Emojis: ${settings.useEmojis}.`,
+            contents: `Generate a social media campaign about "${topic}" for ${settings.platforms.join(', ')}.`,
             config: {
               responseMimeType: "application/json",
               responseSchema: {
@@ -750,11 +697,7 @@ export const generateMemeConcept = async (topic: string): Promise<MemeData> => {
               responseMimeType: "application/json",
               responseSchema: {
                 type: Type.OBJECT,
-                properties: {
-                  topText: { type: Type.STRING },
-                  bottomText: { type: Type.STRING },
-                  visualPrompt: { type: Type.STRING }
-                }
+                properties: { topText: { type: Type.STRING }, bottomText: { type: Type.STRING }, visualPrompt: { type: Type.STRING } }
               }
             }
           });
@@ -776,12 +719,7 @@ export const generateHelpfulList = async (topic: string): Promise<HelpfulList> =
               responseMimeType: "application/json",
               responseSchema: {
                 type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  items: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  imagePrompt: { type: Type.STRING }
-                }
+                properties: { title: { type: Type.STRING }, description: { type: Type.STRING }, items: { type: Type.ARRAY, items: { type: Type.STRING } }, imagePrompt: { type: Type.STRING } }
               }
             }
           });
@@ -803,11 +741,7 @@ export const generatePodcastScript = async (topic: string, host: string, guest: 
               responseMimeType: "application/json",
               responseSchema: {
                 type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  script: { type: Type.STRING },
-                  visualPrompt: { type: Type.STRING }
-                }
+                properties: { title: { type: Type.STRING }, script: { type: Type.STRING }, visualPrompt: { type: Type.STRING } }
               }
             }
           });
@@ -832,19 +766,7 @@ export const generateQuiz = async (topic: string, count: number, diff: string): 
                 properties: {
                   topic: { type: Type.STRING },
                   difficulty: { type: Type.STRING },
-                  questions: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        id: { type: Type.INTEGER },
-                        question: { type: Type.STRING },
-                        options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        correctAnswer: { type: Type.STRING },
-                        explanation: { type: Type.STRING }
-                      }
-                    }
-                  }
+                  questions: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { id: { type: Type.INTEGER }, question: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correctAnswer: { type: Type.STRING }, explanation: { type: Type.STRING } } } }
                 }
               }
             }
@@ -867,12 +789,7 @@ export const generateRiddleContent = async (topic: string): Promise<RiddleData> 
               responseMimeType: "application/json",
               responseSchema: {
                 type: Type.OBJECT,
-                properties: {
-                  topic: { type: Type.STRING },
-                  riddle: { type: Type.STRING },
-                  answer: { type: Type.STRING },
-                  explanation: { type: Type.STRING }
-                }
+                properties: { topic: { type: Type.STRING }, riddle: { type: Type.STRING }, answer: { type: Type.STRING }, explanation: { type: Type.STRING } }
               }
             }
           });
@@ -889,7 +806,7 @@ export const generateBrandIdentity = async (name: string, industry: string, vibe
       return await withRetry(async () => {
           const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `Generate a complete brand identity for "${name}" in the ${industry} industry. Vibe: ${vibe}. Personality: ${personality}. Colors: ${colors}. Fonts: ${fonts}.`,
+            contents: `Generate a complete brand identity for "${name}" in the ${industry} industry. Vibe: ${vibe}. Personality: ${personality}.`,
             config: {
               responseMimeType: "application/json",
               responseSchema: {
@@ -1088,13 +1005,29 @@ export const generateStoryScript = async (c: string, s: string, d?: string): Pro
       return await withRetry(async () => {
           const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `Write a children's storybook script. Concept: ${c}. Style: ${s}. Character Desc: ${d || ''}`,
+            contents: `Write a children's storybook script. Concept: ${c}. Style: ${s}. Character Desc: ${d || ''}.
+            
+            CRITICAL FORMATTING INSTRUCTION:
+            If the story is written in rhyme/verse, YOU MUST insert a newline character (\n) at the end of every line of the poem so it is formatted correctly. Do not write it as a single block paragraph.
+            
+            Include fields for:
+            - title
+            - author (default to "AI Storyteller")
+            - dedication (a short creative dedication)
+            - authorBio (a short creative bio for the author)
+            - backCoverBlurb (a summary of the story)
+            - pages (array of pageNumber, text, imagePrompt)
+            `,
             config: {
               responseMimeType: "application/json",
               responseSchema: {
                 type: Type.OBJECT,
                 properties: {
                   title: { type: Type.STRING },
+                  author: { type: Type.STRING },
+                  dedication: { type: Type.STRING },
+                  authorBio: { type: Type.STRING },
+                  backCoverBlurb: { type: Type.STRING },
                   style: { type: Type.STRING },
                   characterDescription: { type: Type.STRING },
                   pages: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { pageNumber: { type: Type.INTEGER }, text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } } }

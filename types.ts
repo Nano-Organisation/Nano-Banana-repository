@@ -115,6 +115,10 @@ export interface StorybookData {
   title: string;
   style: string;
   characterDescription: string;
+  author: string;
+  dedication: string;
+  authorBio: string;
+  backCoverBlurb: string;
   pages: StoryPage[];
 }
 
