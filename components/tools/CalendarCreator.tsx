@@ -8,6 +8,7 @@ import { WATERMARK_TEXT } from '../../utils/watermark';
 
 const STYLES = [
   { id: 'claymation', label: 'Claymation', desc: 'Soft, rounded 3D play-doh look', bg: '#fef3c7', text: '#78350f' },
+  { id: 'memphis', label: 'Memphis Design', desc: '80s retro, geometric shapes, squiggles', bg: '#fdf2f8', text: '#db2777' },
   { id: 'minimal', label: 'Minimalist', desc: 'Clean lines, typography focus', bg: '#ffffff', text: '#1e293b' },
   { id: 'cyberpunk', label: 'Cyberpunk', desc: 'Neon glows, dark mode', bg: '#0f172a', text: '#22d3ee' },
   { id: 'watercolor', label: 'Watercolor', desc: 'Organic textures, soft art', bg: '#fff7ed', text: '#431407' },

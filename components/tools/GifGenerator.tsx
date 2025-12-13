@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Film, Download, RefreshCw, Lock, Smartphone, Monitor, Image as ImageIcon, Square, Upload } from 'lucide-react';
+import { Film, Download, RefreshCw, Lock, Smartphone, Monitor, Image as ImageIcon, Square, Upload, AlertTriangle } from 'lucide-react';
 import { generateVideoWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
@@ -11,6 +11,7 @@ const GifGenerator: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<LoadingState>('idle');
   const [hasKey, setHasKey] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState('');
   
   const [inputImage, setInputImage] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -56,23 +57,34 @@ const GifGenerator: React.FC = () => {
 
   const handleGenerate = async () => {
     if (!prompt.trim() && !inputImage) return; 
-    setStatus('loading');
-    setVideoUrl(null);
     
     const aiStudio = getAIStudio();
     if (aiStudio && !(await aiStudio.hasSelectedApiKey())) {
        setStatus('error');
+       setErrorMessage("API Key required");
        setHasKey(false);
        return;
     }
 
+    setStatus('loading');
+    setVideoUrl(null);
+    setErrorMessage('');
+
     try {
       const finalPrompt = prompt || (inputImage ? "Animate this image" : "");
-      const url = await generateVideoWithGemini(finalPrompt, aspectRatio, inputImage || undefined);
-      setVideoUrl(url);
+      const generatedUrl = await generateVideoWithGemini(finalPrompt, aspectRatio, inputImage || undefined);
+      
+      // Robust Fetch: Get blob to avoid cross-origin/auth issues in video tag
+      const response = await fetch(generatedUrl);
+      if (!response.ok) throw new Error("Failed to load generated video stream.");
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      setVideoUrl(objectUrl);
       setStatus('success');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setErrorMessage(err.message || "Generation failed");
       setStatus('error');
     }
   };
@@ -214,6 +226,22 @@ const GifGenerator: React.FC = () => {
               <p className="text-rose-400 text-sm animate-pulse">Rendering video frames...</p>
               <p className="text-xs text-slate-500 max-w-xs mx-auto">This process uses the powerful Veo model and may take up to a minute.</p>
             </div>
+          ) : status === 'error' ? (
+             <div className="flex flex-col items-center justify-center py-12 space-y-4 text-center p-6">
+                <div className="w-16 h-16 bg-red-900/20 rounded-full flex items-center justify-center border border-red-500/30">
+                   <AlertTriangle className="w-8 h-8 text-red-500" />
+                </div>
+                <div className="space-y-1">
+                   <h3 className="text-white font-bold">Generation Failed</h3>
+                   <p className="text-slate-400 text-sm">{errorMessage}</p>
+                </div>
+                <button 
+                   onClick={handleSelectKey}
+                   className="text-amber-500 text-xs hover:underline flex items-center gap-1 mx-auto mt-2"
+                >
+                   <Lock className="w-3 h-3" /> Check API Key
+                </button>
+             </div>
           ) : videoUrl ? (
             <>
               <video 
