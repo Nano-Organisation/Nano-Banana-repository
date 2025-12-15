@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Video, RefreshCw, Upload, Lock, Play, Pause, Zap, Sparkles, Ghost, Camera, Box, Type, Activity, Image as ImageIcon, Download } from 'lucide-react';
+import { Video, RefreshCw, Upload, Lock, Play, Pause, Zap, Sparkles, Ghost, Camera, Box, Type, Activity, Image as ImageIcon, Download, AlertTriangle } from 'lucide-react';
 import { generateVideoWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
@@ -24,6 +24,7 @@ const AIMimicryTool: React.FC = () => {
   // Output State
   const [resultVideoUrl, setResultVideoUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<LoadingState>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
   const [hasKey, setHasKey] = useState<boolean>(false);
   
   // Refs
@@ -63,6 +64,8 @@ const AIMimicryTool: React.FC = () => {
       setResultVideoUrl(null);
       setCapturedFrame(null);
       setIsPlaying(false);
+      setErrorMessage('');
+      setStatus('idle');
     }
   };
 
@@ -70,6 +73,9 @@ const AIMimicryTool: React.FC = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (video && canvas) {
+      // Ensure dimensions are valid
+      if (video.videoWidth === 0 || video.videoHeight === 0) return;
+      
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
@@ -86,9 +92,9 @@ const AIMimicryTool: React.FC = () => {
       // Auto capture first frame after a slight delay
       setTimeout(() => {
          if (videoRef.current) {
-            videoRef.current.currentTime = 0.5; // Seek a bit to avoid black frame
+            videoRef.current.currentTime = 0.1; // Seek a bit to avoid black frame
          }
-      }, 200);
+      }, 500);
     }
   };
 
@@ -115,11 +121,11 @@ const AIMimicryTool: React.FC = () => {
     if (!capturedFrame) captureFrame();
     
     // Wait a tick for state update if just captured
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 200));
     const frameToSend = capturedFrame || (canvasRef.current ? canvasRef.current.toDataURL('image/jpeg') : null);
 
-    if (!frameToSend) {
-       alert("Could not capture video frame. Please play the video for a second.");
+    if (!frameToSend || frameToSend === 'data:,') {
+       alert("Could not capture video frame. Please ensure the video is loaded and visible.");
        return;
     }
 
@@ -129,6 +135,7 @@ const AIMimicryTool: React.FC = () => {
     }
 
     setStatus('loading');
+    setErrorMessage('');
     setResultVideoUrl(null);
 
     try {
@@ -145,14 +152,19 @@ const AIMimicryTool: React.FC = () => {
       const url = await generateVideoWithGemini(prompt, '16:9', frameToSend);
       
       const response = await fetch(url);
-      if (!response.ok) throw new Error("Failed to load video.");
+      if (!response.ok) throw new Error("Failed to load video stream.");
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
       
       setResultVideoUrl(objectUrl);
       setStatus('success');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      let msg = e.message || "Failed to mimic video.";
+      if (msg.includes("safety filters") || msg.includes("download link")) {
+         msg = "Generation blocked by safety filters. Veo avoids generating videos of realistic people or harmful content. Try a different video or abstract prompt.";
+      }
+      setErrorMessage(msg);
       setStatus('error');
     }
   };
@@ -328,6 +340,21 @@ const AIMimicryTool: React.FC = () => {
                            <div className="w-20 h-20 border-4 border-fuchsia-500 border-t-transparent rounded-full animate-spin mb-4"></div>
                            <p className="text-fuchsia-400 font-bold animate-pulse text-lg">AI is dreaming...</p>
                            <p className="text-slate-500 text-sm mt-2">Processing intricate details</p>
+                        </div>
+                     )}
+                     {status === 'error' && (
+                        <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-10 text-center p-6">
+                           <div className="w-16 h-16 bg-red-900/30 border border-red-500 rounded-full flex items-center justify-center mb-4">
+                              <AlertTriangle className="w-8 h-8 text-red-500" />
+                           </div>
+                           <h3 className="text-xl font-bold text-white mb-2">Generation Failed</h3>
+                           <p className="text-slate-400 text-sm max-w-md mb-4">{errorMessage}</p>
+                           <button 
+                              onClick={() => setStatus('idle')}
+                              className="px-6 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white font-bold transition-colors"
+                           >
+                              Try Again
+                           </button>
                         </div>
                      )}
                   </div>
