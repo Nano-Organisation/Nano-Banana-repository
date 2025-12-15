@@ -45,8 +45,14 @@ export const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 10
 };
 
 export const handleGeminiError = (error: any) => {
-  // Log the full error for debugging but throw a clean message
-  console.error("Gemini API Error Details:", error);
+  const msg = (error.message || "").toLowerCase();
+  // Suppress console logging for expected safety filter blocks or specific video generation errors
+  const isSafetyError = msg.includes("safety filters") || msg.includes("returned no video") || msg.includes("safety");
+  
+  if (!isSafetyError) {
+     console.error("Gemini API Error Details:", error);
+  }
+  
   throw new Error(error.message || "An unexpected error occurred with Gemini.");
 };
 
@@ -171,7 +177,6 @@ export const editImageWithGemini = async (image: string, prompt: string): Promis
 };
 
 export const generateBatchImages = async (prompt: string, count: number): Promise<string[]> => {
-  // Gemini 2.5 Flash Image generates one image per request usually. We'll run parallel requests.
   const promises = Array(count).fill(null).map(() => generateImageWithGemini(prompt));
   return Promise.all(promises);
 };
@@ -185,7 +190,6 @@ export const generateViralThumbnails = async (topic: string): Promise<string[]> 
     "Action shot, motion blur, explosion effect, vibrant colors"
   ];
   
-  // Generate 5 thumbnails
   const promises = styles.map(style => 
     generateImageWithGemini(`YouTube Thumbnail for "${topic}". Style: ${style}. 16:9 aspect ratio.`, '16:9')
   );
@@ -342,21 +346,18 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
             });
         }
         
-        // Poll for completion
         while (!operation.done) {
             await new Promise(resolve => setTimeout(resolve, 5000));
             operation = await ai.operations.getVideosOperation({operation: operation});
         }
         
-        // Error handling for operation failure
         if (operation.error) {
            throw new Error(operation.error.message || "Video generation failed during processing.");
         }
 
-        // Check for generated video URI
         const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
         if (!downloadLink) {
-           // If no video but no explicit error, it's often a safety block
+           // We throw a specific message here that handleGeminiError will recognize as a safety block
            throw new Error("Video generation completed but returned no video. This is likely due to safety filters blocking the content (e.g. realistic people).");
         }
 
@@ -450,7 +451,7 @@ export const generateSocialCampaign = async (topic: string, settings: SocialSett
       twitter: { 
          type: Type.OBJECT, 
          properties: { 
-            text: { type: Type.ARRAY, items: { type: Type.STRING }}, // Thread support
+            text: { type: Type.ARRAY, items: { type: Type.STRING }},
             imagePrompt: { type: Type.STRING },
             hashtags: { type: Type.STRING }
          } 
@@ -460,7 +461,7 @@ export const generateSocialCampaign = async (topic: string, settings: SocialSett
       tiktok: { 
          type: Type.OBJECT, 
          properties: { 
-            text: { type: Type.ARRAY, items: { type: Type.STRING }}, // Script lines
+            text: { type: Type.ARRAY, items: { type: Type.STRING }},
             imagePrompt: { type: Type.STRING },
             hashtags: { type: Type.STRING }
          } 
@@ -583,7 +584,7 @@ export const generateUiCode = async (prompt: string, device: string, style: stri
   }
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview', // Stronger model for code
+    model: 'gemini-3-pro-preview', 
     contents: { parts: contents }
   });
   

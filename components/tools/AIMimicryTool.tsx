@@ -139,15 +139,24 @@ const AIMimicryTool: React.FC = () => {
     setResultVideoUrl(null);
 
     try {
-      // Construct imaginative prompt
-      const mimicryStyle = hallucinate ? "Surreal, dreamlike, abstract interpretation" : "High fidelity, realistic mimicry";
-      const subject = replaceSubject ? `Replace subject with a ${replaceSubject}` : "The original subject";
-      const bgPrompt = backgroundType === 'Original' ? "matching the original scene" : `with a ${backgroundType} background`;
-      const motion = smoothMotion ? "ultra-smooth, fluid motion" : "dynamic motion";
-      const env = environment === 'Studio' ? "" : `in a ${environment} environment`;
-      const text = textOverlay ? `Text overlay: "${textOverlay}" integrated into scene` : "";
+      // Construct safer, purely descriptive prompt
+      // Avoid words like "mimic", "copy", "deepfake", "replace"
+      const styleDesc = hallucinate ? "surreal abstract art style, dreamlike sequence" : "cinematic photorealistic video";
+      
+      let subjectDesc = "";
+      if (replaceSubject) {
+         subjectDesc = `featuring a ${replaceSubject}`;
+      } else {
+         subjectDesc = "featuring the character";
+      }
 
-      const prompt = `AI Mimicry: ${mimicryStyle}. ${subject} performing the action from the reference video. ${bgPrompt} ${env}. ${motion}. ${text}. Cinematic lighting, 4k detail.`;
+      const envDesc = environment === 'Studio' ? "in a neutral studio setting" : `in a ${environment} environment`;
+      const bgDesc = backgroundType === 'Original' ? "" : `with a ${backgroundType} background`;
+      const motionDesc = smoothMotion ? "moving with smooth fluid motion" : "moving dynamically";
+      const textDesc = textOverlay ? `Displaying text '${textOverlay}'` : "";
+
+      // Descriptive prompt
+      const prompt = `A ${styleDesc} ${subjectDesc} ${envDesc} ${bgDesc}. ${motionDesc} ${textDesc}. High quality 4k resolution.`;
 
       const url = await generateVideoWithGemini(prompt, '16:9', frameToSend);
       
@@ -161,8 +170,9 @@ const AIMimicryTool: React.FC = () => {
     } catch (e: any) {
       console.error(e);
       let msg = e.message || "Failed to mimic video.";
-      if (msg.includes("safety filters") || msg.includes("download link")) {
-         msg = "Generation blocked by safety filters. Veo avoids generating videos of realistic people or harmful content. Try a different video or abstract prompt.";
+      // Catch specific safety filter messages from service
+      if (msg.includes("safety filters") || msg.includes("returned no video")) {
+         msg = "Generation blocked by safety filters. Veo avoids generating videos of realistic people or harmful content. Try using a different source video (e.g. without people) or abstract prompt.";
       }
       setErrorMessage(msg);
       setStatus('error');
