@@ -57,8 +57,9 @@ import AetherEditTool from './components/tools/AetherEditTool';
 import AI360Tool from './components/tools/AI360Tool';
 import CarouselMaker from './components/tools/CarouselMaker';
 import CalendarCreator from './components/tools/CalendarCreator';
+import AIMimicryTool from './components/tools/AIMimicryTool';
 
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign, CalendarCheck, Baby, Clapperboard, Box, GalleryHorizontal, Calendar } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign, CalendarCheck, Baby, Clapperboard, Box, GalleryHorizontal, Calendar, Copy as CopyIcon } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -89,6 +90,15 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.AIMimicry,
+    title: "AI Mimicry",
+    description: "Intricate video mimicry with hallucination modes.",
+    icon: CopyIcon,
+    color: "fuchsia",
+    gradient: "from-fuchsia-600 to-purple-700",
+    releaseDate: '2025-12-13'
   },
   {
     id: ToolId.CalendarCreator,
@@ -617,6 +627,8 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.AIMimicry:
+        return <AIMimicryTool />;
       case ToolId.CalendarCreator:
         return <CalendarCreator />;
       case ToolId.LinkedInCarousel:

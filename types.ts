@@ -57,7 +57,8 @@ export enum ToolId {
   AI360 = 'AI_360',
   DreamInterpreter = 'DREAM_INTERPRETER',
   LinkedInCarousel = 'LINKEDIN_CAROUSEL',
-  CalendarCreator = 'CALENDAR_CREATOR'
+  CalendarCreator = 'CALENDAR_CREATOR',
+  AIMimicry = 'AI_MIMICRY'
 }
 
 export interface ToolConfig {
