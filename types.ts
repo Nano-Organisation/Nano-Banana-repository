@@ -58,7 +58,8 @@ export enum ToolId {
   DreamInterpreter = 'DREAM_INTERPRETER',
   LinkedInCarousel = 'LINKEDIN_CAROUSEL',
   CalendarCreator = 'CALENDAR_CREATOR',
-  AIMimicry = 'AI_MIMICRY'
+  AIMimicry = 'AI_MIMICRY',
+  DesignCritic = 'DESIGN_CRITIC'
 }
 
 export interface ToolConfig {
@@ -293,14 +294,6 @@ export interface AI360Response {
   style: "realistic" | "stylized" | "neutral" | null;
 }
 
-export interface DreamAnalysis {
-  title: string;
-  interpretation: string;
-  symbols: string[];
-  visualPrompt: string;
-  lucidityScore: number;
-}
-
 export interface CarouselSlide {
   title: string;
   content: string;
@@ -311,4 +304,18 @@ export interface CarouselData {
   topic: string;
   authorHandle: string;
   slides: CarouselSlide[];
+}
+
+export interface DreamAnalysis {
+  interpretation: string;
+  symbols: string[];
+  visualPrompt: string;
+}
+
+export interface PetProfile {
+  name: string;
+  personality: string;
+  jobTitle: string;
+  quote: string;
+  visualPrompt: string;
 }

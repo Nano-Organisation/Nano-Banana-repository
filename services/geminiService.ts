@@ -20,6 +20,8 @@ import {
   LearnerBrief,
   AI360Response,
   CarouselData,
+  DreamAnalysis,
+  PetProfile,
   EmojiPuzzle,
   WordPuzzle,
   TwoTruthsPuzzle,
@@ -372,12 +374,25 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
 
 // --- Structured Content Generation (JSON) ---
 
-const generateStructuredContent = async <T>(prompt: string, schema: Schema, model = 'gemini-2.5-flash'): Promise<T> => {
+const generateStructuredContent = async <T>(prompt: string, schema: Schema, model = 'gemini-2.5-flash', image?: string): Promise<T> => {
   const ai = getAiClient();
   try {
+    let contents: any = prompt;
+    
+    if (image) {
+       const base64Data = image.split(',')[1];
+       const mimeType = image.split(';')[0].split(':')[1];
+       contents = {
+          parts: [
+             { inlineData: { mimeType, data: base64Data } },
+             { text: prompt }
+          ]
+       };
+    }
+
     const response = await ai.models.generateContent({
       model,
-      contents: prompt,
+      contents,
       config: {
         responseMimeType: 'application/json',
         responseSchema: schema
@@ -819,6 +834,40 @@ export const generateCarouselContent = async (topic: string, count: number, hand
     }
   };
   return generateStructuredContent<CarouselData>(prompt, schema);
+};
+
+export const analyzeDream = async (dreamText: string): Promise<DreamAnalysis> => {
+  const prompt = `Analyze this dream: "${dreamText}". Provide a psychological interpretation, list key symbols found, and write a vivid visual description (visualPrompt) to generate an image of the dream scene.`;
+  const schema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      interpretation: { type: Type.STRING },
+      symbols: { type: Type.ARRAY, items: { type: Type.STRING } },
+      visualPrompt: { type: Type.STRING }
+    }
+  };
+  return generateStructuredContent<DreamAnalysis>(prompt, schema);
+};
+
+export const analyzePetProfile = async (image: string): Promise<PetProfile> => {
+  const prompt = `Analyze this pet photo. Create a fun "human persona" for them.
+  1. Give them a name.
+  2. Describe their personality.
+  3. Assign them a humorous job title.
+  4. Write a quote they might say.
+  5. detailed visual prompt to generate a 3D Pixar-style character version of them.`;
+  
+  const schema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      name: { type: Type.STRING },
+      personality: { type: Type.STRING },
+      jobTitle: { type: Type.STRING },
+      quote: { type: Type.STRING },
+      visualPrompt: { type: Type.STRING }
+    }
+  };
+  return generateStructuredContent<PetProfile>(prompt, schema, 'gemini-2.5-flash', image);
 };
 
 export const generateCalendarThemeImage = async (month: string, year: number, style: string): Promise<string> => {
