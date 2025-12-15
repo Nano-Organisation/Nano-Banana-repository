@@ -139,24 +139,22 @@ const AIMimicryTool: React.FC = () => {
     setResultVideoUrl(null);
 
     try {
-      // Construct safer, purely descriptive prompt
-      // Avoid words like "mimic", "copy", "deepfake", "replace"
-      const styleDesc = hallucinate ? "surreal abstract art style, dreamlike sequence" : "cinematic photorealistic video";
+      // Construct prompt to guide structure preservation
+      const styleDesc = hallucinate ? "Surreal, dreamlike, abstract art style" : "High fidelity, photorealistic cinematic video";
       
-      let subjectDesc = "";
-      if (replaceSubject) {
-         subjectDesc = `featuring a ${replaceSubject}`;
-      } else {
-         subjectDesc = "featuring the character";
-      }
+      // Use phrasing that aligns the new subject with the visual structure of the input
+      // This helps when the user asks for plural subjects (e.g. "Lionesses") to map to multiple people in the video
+      const subjectDesc = replaceSubject 
+         ? `${replaceSubject} occupying the exact position, pose, and composition of the subjects in the reference image` 
+         : "The subjects from the reference image";
 
-      const envDesc = environment === 'Studio' ? "in a neutral studio setting" : `in a ${environment} environment`;
-      const bgDesc = backgroundType === 'Original' ? "" : `with a ${backgroundType} background`;
-      const motionDesc = smoothMotion ? "moving with smooth fluid motion" : "moving dynamically";
-      const textDesc = textOverlay ? `Displaying text '${textOverlay}'` : "";
+      const envDesc = environment === 'Studio' ? "" : `in a ${environment} environment`;
+      const bgDesc = backgroundType === 'Original' ? "" : `with ${backgroundType} background`;
+      const motionDesc = smoothMotion ? "smooth fluid motion" : "dynamic action matching the reference";
+      const textDesc = textOverlay ? `displaying text "${textOverlay}"` : "";
 
       // Descriptive prompt
-      const prompt = `A ${styleDesc} ${subjectDesc} ${envDesc} ${bgDesc}. ${motionDesc} ${textDesc}. High quality 4k resolution.`;
+      const prompt = `${styleDesc}. ${subjectDesc} ${envDesc} ${bgDesc}. ${motionDesc}. ${textDesc}. 4k resolution.`;
 
       const url = await generateVideoWithGemini(prompt, '16:9', frameToSend);
       
