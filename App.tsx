@@ -121,7 +121,7 @@ const TOOLS = [
   },
   {
     id: ToolId.DesignCritic,
-    title: "Design Critic",
+    title: "AI Design Critic",
     description: "Get brutal or constructive feedback on your UI/UX.",
     icon: AlertCircle,
     color: "red",

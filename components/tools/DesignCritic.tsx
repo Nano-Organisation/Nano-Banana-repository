@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Eye, Upload, RefreshCw, Grid, MousePointer2, Ruler, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Eye, Upload, RefreshCw, Grid, MousePointer2, Ruler, AlertTriangle, CheckCircle2, Download, CheckSquare, Square } from 'lucide-react';
 import { analyzeImageWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
@@ -11,11 +11,18 @@ const PERSONAS = [
   { id: 'technical', label: 'The Architect', desc: 'Structural, grid, and heuristic analysis.' }
 ];
 
+interface AnalysisResult {
+  verdict: string;
+  details: string;
+  recommendations: string[];
+}
+
 const DesignCritic: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
   const [persona, setPersona] = useState(PERSONAS[0].id);
-  const [critique, setCritique] = useState('');
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [status, setStatus] = useState<LoadingState>('idle');
+  const [acceptedRecs, setAcceptedRecs] = useState<Set<number>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,7 +33,8 @@ const DesignCritic: React.FC = () => {
         const reader = new FileReader();
         reader.onloadend = () => setImage(reader.result as string);
         reader.readAsDataURL(file);
-        setCritique('');
+        setAnalysis(null);
+        setAcceptedRecs(new Set());
       } catch (e: any) { alert(e.message); }
     }
   };
@@ -34,50 +42,60 @@ const DesignCritic: React.FC = () => {
   const handleAnalyze = async () => {
     if (!image) return;
     setStatus('loading');
+    setAnalysis(null);
+    setAcceptedRecs(new Set());
     
-    // Strict expert persona configuration
+    // Structured JSON Prompt Instructions
     const baseInstruction = `You are a highly-qualified, learned design expert with decades of experience in visual arts, UI/UX, and graphic design. 
     Analyze this image with extreme precision using your Vision capabilities. 
     
     CRITICAL RULES:
     1. Do NOT hallucinate features. Stick strictly to what is visible in the provided image.
     2. Use professional design terminology (e.g., hierarchy, whitespace, kerning, leading, contrast ratio, visual weight).
-    3. Format your response as a clear, structured Markdown list.`;
+    3. You MUST return the result as a valid JSON object. Do not wrap it in markdown code blocks. The JSON structure is:
+    {
+      "verdict": "A short, punchy summary of the design quality",
+      "details": "The detailed critique in Markdown format. Use headers and bullets.",
+      "recommendations": ["Actionable Item 1", "Actionable Item 2", "Actionable Item 3", ...]
+    }`;
 
     const promptMap: Record<string, string> = {
        'brutal': `${baseInstruction}
        Persona: Brutal Creative Director (Paul Rand/Massimo Vignelli style).
        Tone: Cynical, harsh, uncompromising, technically flawless. Short sentences.
-       Task: Roast this design. Identify every alignment error, bad font choice, and poor color contrast.
-       Output Structure:
-       - **VERDICT**: One sentence summary (e.g., "Amateurish," "Passable," "Disaster").
-       - **FLAWS**: Detailed list of technical errors.
-       - **THE FIX**: Precise commands to fix it.`,
+       Task: Roast this design. Identify every alignment error, bad font choice, and poor color contrast.`,
        
        'constructive': `${baseInstruction}
        Persona: Empathetic Senior Design Mentor.
        Tone: Professional, educational, encouraging but honest.
-       Task: Analyze the design strengths and weaknesses. Explain *why* something works or doesn't.
-       Output Structure:
-       - **CONCEPT ANALYSIS**: Brief overview of intent.
-       - **STRENGTHS**: What is working well.
-       - **OPPORTUNITIES**: Areas for refinement.
-       - **ACTION PLAN**: 3 steps to elevate the design.`,
+       Task: Analyze the design strengths and weaknesses. Explain *why* something works or doesn't.`,
        
        'technical': `${baseInstruction}
        Persona: Lead Design Systems Architect.
        Tone: Objective, robotic, analytical, "blueprint" style.
-       Task: Audit the layout, grid usage, spacing system, and usability heuristics.
-       Output Structure:
-       - **SYSTEM AUDIT**: Pass/Fail assessment.
-       - **STRUCTURAL ANALYSIS**: Grid, Alignment, Spacing.
-       - **HEURISTICS**: Usability and Accessibility check.
-       - **REFACTOR**: Steps to standardize.`,
+       Task: Audit the layout, grid usage, spacing system, and usability heuristics.`
     };
 
     try {
-      const result = await analyzeImageWithGemini(image, promptMap[persona]);
-      setCritique(result);
+      const resultText = await analyzeImageWithGemini(image, promptMap[persona]);
+      
+      // Parse JSON from text
+      let parsed: AnalysisResult;
+      try {
+         // Attempt to clean markdown code blocks if present
+         const cleanText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+         parsed = JSON.parse(cleanText);
+      } catch (jsonErr) {
+         console.warn("JSON Parse Failed, falling back to text", jsonErr);
+         // Fallback if model fails to return JSON
+         parsed = {
+            verdict: "Analysis Complete",
+            details: resultText,
+            recommendations: []
+         };
+      }
+
+      setAnalysis(parsed);
       setStatus('success');
     } catch (e) {
       console.error(e);
@@ -85,12 +103,60 @@ const DesignCritic: React.FC = () => {
     }
   };
 
+  const toggleRec = (index: number) => {
+    const next = new Set(acceptedRecs);
+    if (next.has(index)) next.delete(index);
+    else next.add(index);
+    setAcceptedRecs(next);
+  };
+
+  const toggleAll = () => {
+    if (!analysis) return;
+    if (acceptedRecs.size === analysis.recommendations.length) {
+       setAcceptedRecs(new Set());
+    } else {
+       const all = new Set(analysis.recommendations.map((_, i) => i));
+       setAcceptedRecs(all);
+    }
+  };
+
+  const handleExport = () => {
+    if (!analysis) return;
+    
+    const acceptedList = analysis.recommendations
+       .filter((_, i) => acceptedRecs.has(i))
+       .map(r => `- [ ] ${r}`)
+       .join('\n');
+
+    const report = `AI DESIGN CRITIC REPORT
+Generated by Digital Gentry AI
+----------------------------
+VERDICT: ${analysis.verdict}
+MODE: ${persona.toUpperCase()}
+
+FULL CRITIQUE:
+${analysis.details}
+
+----------------------------
+ACTION PLAN (ACCEPTED ITEMS):
+${acceptedList || '(No recommendations selected)'}
+    `;
+
+    const blob = new Blob([report], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `design-critique-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in font-mono">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-black text-slate-900 dark:text-white flex items-center justify-center gap-3 tracking-tighter uppercase">
           <Ruler className="w-8 h-8 text-blue-600" />
-          Design_Critic_v2.0
+          AI_Design_Critic
         </h2>
         <p className="text-slate-600 dark:text-slate-400 text-xs tracking-widest uppercase">Automated Expert Analysis Module</p>
       </div>
@@ -175,7 +241,7 @@ const DesignCritic: React.FC = () => {
          </div>
 
          {/* RIGHT COLUMN: Output Terminal */}
-         <div className="bg-[#0f172a] border border-slate-700 shadow-2xl min-h-[500px] flex flex-col relative overflow-hidden">
+         <div className="bg-[#0f172a] border border-slate-700 shadow-2xl min-h-[600px] flex flex-col relative overflow-hidden">
             {/* Screen Line Overlay */}
             <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-20 pointer-events-none bg-[length:100%_4px,3px_100%]"></div>
             
@@ -199,14 +265,61 @@ const DesignCritic: React.FC = () => {
                         Analyzing_Composition...
                      </p>
                   </div>
-               ) : critique ? (
-                  <div className="prose prose-invert prose-sm max-w-none font-mono text-xs leading-relaxed">
-                     <div className="text-green-400 mb-4 text-[10px] uppercase tracking-widest border-b border-green-900/50 pb-2">
-                        <CheckCircle2 className="w-3 h-3 inline mr-2"/> Analysis Complete
+               ) : analysis ? (
+                  <div className="space-y-8">
+                     {/* Verdict */}
+                     <div className="border border-slate-700 bg-slate-900/50 p-4">
+                        <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">VERDICT</div>
+                        <div className="text-lg font-bold text-white uppercase">{analysis.verdict}</div>
                      </div>
-                     <div className="whitespace-pre-wrap text-slate-300 font-mono">
-                        {critique}
+
+                     {/* Details */}
+                     <div className="prose prose-invert prose-sm max-w-none font-mono text-xs leading-relaxed border-b border-slate-800 pb-6">
+                        <div className="text-blue-400 mb-4 text-[10px] uppercase tracking-widest">
+                           <CheckCircle2 className="w-3 h-3 inline mr-2"/> Detailed Analysis
+                        </div>
+                        <div className="whitespace-pre-wrap text-slate-300 font-mono">
+                           {analysis.details}
+                        </div>
                      </div>
+
+                     {/* Recommendations Matrix */}
+                     {analysis.recommendations.length > 0 && (
+                        <div className="space-y-4">
+                           <div className="flex items-center justify-between text-blue-400 text-[10px] uppercase tracking-widest border-b border-blue-900/30 pb-2">
+                              <span><AlertTriangle className="w-3 h-3 inline mr-2"/> Action_Items</span>
+                              <button onClick={toggleAll} className="hover:text-white underline">
+                                 {acceptedRecs.size === analysis.recommendations.length ? 'DESELECT_ALL' : 'SELECT_ALL'}
+                              </button>
+                           </div>
+                           
+                           <div className="space-y-2">
+                              {analysis.recommendations.map((rec, idx) => (
+                                 <div 
+                                    key={idx} 
+                                    onClick={() => toggleRec(idx)}
+                                    className={`flex items-start gap-3 p-3 text-xs font-mono border cursor-pointer transition-all ${
+                                       acceptedRecs.has(idx) 
+                                       ? 'bg-blue-900/20 border-blue-500 text-blue-100' 
+                                       : 'bg-transparent border-slate-800 text-slate-500 hover:border-slate-600'
+                                    }`}
+                                 >
+                                    <div className="mt-0.5">
+                                       {acceptedRecs.has(idx) ? <CheckSquare className="w-4 h-4 text-blue-500"/> : <Square className="w-4 h-4"/>}
+                                    </div>
+                                    <span className="leading-relaxed">{rec}</span>
+                                 </div>
+                              ))}
+                           </div>
+
+                           <button 
+                              onClick={handleExport}
+                              className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 text-xs uppercase tracking-widest flex items-center justify-center gap-2 border border-slate-600"
+                           >
+                              <Download className="w-4 h-4" /> Export_Protocol
+                           </button>
+                        </div>
+                     )}
                   </div>
                ) : (
                   <div className="h-full flex flex-col items-center justify-center text-slate-600 text-center space-y-4">
