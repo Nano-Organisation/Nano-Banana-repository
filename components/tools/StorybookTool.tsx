@@ -149,7 +149,8 @@ const StorybookTool: React.FC = () => {
          for (let i = 1; i < script.pages.length; i++) {
             setProgressMsg(`Illustrating Page ${i + 1}/${script.pages.length}...`);
             try {
-               const pagePrompt = `Action: ${script.pages[i].imagePrompt}. Context: ${script.characterDescription}. Visual Style: ${script.style}`;
+               // Strengthen prompt by explicitly stating character details again + referencing
+               const pagePrompt = `Character: ${script.characterDescription}. Action: ${script.pages[i].imagePrompt}. Visual Style: ${script.style}. Maintain strict visual consistency with the reference character provided.`;
                const imageUrl = await generateImageWithGemini(pagePrompt, '1:1', characterReferenceImage);
                
                setBookData(prev => {
@@ -236,7 +237,7 @@ const StorybookTool: React.FC = () => {
               
               <button 
                  onClick={openMetadataEditor}
-                 className="absolute top-2 right-2 bg-black/10 hover:bg-black/20 text-slate-600 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                 className="absolute top-2 right-2 bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-full shadow-sm border border-slate-300 transition-all z-10"
                  title="Edit Cover Details"
               >
                  <Edit3 className="w-4 h-4" />
@@ -258,7 +259,7 @@ const StorybookTool: React.FC = () => {
            </div>
            <button 
               onClick={openMetadataEditor}
-              className="absolute top-4 right-4 bg-black/10 hover:bg-black/20 text-slate-600 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-4 right-4 bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-full shadow-sm border border-slate-300 transition-all z-10"
               title="Edit Dedication"
            >
               <Edit3 className="w-4 h-4" />
@@ -281,7 +282,7 @@ const StorybookTool: React.FC = () => {
            </p>
            <button 
               onClick={openMetadataEditor}
-              className="absolute top-4 right-4 bg-black/10 hover:bg-black/20 text-slate-600 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-4 right-4 bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-full shadow-sm border border-slate-300 transition-all z-10"
               title="Edit Bio"
            >
               <Edit3 className="w-4 h-4" />
@@ -309,7 +310,7 @@ const StorybookTool: React.FC = () => {
            </div>
            <button 
               onClick={openMetadataEditor}
-              className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full shadow-sm border border-white/20 transition-all z-10"
               title="Edit Back Cover"
            >
               <Edit3 className="w-4 h-4" />

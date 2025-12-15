@@ -67,7 +67,14 @@ const SoundFXTool: React.FC = () => {
       VISUAL: Abstract minimalist audio visualizer on black background.`;
       
       const url = await generateVideoWithGemini(finalPrompt, '16:9');
-      setVideoUrl(url);
+      
+      // Fetch as blob
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to load FX video.");
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      setVideoUrl(objectUrl);
       setStatus('success');
     } catch (err) {
       console.error(err);
@@ -166,6 +173,7 @@ const SoundFXTool: React.FC = () => {
                        <video 
                           src={videoUrl} 
                           controls 
+                          playsInline
                           className="w-full h-full object-contain" 
                        />
                     </div>

@@ -71,7 +71,14 @@ const VideoGenerator: React.FC = () => {
     try {
       const finalPrompt = prompt || (inputImage ? "Animate this image cinematically" : "");
       const url = await generateVideoWithGemini(finalPrompt, aspectRatio, inputImage || undefined);
-      setVideoUrl(url);
+      
+      // Fix: Fetch as blob to avoid CORS/Auth issues in video tag
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to load video stream. The link may have expired or is inaccessible.");
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      
+      setVideoUrl(objectUrl);
       setStatus('success');
     } catch (err: any) {
       console.error(err);
@@ -233,6 +240,8 @@ const VideoGenerator: React.FC = () => {
                        controls 
                        autoPlay
                        loop
+                       muted // Crucial for autoplay
+                       playsInline
                        className="w-full h-full object-contain" 
                     />
                  </div>

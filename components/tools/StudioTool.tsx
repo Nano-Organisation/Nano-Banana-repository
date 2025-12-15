@@ -68,7 +68,14 @@ const StudioTool: React.FC = () => {
         : `Create a YouTube Outro / End Screen video for channel "${channelName}". Style: ${selectedStyle?.desc}. Layout: Leave space for "Next Video" and "Subscribe" buttons. Text: "Thanks for watching!". Background: Looping, subtle motion graphics. Audio: Chill lo-fi outro music. Length: 10 seconds.`;
 
       const url = await generateVideoWithGemini(prompt, '16:9');
-      setVideoUrl(url);
+      
+      // Fetch as blob for reliable playback
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to load video stream.");
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      setVideoUrl(objectUrl);
       setStatus('success');
     } catch (err: any) {
       console.error(err);
@@ -226,6 +233,7 @@ const StudioTool: React.FC = () => {
                        controls 
                        autoPlay
                        loop
+                       playsInline
                        className="w-full h-full object-contain" 
                     />
                  </div>
