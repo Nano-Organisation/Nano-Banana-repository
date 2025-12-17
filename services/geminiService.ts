@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Schema, Chat, Part, Modality, GenerateContentResponse } from "@google/genai";
 import {
   StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis,
@@ -14,7 +15,7 @@ export const getAiClient = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
-export const withRetry = async <T>(fn: () => Promise<T>, retries = 5, baseDelay = 500): Promise<T> => {
+export const withRetry = async <T>(fn: () => Promise<T>, retries = 5, baseDelay = 1000): Promise<T> => {
   let lastError: any;
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
@@ -23,12 +24,17 @@ export const withRetry = async <T>(fn: () => Promise<T>, retries = 5, baseDelay 
       lastError = error;
       const status = error.status || error.response?.status || error?.error?.code;
       const message = (error.message || JSON.stringify(error) || "").toLowerCase();
+      
       const isOverloaded = status === 503 || message.includes('overloaded') || message.includes('503') || message.includes('unavailable');
-      const isRateLimit = status === 429 || message.includes('429') || message.includes('quota') || message.includes('too many requests');
+      const isRateLimit = status === 429 || message.includes('429') || message.includes('quota') || message.includes('resource_exhausted') || message.includes('too many requests');
+      
       if (!isOverloaded && !isRateLimit) throw error;
       if (attempt === retries - 1) break;
-      const backoff = baseDelay * Math.pow(2, attempt); 
-      const jitter = Math.random() * 200;
+      
+      // Use longer backoff for rate limits
+      const multiplier = isRateLimit ? 3 : 2;
+      const backoff = baseDelay * Math.pow(multiplier, attempt); 
+      const jitter = Math.random() * 500;
       await new Promise(resolve => setTimeout(resolve, backoff + jitter));
     }
   }
@@ -36,12 +42,33 @@ export const withRetry = async <T>(fn: () => Promise<T>, retries = 5, baseDelay 
 };
 
 export const handleGeminiError = (error: any) => {
-  const msg = (error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error)) || "").toLowerCase();
   console.error("Gemini API Error Detail:", error);
-  if (msg.includes('503') || msg.includes('overloaded')) throw new Error("Server busy. Please try again in a few seconds.");
-  if (msg.includes('requested entity was not found')) throw new Error("Requested entity not found. Check your API key settings.");
-  if (msg.includes("cannot read properties of undefined (reading 'name')")) throw new Error("Video operation failed to initialize. Please try again.");
-  throw new Error(error?.message || "An unexpected error occurred.");
+  
+  let rawMsg = "";
+  if (typeof error === 'string') {
+    rawMsg = error;
+  } else if (error?.message) {
+    rawMsg = error.message;
+  } else {
+    rawMsg = JSON.stringify(error) || "";
+  }
+  
+  const msg = rawMsg.toLowerCase();
+  
+  if (msg.includes('429') || msg.includes('quota') || msg.includes('resource_exhausted')) {
+     throw new Error("Quota exceeded or rate limited. Please ensure your API key is from a paid GCP project with billing enabled, or wait a few minutes before trying again. Check limits at ai.google.dev.");
+  }
+  if (msg.includes('503') || msg.includes('overloaded')) {
+     throw new Error("Server busy. Please try again in a few seconds.");
+  }
+  if (msg.includes('requested entity was not found')) {
+     throw new Error("Requested entity not found. Check your API key settings or re-select your key in Settings.");
+  }
+  if (msg.includes("cannot read properties of undefined (reading 'name')")) {
+     throw new Error("Video operation failed to initialize. This can happen during peak load. Please try again.");
+  }
+  
+  throw new Error(rawMsg || "An unexpected error occurred.");
 };
 
 export const generateTextWithGemini = async (prompt: string, systemInstruction?: string): Promise<string> => {
@@ -202,9 +229,8 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
   };
 
   try {
-    let operation = await withRetry(() => startOp(), 5, 2000);
+    let operation = await withRetry(() => startOp(), 5, 3000);
     
-    // Robust Defensive Check to prevent "reading 'name' of undefined"
     if (!operation || typeof operation !== 'object' || !operation.name) {
       console.error("Video Operation Object is invalid:", operation);
       throw new Error("Failed to initialize video operation tracker.");
@@ -212,7 +238,6 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
 
     while (!operation.done) {
       await new Promise(r => setTimeout(r, 10000));
-      // Re-check before calling API
       if (!operation || !operation.name) break;
       
       const polledOp = await ai.operations.getVideosOperation({ operation });
@@ -249,7 +274,10 @@ const generateStructuredContent = async <T>(prompt: string, schema: Schema, mode
       model, contents, config: { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.2 }
     }), 3, 500); 
     return JSON.parse(response.text || "{}") as T;
-  } catch (error) { return {} as T; }
+  } catch (error) { 
+    handleGeminiError(error);
+    return {} as T; 
+  }
 };
 
 export const generateStoryScript = async (topic: string, style: string, charDesc?: string): Promise<StorybookData> => {
