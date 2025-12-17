@@ -522,12 +522,18 @@ const generateStructuredContent = async <T>(prompt: string, schema: Schema, mode
 };
 
 export const generateStoryScript = async (topic: string, style: string, charDesc?: string): Promise<StorybookData> => {
-  const prompt = `Write a children's storybook script about: ${topic}. Style: ${style}. ${charDesc ? `Character Description: ${charDesc}` : ''}`;
+  const prompt = `Write a children's storybook script about: ${topic}. 
+  CRITICAL: The story text MUST follow a strict rhyming pattern (AABB or ABAB). 
+  Each stanza should be easy to follow. Each line should end with a clear rhyme. 
+  Format the text with clear line breaks so the rhyming pattern is visually obvious.
+  Style: ${style}. ${charDesc ? `Character Description: ${charDesc}` : ''}`;
+
   const schema: Schema = {
     type: Type.OBJECT,
     properties: {
       title: { type: Type.STRING },
       style: { type: Type.STRING },
+      characterName: { type: Type.STRING },
       characterDescription: { type: Type.STRING },
       author: { type: Type.STRING },
       dedication: { type: Type.STRING },
@@ -569,6 +575,7 @@ export const generateComicScriptFromImages = async (images: string[], topic: str
     Return JSON with:
     - title
     - author (Creative name)
+    - characterName (The primary name of the character)
     - characterDescription (Detailed visual description of the main character seen in images for consistency)
     - pages (Array of 4 objects, one for each panel):
       - pageNumber
@@ -582,6 +589,7 @@ export const generateComicScriptFromImages = async (images: string[], topic: str
     properties: {
       title: { type: Type.STRING },
       style: { type: Type.STRING },
+      characterName: { type: Type.STRING },
       characterDescription: { type: Type.STRING },
       author: { type: Type.STRING },
       dedication: { type: Type.STRING },

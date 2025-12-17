@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen, Sparkles, RefreshCw, ChevronLeft, ChevronRight, Download, Edit3, FileText, Smartphone, Save, User, Trash2, CheckCircle2, Settings, X, FileJson, Book, Image as ImageIcon, Music, Volume2, VolumeX } from 'lucide-react';
+import { BookOpen, Sparkles, RefreshCw, ChevronLeft, ChevronRight, Download, Edit3, FileText, Smartphone, Save, User, Trash2, CheckCircle2, Settings, X, FileJson, Book, Image as ImageIcon, Music, Volume2, VolumeX, ToggleLeft, ToggleRight } from 'lucide-react';
 import { generateStoryScript, generateImageWithGemini, generateBackgroundMusic } from '../../services/geminiService';
 import { StorybookData, StoryPage, LoadingState, SavedCharacter } from '../../types';
 import jsPDF from 'jspdf';
@@ -45,10 +46,11 @@ const StorybookTool: React.FC = () => {
   const [editData, setEditData] = useState<Partial<StorybookData>>({});
   const authorImageRef = useRef<HTMLInputElement>(null);
 
-  // Music State
+  // Sound/Music State
   const [musicUrl, setMusicUrl] = useState<string | null>(null);
   const [generatingMusic, setGeneratingMusic] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
@@ -77,6 +79,33 @@ const StorybookTool: React.FC = () => {
       audioRef.current.muted = isMuted;
     }
   }, [isMuted]);
+
+  // Page Turn Sound Logic (Synthesized Swish)
+  const playPageTurnSound = () => {
+    if (!soundEnabled) return;
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const bufferSize = audioCtx.sampleRate * 0.1;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+      }
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1000, audioCtx.currentTime);
+      filter.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      noise.start();
+    } catch (e) {}
+  };
 
   const saveToLocalStorage = (chars: SavedCharacter[]) => {
     setSavedCharacters(chars);
@@ -230,6 +259,7 @@ const StorybookTool: React.FC = () => {
     if (!bookData) return;
     setEditData({
       title: bookData.title,
+      characterName: bookData.characterName,
       author: bookData.author || "AI Storyteller",
       authorImage: bookData.authorImage || "",
       dedication: bookData.dedication || "",
@@ -257,14 +287,35 @@ const StorybookTool: React.FC = () => {
 
   const saveMetadata = () => {
     if (!bookData) return;
+
+    // Detect character name change and sync through book
+    let updatedPages = [...bookData.pages];
+    let updatedBlurb = editData.backCoverBlurb || bookData.backCoverBlurb;
+    
+    if (editData.characterName && editData.characterName !== bookData.characterName) {
+      const oldName = bookData.characterName;
+      const newName = editData.characterName;
+      // Use regex to replace all occurrences of oldName with newName
+      const regex = new RegExp(oldName, 'g');
+      
+      updatedPages = updatedPages.map(page => ({
+        ...page,
+        text: page.text.replace(regex, newName)
+      }));
+      
+      updatedBlurb = updatedBlurb.replace(regex, newName);
+    }
+
     setBookData({
       ...bookData,
       title: editData.title || bookData.title,
+      characterName: editData.characterName || bookData.characterName,
       author: editData.author || bookData.author,
       authorImage: editData.authorImage || bookData.authorImage,
       dedication: editData.dedication || bookData.dedication,
       authorBio: editData.authorBio || bookData.authorBio,
-      backCoverBlurb: editData.backCoverBlurb || bookData.backCoverBlurb
+      backCoverBlurb: updatedBlurb,
+      pages: updatedPages
     });
     setShowEditMetadata(false);
   };
@@ -272,11 +323,17 @@ const StorybookTool: React.FC = () => {
   const totalViews = bookData ? bookData.pages.length + 4 : 0;
 
   const nextView = () => {
-    if (viewIndex < totalViews - 1) setViewIndex(v => v + 1);
+    if (viewIndex < totalViews - 1) {
+      setViewIndex(v => v + 1);
+      playPageTurnSound();
+    }
   };
 
   const prevView = () => {
-    if (viewIndex > 0) setViewIndex(v => v - 1);
+    if (viewIndex > 0) {
+      setViewIndex(v => v - 1);
+      playPageTurnSound();
+    }
   };
 
   const renderCurrentView = () => {
@@ -494,7 +551,7 @@ const StorybookTool: React.FC = () => {
 
       doc.addPage(); doc.setFillColor(30, 41, 59); doc.rect(0, 0, pageWidth, pageHeight, 'F');
       doc.setTextColor(255); doc.setFont('times', 'italic'); doc.setFontSize(14);
-      const splitBlurb = doc.splitTextToSize(`"${bookData.backCoverBlurb || bookData.characterDescription}"`, pageWidth - (margin * 4));
+      const splitBlurb = doc.splitTextToSize(`"${bookData.backCoverBlurb || bookData.characterName}"`, pageWidth - (margin * 4));
       doc.text(splitBlurb, pageWidth / 2, pageHeight / 2, { align: 'center' });
       doc.save(`ai-storybook-${mode}.pdf`);
     } catch (e) {
@@ -541,7 +598,7 @@ const StorybookTool: React.FC = () => {
                     </button>
                   </div>
                   <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                    <button onClick={() => setSelectedCharacterId(null)} className={`flex-shrink-0 p-3 rounded-xl border flex flex-col items-center justify-center w-24 h-24 transition-all ${selectedCharacterId === null ? 'bg-slate-700 border-slate-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}>
+                    <button onClick={() => setSelectedCharacterId(null)} className={`flex-shrink-0 p-3 rounded-xl border flex flex-col items-center justify-center w-24 h-24 transition-all ${selectedCharacterId === null ? 'bg-amber-600 border-amber-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-750'}`}>
                       <User className="w-6 h-6 mb-1" /> <span className="text-xs font-bold">New Char</span>
                     </button>
                     {savedCharacters.map(char => (
@@ -582,7 +639,7 @@ const StorybookTool: React.FC = () => {
         <div className="space-y-6">
           <div className="flex flex-col xl:flex-row justify-between items-center gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800">
              <div className="flex gap-2">
-               <button onClick={() => setBookData(null)} className="flex items-center gap-2 text-slate-400 hover:text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors">
+               <button onClick={() => { setBookData(null); setStatus('idle'); setConcept(''); }} className="flex items-center gap-2 text-slate-400 hover:text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors">
                   <Edit3 className="w-4 h-4" /> New Concept
                </button>
                <button onClick={openMetadataEditor} className="flex items-center gap-2 text-amber-500 hover:text-amber-400 px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors bg-amber-900/10 border border-amber-900/30">
@@ -590,6 +647,14 @@ const StorybookTool: React.FC = () => {
                </button>
              </div>
              <div className="flex flex-wrap gap-2 justify-center items-center">
+                <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+                   <label className="text-[10px] font-bold text-slate-500 uppercase cursor-pointer flex items-center gap-2">
+                      Sound Effects
+                      <button onClick={() => setSoundEnabled(!soundEnabled)} className="transition-colors">
+                         {soundEnabled ? <ToggleRight className="w-5 h-5 text-amber-500" /> : <ToggleLeft className="w-5 h-5 text-slate-600" />}
+                      </button>
+                   </label>
+                </div>
                 <button onClick={() => setShowSaveCharDialog(true)} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg border border-slate-700 transition-colors shadow-sm">
                   <Save className="w-4 h-4" /> Save Character
                 </button>
@@ -619,7 +684,7 @@ const StorybookTool: React.FC = () => {
                <span className="text-xs font-mono text-slate-500 uppercase mr-2">{viewIndex === 0 ? 'Cover' : viewIndex === 1 ? 'Intro' : viewIndex >= totalViews - 2 ? 'Back' : `Page ${viewIndex - 1}`}</span>
                <div className="flex gap-1">
                   {[...Array(totalViews)].map((_, i) => (
-                    <button key={i} onClick={() => setViewIndex(i)} className={`w-2 h-2 rounded-full transition-all ${viewIndex === i ? 'bg-amber-500 w-4' : 'bg-slate-700 hover:bg-slate-600'}`} />
+                    <button key={i} onClick={() => { setViewIndex(i); playPageTurnSound(); }} className={`w-2 h-2 rounded-full transition-all ${viewIndex === i ? 'bg-amber-500 w-4' : 'bg-slate-700 hover:bg-slate-600'}`} />
                   ))}
                </div>
             </div>
@@ -650,6 +715,11 @@ const StorybookTool: React.FC = () => {
                   <div>
                      <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Title</label>
                      <input value={editData.title || ''} onChange={(e) => setEditData({...editData, title: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500" />
+                  </div>
+                  <div>
+                     <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Main Character Name</label>
+                     <input value={editData.characterName || ''} onChange={(e) => setEditData({...editData, characterName: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500" />
+                     <p className="text-[10px] text-slate-500 mt-1 uppercase font-bold">Note: Changing this will update the name in all story text.</p>
                   </div>
                   <div>
                      <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Author Name</label>

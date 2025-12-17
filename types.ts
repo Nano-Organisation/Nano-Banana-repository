@@ -117,6 +117,7 @@ export interface StoryPage {
 export interface StorybookData {
   title: string;
   style: string;
+  characterName: string;
   characterDescription: string;
   author: string;
   authorImage?: string;
@@ -285,6 +286,10 @@ export interface BabyName {
 export interface LearnerBrief {
   summary: string; // Bulleted summary
   podcastScript: string; // Script for TTS
+}
+
+export interface ExportData {
+  // Define structure for export data if needed
 }
 
 export interface AI360Response {
