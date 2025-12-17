@@ -35,9 +35,10 @@ export const getAiClient = () => {
 };
 
 /**
- * Enhanced retry logic with exponential backoff and jitter.
+ * Enhanced retry logic with exponential backoff.
+ * Reduced defaults for faster responsiveness in web UI.
  */
-export const withRetry = async <T>(fn: () => Promise<T>, retries = 30, baseDelay = 4000): Promise<T> => {
+export const withRetry = async <T>(fn: () => Promise<T>, retries = 12, baseDelay = 1000): Promise<T> => {
   let lastError: any;
   
   for (let attempt = 0; attempt < retries; attempt++) {
@@ -59,9 +60,9 @@ export const withRetry = async <T>(fn: () => Promise<T>, retries = 30, baseDelay
 
       if (attempt === retries - 1) break;
 
-      const backoff = baseDelay * Math.pow(1.4, attempt); 
-      const jitter = Math.random() * 1500;
-      const waitTime = Math.min(backoff + jitter, 45000);
+      const backoff = baseDelay * Math.pow(1.5, attempt); 
+      const jitter = Math.random() * 500;
+      const waitTime = Math.min(backoff + jitter, 15000);
 
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
@@ -128,7 +129,7 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
         config: {
           imageConfig: { aspectRatio: aspectRatio as any }
         }
-      }), 12, 4000);
+      }), 8, 2000);
 
       const candidates = response.candidates || [];
       if (candidates.length === 0) return null;
@@ -410,7 +411,7 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
 
   try {
     // Initial attempt with image reference (if provided)
-    let operation = await withRetry(() => startOperation(prompt, !!imageBase64), 10, 4000);
+    let operation = await withRetry(() => startOperation(prompt, !!imageBase64), 10, 3000);
 
     while (!operation.done) {
       await new Promise(resolve => setTimeout(resolve, 8000));
@@ -485,6 +486,10 @@ export const generateBackgroundMusic = async (title: string, style: string): Pro
 
 // --- Structured Content Generation (JSON) ---
 
+/**
+ * Optimised structured content generation.
+ * Disables thinking mode for JSON tasks to minimize latency and ensure "Flash" speed.
+ */
 const generateStructuredContent = async <T>(prompt: string, schema: Schema, model = 'gemini-3-flash-preview', image?: string): Promise<T> => {
   const ai = getAiClient();
   try {
@@ -506,9 +511,11 @@ const generateStructuredContent = async <T>(prompt: string, schema: Schema, mode
       contents,
       config: {
         responseMimeType: 'application/json',
-        responseSchema: schema
+        responseSchema: schema,
+        thinkingConfig: { thinkingBudget: 0 } // Disable thinking for structured tasks to reduce latency
       }
-    }));
+    }), 5, 1000); // Fewer retries, faster delay for JSON
+
     const text = response.text || "{}";
     return JSON.parse(text) as T;
   } catch (error) {
@@ -615,9 +622,10 @@ export const generateComicScriptFromImages = async (images: string[], topic: str
       contents: { parts },
       config: {
         responseMimeType: 'application/json',
-        responseSchema: schema
+        responseSchema: schema,
+        thinkingConfig: { thinkingBudget: 0 }
       }
-    }));
+    }), 5, 1000);
     const text = response.text || "{}";
     return JSON.parse(text) as StorybookData;
   } catch (error) {
@@ -792,7 +800,8 @@ export const generateUiCode = async (prompt: string, device: string, style: stri
 
   const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
     get model() { return 'gemini-3-pro-preview'; },
-    contents: { parts: contents }
+    contents: { parts: contents },
+    config: { thinkingConfig: { thinkingBudget: 1024 } }
   }));
   
   let code = response.text || "";
@@ -830,8 +839,9 @@ export const generateHiddenMessage = async (secret: string, cover: string): Prom
   
   const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
     model: 'gemini-3-pro-preview',
-    contents: prompt
-  }));
+    contents: prompt,
+    config: { thinkingConfig: { thinkingBudget: 0 } }
+  }), 5, 1000);
   return response.text || "";
 };
 
@@ -918,6 +928,10 @@ export const generateDailyJoke = async (dayIndex: number): Promise<string> => {
 
 export const generateQuote = async (category: string): Promise<string> => {
   return generateTextWithGemini(`Give me an inspiring quote about ${category}.`);
+};
+
+export const generateQuoteAsync = async (category: string): Promise<string> => {
+   return generateTextWithGemini(`Give me an inspiring quote about ${category}.`);
 };
 
 export const generateConnectionFact = async (person: string): Promise<string> => {
@@ -1161,12 +1175,18 @@ export const generateBabyTransformation = async (frameBase64: string, attireData
 
 // --- Baby Debates Logic ---
 
+/**
+ * Generates a concise Baby Debate script.
+ * Prompt optimized for high speed and minimal generation time.
+ */
 export const generateBabyDebateScript = async (topic: string, participants: string[]): Promise<BabyDebateScript> => {
-  const prompt = `Write a script for a funny "Baby Debate" video. 
+  const prompt = `Write a VERY CONCISE script for a funny "Baby Debate". 
   Participants: ${participants.join(', ')}. 
   Topic: ${topic}. 
-  The participants are tiny 3D baby versions of themselves. 
-  Capture the essence of their real-life personalities but translate it into a hilarious nursery/playground context.
+  Characters are adorable 3D baby versions of themselves in a nursery.
+  
+  Constraint: Limit script to EXACTLY 4 turns total. Short, punchy lines only. 
+  Capture the character's essence but in a baby context.
   
   Format as JSON with:
   - topic (string)
