@@ -526,7 +526,11 @@ export const generateStoryScript = async (topic: string, style: string, charDesc
   CRITICAL: The story text MUST follow a strict rhyming pattern (AABB or ABAB). 
   Each stanza should be easy to follow. Each line should end with a clear rhyme. 
   Format the text with clear line breaks so the rhyming pattern is visually obvious.
-  Style: ${style}. ${charDesc ? `Character Description: ${charDesc}` : ''}`;
+  
+  CHARACTER CONSISTENCY:
+  In the 'characterDescription' field, provide a detailed visual description for ALL recurring people or creatures in the story (e.g., "The main character is Lily, a toddler with blonde pigtails in a blue striped onesie; her Mom has ginger hair and a green floral dress; her Dad has short brown hair and wears a grey sweater"). This ensures parents and others remain visually consistent across every page.
+  
+  Style: ${style}. ${charDesc ? `Existing Character Context: ${charDesc}` : ''}`;
 
   const schema: Schema = {
     type: Type.OBJECT,

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen, Sparkles, RefreshCw, ChevronLeft, ChevronRight, Download, Edit3, FileText, Smartphone, Save, User, Trash2, CheckCircle2, Settings, X, FileJson, Book, Image as ImageIcon, Music, Volume2, VolumeX, ToggleLeft, ToggleRight } from 'lucide-react';
 import { generateStoryScript, generateImageWithGemini, generateBackgroundMusic } from '../../services/geminiService';
@@ -80,26 +79,36 @@ const StorybookTool: React.FC = () => {
     }
   }, [isMuted]);
 
-  // Page Turn Sound Logic (Synthesized Swish)
+  // Enhanced Page Turn Sound Logic (Multi-stage swish)
   const playPageTurnSound = () => {
     if (!soundEnabled) return;
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const bufferSize = audioCtx.sampleRate * 0.1;
+      const duration = 0.35;
+      const bufferSize = audioCtx.sampleRate * duration;
       const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
       const data = buffer.getChannelData(0);
+      
+      // Textured noise for paper feel
       for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+        data[i] = (Math.random() * 2 - 1);
       }
+      
       const noise = audioCtx.createBufferSource();
       noise.buffer = buffer;
+
       const filter = audioCtx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(1000, audioCtx.currentTime);
-      filter.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+      // Slide frequency from a crisp flick to a sliding friction sound
+      filter.frequency.setValueAtTime(1500, audioCtx.currentTime);
+      filter.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + duration);
+
       const gain = audioCtx.createGain();
-      gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+      // Swish envelope
+      gain.gain.setValueAtTime(0, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.06, audioCtx.currentTime + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
       noise.connect(filter);
       filter.connect(gain);
       gain.connect(audioCtx.destination);
@@ -181,7 +190,7 @@ const StorybookTool: React.FC = () => {
 
       // Generate First Page
       try {
-         const firstPagePrompt = `Visual Style: ${script.style}. Scene: ${script.pages[0].imagePrompt}. Main Character: ${script.characterDescription}`;
+         const firstPagePrompt = `Visual Style: ${script.style}. Scene: ${script.pages[0].imagePrompt}. Characters: ${script.characterDescription}. Anatomy: Perfectly correct human anatomy, exactly two legs, no hybrid body parts.`;
          const imageUrl = await generateImageWithGemini(firstPagePrompt, '1:1');
          characterReferenceImage = imageUrl;
 
@@ -205,8 +214,8 @@ const StorybookTool: React.FC = () => {
              const pagePrompt = `
                 Visual Style: ${script.style}.
                 Scene: ${script.pages[i].imagePrompt}.
-                Main Character: ${script.characterDescription}.
-                Maintain strict character consistency.
+                Maintain strict visual consistency for ALL people and entities described here: ${script.characterDescription}.
+                Anatomy Protocol: Ensure anatomically correct human bodies, exactly two legs and two arms per person, no floating limbs or hybrid baby-adult features.
              `.replace(/\s+/g, ' ').trim();
 
              const imageUrl = await generateImageWithGemini(pagePrompt, '1:1', characterReferenceImage);
@@ -639,7 +648,7 @@ const StorybookTool: React.FC = () => {
         <div className="space-y-6">
           <div className="flex flex-col xl:flex-row justify-between items-center gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800">
              <div className="flex gap-2">
-               <button onClick={() => { setBookData(null); setStatus('idle'); setConcept(''); }} className="flex items-center gap-2 text-slate-400 hover:text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors">
+               <button onClick={() => { setBookData(null); setStatus('idle'); setConcept(''); setSelectedCharacterId(null); }} className="flex items-center gap-2 text-slate-400 hover:text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors">
                   <Edit3 className="w-4 h-4" /> New Concept
                </button>
                <button onClick={openMetadataEditor} className="flex items-center gap-2 text-amber-500 hover:text-amber-400 px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors bg-amber-900/10 border border-amber-900/30">
@@ -737,15 +746,15 @@ const StorybookTool: React.FC = () => {
                   </div>
                   <div>
                      <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Dedication</label>
-                     <textarea value={editData.dedication || ''} onChange={(e) => setEditData({...editData, dedication: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500 h-20 resize-none" />
+                     <textarea value={editData.dedication || ''} onChange={(e) => setEditData({...editData, dedication: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 h-20 resize-none" />
                   </div>
                   <div>
                      <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Author Bio</label>
-                     <textarea value={editData.authorBio || ''} onChange={(e) => setEditData({...editData, authorBio: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500 h-24 resize-none" />
+                     <textarea value={editData.authorBio || ''} onChange={(e) => setEditData({...editData, authorBio: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 h-24 resize-none" />
                   </div>
                   <div>
                      <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Blurb</label>
-                     <textarea value={editData.backCoverBlurb || ''} onChange={(e) => setEditData({...editData, backCoverBlurb: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500 h-24 resize-none" />
+                     <textarea value={editData.backCoverBlurb || ''} onChange={(e) => setEditData({...editData, backCoverBlurb: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 h-24 resize-none" />
                   </div>
                </div>
 
