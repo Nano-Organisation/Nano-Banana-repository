@@ -37,7 +37,7 @@ export const getAiClient = () => {
  * Enhanced retry logic with exponential backoff and jitter.
  * Specifically tuned for 503 Overloaded and 429 Rate Limit errors.
  */
-export const withRetry = async <T>(fn: () => Promise<T>, retries = 15, baseDelay = 2000): Promise<T> => {
+export const withRetry = async <T>(fn: () => Promise<T>, retries = 10, baseDelay = 2000): Promise<T> => {
   let lastError: any;
   
   for (let attempt = 0; attempt < retries; attempt++) {
@@ -126,7 +126,7 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
   const ai = getAiClient();
 
   // Internal helper to run a single generation attempt
-  const attemptGeneration = async (includeRefImage: boolean): Promise<string | null> => {
+  const attemptGeneration = async (includeRefImage: boolean, model: string): Promise<string | null> => {
     try {
       const parts: any[] = [];
       
@@ -143,12 +143,12 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
       parts.push({ text: prompt });
 
       const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
+        model: model,
         contents: { parts },
         config: {
           imageConfig: { aspectRatio: aspectRatio as any }
         }
-      }));
+      }), 5, 2000); // Shorter retry for internal attempts to allow fallback
 
       for (const part of response.candidates?.[0]?.content?.parts || []) {
         if (part.inlineData) {
@@ -158,21 +158,35 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
       return null;
     } catch (e) {
       // Log warning but don't throw yet, allow fallback
-      console.warn("Image generation attempt failed:", e);
+      console.warn(`Image generation attempt failed on ${model}:`, e);
       return null;
     }
   };
 
   try {
-    // Attempt 1: With Reference Image (if provided)
+    // Strategy:
+    // 1. Flash Image (with Ref if applicable)
+    // 2. Pro Image (with Ref if applicable) -> Higher quality fallback
+    // 3. Flash Image (Text Only) -> Fallback if ref is the issue
+    // 4. Pro Image (Text Only) -> Last resort
+
     if (referenceImage) {
-      const result = await attemptGeneration(true);
+      // Try Flash with Ref
+      let result = await attemptGeneration(true, 'gemini-2.5-flash-image');
       if (result) return result;
-      console.warn("Reference image generation failed or filtered. Falling back to text-only generation...");
+      
+      // Try Pro with Ref (if Flash failed/overloaded)
+      result = await attemptGeneration(true, 'gemini-3-pro-image-preview');
+      if (result) return result;
+
+      console.warn("Reference image generation failed on both models. Falling back to text-only...");
     }
 
-    // Attempt 2: Text Only (Fallback or primary if no ref image)
-    const result = await attemptGeneration(false);
+    // Text Only Fallbacks
+    let result = await attemptGeneration(false, 'gemini-2.5-flash-image');
+    if (result) return result;
+
+    result = await attemptGeneration(false, 'gemini-3-pro-image-preview');
     if (result) return result;
 
     // Final Failure

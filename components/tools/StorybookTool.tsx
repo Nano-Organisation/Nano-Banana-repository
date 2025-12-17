@@ -147,6 +147,9 @@ const StorybookTool: React.FC = () => {
       // Generate remaining pages using reference
       if (characterReferenceImage) {
          for (let i = 1; i < script.pages.length; i++) {
+            // Buffer delay to prevent rate limits on sequential generations
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
             setProgressMsg(`Illustrating Page ${i + 1}/${script.pages.length}...`);
             try {
                const pagePrompt = `Character: ${script.characterDescription}. Action: ${script.pages[i].imagePrompt}. Visual Style: ${script.style}. Maintain strict visual consistency.`;
