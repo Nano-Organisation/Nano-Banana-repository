@@ -1,8 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-// Fix: Changed import to './App' to resolve the casing ambiguity conflict with app.tsx.
-// Points to the root-specified App.tsx which now contains the application logic.
-import App from './App';
+// Fix: Changed import to './app' to resolve the casing ambiguity conflict with App.tsx.
+// Points to the root-specified app.tsx which now contains the application logic.
+import App from './app';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

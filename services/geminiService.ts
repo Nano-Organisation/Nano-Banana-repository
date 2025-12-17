@@ -251,20 +251,32 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
 
   try {
     let operation = await withRetry(() => startOp(!!imageBase64), 5, 2000);
+    const opName = operation.name;
+    
     while (!operation.done) {
       await new Promise(r => setTimeout(r, 8000));
-      operation = await ai.operations.getVideosOperation({ operation });
+      // Polling by name is more stable in distributed environments
+      operation = await ai.operations.getVideosOperation({ name: opName } as any);
     }
+    
     if (operation.error) {
        console.error("Video Operation Error Object:", operation.error);
        throw new Error(operation.error.message || "Unknown model generation error.");
     }
     
-    const link = operation.response?.generatedVideos?.[0]?.video?.uri;
-    if (!link) {
-      console.error("Video Operation result missing link despite success:", operation);
-      throw new Error("Video generation completed but did not return a valid download link. This could be due to post-generation safety filtering.");
+    // Check if response actually contains a video. If missing, it was likely filtered for safety post-generation.
+    const generatedVideos = operation.response?.generatedVideos;
+    if (!generatedVideos || generatedVideos.length === 0) {
+       console.error("Video Operation result missing video list despite success:", operation);
+       throw new Error("Video generation was successful but the content was blocked by post-generation safety filters. Please try a more abstract or compliant prompt.");
     }
+
+    const link = generatedVideos[0]?.video?.uri;
+    if (!link) {
+      console.error("Video Operation result missing URI despite success:", operation);
+      throw new Error("The video was generated but no valid download link was returned. Please try again.");
+    }
+    
     return `${link}&key=${getApiKey()}`;
   } catch (error) { handleGeminiError(error); return ""; }
 };
