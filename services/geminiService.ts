@@ -124,36 +124,58 @@ export const generateTextWithGemini = async (prompt: string, systemInstruction?:
 
 export const generateImageWithGemini = async (prompt: string, aspectRatio: string = '1:1', referenceImage?: string): Promise<string> => {
   const ai = getAiClient();
-  try {
-    let contents: any = { parts: [{ text: prompt }] };
-    
-    if (referenceImage) {
-      const base64Data = referenceImage.includes(',') ? referenceImage.split(',')[1] : referenceImage;
-      const mimeType = referenceImage.includes(';') ? referenceImage.split(';')[0].split(':')[1] : 'image/png';
+
+  // Internal helper to run a single generation attempt
+  const attemptGeneration = async (includeRefImage: boolean): Promise<string | null> => {
+    try {
+      const parts: any[] = [];
       
-      contents.parts.push({
-        inlineData: {
-          mimeType,
-          data: base64Data
-        }
-      });
-    }
+      // If using reference image, add it FIRST for better adherence
+      if (includeRefImage && referenceImage) {
+        const base64Data = referenceImage.includes(',') ? referenceImage.split(',')[1] : referenceImage;
+        const mimeType = referenceImage.includes(';') ? referenceImage.split(';')[0].split(':')[1] : 'image/png';
+        parts.push({
+          inlineData: { mimeType, data: base64Data }
+        });
+      }
+      
+      // Add text prompt
+      parts.push({ text: prompt });
 
-    const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents,
-      config: {
-        imageConfig: {
-          aspectRatio: aspectRatio as any,
+      const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: { parts },
+        config: {
+          imageConfig: { aspectRatio: aspectRatio as any }
+        }
+      }));
+
+      for (const part of response.candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData) {
+          return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
         }
       }
-    }));
-
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-      }
+      return null;
+    } catch (e) {
+      // Log warning but don't throw yet, allow fallback
+      console.warn("Image generation attempt failed:", e);
+      return null;
     }
+  };
+
+  try {
+    // Attempt 1: With Reference Image (if provided)
+    if (referenceImage) {
+      const result = await attemptGeneration(true);
+      if (result) return result;
+      console.warn("Reference image generation failed or filtered. Falling back to text-only generation...");
+    }
+
+    // Attempt 2: Text Only (Fallback or primary if no ref image)
+    const result = await attemptGeneration(false);
+    if (result) return result;
+
+    // Final Failure
     throw new Error("No image generated.");
   } catch (error) {
     handleGeminiError(error);

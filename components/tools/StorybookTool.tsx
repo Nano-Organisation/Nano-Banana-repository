@@ -12,7 +12,17 @@ const STYLES = [
   { id: 'comic', label: 'Comic Book', desc: 'Bold lines, vibrant colors, dynamic action' },
   { id: 'cyberpunk', label: 'Sci-Fi', desc: 'Neon lights, futuristic, digital art, sharp details' },
   { id: 'pixel', label: 'Pixel Art', desc: 'Retro game style, 8-bit, nostalgic' },
-  { id: '3d', label: '3D Pixar', desc: 'Cute, rounded, high fidelity 3D render, bright' }
+  { id: '3d', label: '3D Pixar', desc: 'Cute, rounded, high fidelity 3D render, bright' },
+  { id: 'watercolor', label: 'Classic Watercolor', desc: 'Traditional watercolor painting, soft edges, pastel palette, dreamy and artistic' },
+  { id: 'noir', label: 'Noir', desc: 'High contrast black and white, dramatic shadows, cinematic lighting, mysterious' },
+  { id: 'oil', label: 'Oil Painting', desc: 'Textured brushstrokes, rich colors, classical art style, impasto' },
+  { id: 'ukiyoe', label: 'Ukiyo-e', desc: 'Japanese woodblock print style, flat colors, distinct outlines, nature motifs' },
+  { id: 'anime', label: 'Anime', desc: 'Japanese animation style, vibrant, expressive characters, detailed backgrounds' },
+  { id: 'clay', label: 'Claymation', desc: 'Plasticine texture, stop-motion look, handcrafted feel, soft lighting' },
+  { id: 'lineart', label: 'Line Art', desc: 'Black ink on white, minimalist, clean lines, sketching style' },
+  { id: 'papercut', label: 'Paper Cutout', desc: 'Layered paper aesthetic, depth shadows, craft style, collage' },
+  { id: 'steampunk', label: 'Steampunk', desc: 'Victorian technology, brass and gears, sepia tones, retro-futuristic' },
+  { id: 'gothic', label: 'Gothic', desc: 'Dark, atmospheric, ornate details, moody, Tim Burton style' }
 ];
 
 const StorybookTool: React.FC = () => {
@@ -444,7 +454,7 @@ const StorybookTool: React.FC = () => {
              <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-400 uppercase">1. Choose a Style</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 h-64 overflow-y-auto custom-scrollbar pr-2">
                     {STYLES.map(style => (
                       <button
                         key={style.id}
