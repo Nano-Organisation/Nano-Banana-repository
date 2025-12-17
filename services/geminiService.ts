@@ -1,5 +1,4 @@
-
-import { GoogleGenAI, Type, Schema, Chat, Part, Modality } from "@google/genai";
+import { GoogleGenAI, Type, Schema, Chat, Part, Modality, GenerateContentResponse } from "@google/genai";
 import {
   StorybookData,
   MemeData,
@@ -34,25 +33,45 @@ export const getAiClient = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
-export const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> => {
+export const withRetry = async <T>(fn: () => Promise<T>, retries = 12, delay = 4000): Promise<T> => {
   try {
     return await fn();
   } catch (error: any) {
-    if (retries > 0 && (error.status === 429 || error.status >= 500)) {
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return withRetry(fn, retries - 1, delay * 2);
+    // Check various locations for error code
+    const status = error.status || error.response?.status || error?.error?.code;
+    const message = (error.message || JSON.stringify(error)).toLowerCase();
+    
+    const isOverloaded = status === 503 || message.includes('overloaded') || message.includes('503') || message.includes('unavailable');
+    const isRateLimit = status === 429 || message.includes('429') || message.includes('quota') || message.includes('too many requests');
+    const isServerErr = typeof status === 'number' && status >= 500;
+
+    if (retries > 0 && (isOverloaded || isRateLimit || isServerErr)) {
+      const jitter = Math.random() * 2000; // Increased jitter for better distribution
+      const waitTime = delay + jitter;
+      console.warn(`Gemini API Busy/Error (${status || 'Unknown'}). Retrying in ${Math.round(waitTime)}ms... (${retries} attempts left)`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      // More aggressive backoff: Double delay, cap at 30 seconds
+      const nextDelay = Math.min(delay * 2, 30000); 
+      return withRetry(fn, retries - 1, nextDelay);
     }
     throw error;
   }
 };
 
 export const handleGeminiError = (error: any) => {
-  const msg = (error.message || "").toLowerCase();
+  const msg = (error.message || JSON.stringify(error)).toLowerCase();
   // Suppress console logging for expected safety filter blocks or specific video generation errors
   const isSafetyError = msg.includes("safety filters") || msg.includes("returned no video") || msg.includes("safety");
-  
-  if (!isSafetyError) {
+  const isOverloaded = msg.includes('503') || msg.includes('overloaded') || msg.includes('unavailable');
+
+  if (!isSafetyError && !isOverloaded) {
      console.error("Gemini API Error Details:", error);
+  } else if (isOverloaded) {
+     console.warn("Gemini Model Overloaded (All retries exhausted).");
+  }
+  
+  if (isOverloaded) {
+     throw new Error("The AI model is currently experiencing heavy traffic and is overloaded. Please try again in a minute.");
   }
   
   throw new Error(error.message || "An unexpected error occurred with Gemini.");
@@ -63,14 +82,14 @@ export const handleGeminiError = (error: any) => {
 export const generateTextWithGemini = async (prompt: string, systemInstruction?: string): Promise<string> => {
   const ai = getAiClient();
   try {
-    const response = await ai.models.generateContent({
+    const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
         systemInstruction,
         temperature: 0.7,
       }
-    });
+    }));
     return response.text || "No response generated.";
   } catch (error) {
     handleGeminiError(error);
@@ -98,7 +117,7 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
       });
     }
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents,
       config: {
@@ -106,7 +125,7 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
           aspectRatio: aspectRatio as any,
         }
       }
-    });
+    }));
 
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
@@ -123,7 +142,7 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
 export const generateProImageWithGemini = async (prompt: string, size: string = '1K'): Promise<string> => {
   const ai = getAiClient();
   try {
-    const response = await ai.models.generateContent({
+    const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: 'gemini-3-pro-image-preview',
       contents: { parts: [{ text: prompt }] },
       config: {
@@ -131,7 +150,7 @@ export const generateProImageWithGemini = async (prompt: string, size: string = 
           imageSize: size as any,
         }
       }
-    });
+    }));
 
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
@@ -151,7 +170,7 @@ export const editImageWithGemini = async (image: string, prompt: string): Promis
     const base64Data = image.split(',')[1];
     const mimeType = image.split(';')[0].split(':')[1];
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
         parts: [
@@ -164,7 +183,7 @@ export const editImageWithGemini = async (image: string, prompt: string): Promis
           { text: prompt },
         ],
       },
-    });
+    }));
 
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
@@ -179,8 +198,17 @@ export const editImageWithGemini = async (image: string, prompt: string): Promis
 };
 
 export const generateBatchImages = async (prompt: string, count: number): Promise<string[]> => {
-  const promises = Array(count).fill(null).map(() => generateImageWithGemini(prompt));
-  return Promise.all(promises);
+  // Execute sequentially to avoid rate limits
+  const results: string[] = [];
+  for (let i = 0; i < count; i++) {
+    try {
+      const img = await generateImageWithGemini(prompt);
+      results.push(img);
+    } catch (e) {
+      console.error(`Batch image ${i+1} failed`, e);
+    }
+  }
+  return results;
 };
 
 export const generateViralThumbnails = async (topic: string): Promise<string[]> => {
@@ -192,11 +220,18 @@ export const generateViralThumbnails = async (topic: string): Promise<string[]> 
     "Action shot, motion blur, explosion effect, vibrant colors"
   ];
   
-  const promises = styles.map(style => 
-    generateImageWithGemini(`YouTube Thumbnail for "${topic}". Style: ${style}. 16:9 aspect ratio.`, '16:9')
-  );
+  // Sequential generation for stability
+  const results: string[] = [];
+  for (const style of styles) {
+    try {
+      const img = await generateImageWithGemini(`YouTube Thumbnail for "${topic}". Style: ${style}. 16:9 aspect ratio.`, '16:9');
+      results.push(img);
+    } catch (e) {
+      console.error("Thumbnail gen failed", e);
+    }
+  }
   
-  return Promise.all(promises);
+  return results;
 };
 
 // --- Vision Analysis ---
@@ -207,7 +242,7 @@ export const analyzeImageWithGemini = async (image: string, prompt: string): Pro
     const base64Data = image.split(',')[1];
     const mimeType = image.split(';')[0].split(':')[1];
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: {
         parts: [
@@ -220,7 +255,7 @@ export const analyzeImageWithGemini = async (image: string, prompt: string): Pro
           { text: prompt },
         ],
       },
-    });
+    }));
     return response.text || "No analysis generated.";
   } catch (error) {
     handleGeminiError(error);
@@ -283,14 +318,14 @@ export const generateSpeechWithGemini = async (
        };
     }
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: 'gemini-2.5-flash-preview-tts',
       contents: { parts: [{ text }] },
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig
       }
-    });
+    }));
 
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) throw new Error("No audio generated.");
@@ -306,7 +341,7 @@ export const transcribeMediaWithGemini = async (mediaData: string, mimeType: str
   const ai = getAiClient();
   try {
     const base64Data = mediaData.split(',')[1];
-    const response = await ai.models.generateContent({
+    const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: {
         parts: [
@@ -314,7 +349,7 @@ export const transcribeMediaWithGemini = async (mediaData: string, mimeType: str
           { text: "Transcribe this media file verbatim. Speaker separation if possible." }
         ]
       }
-    });
+    }));
     return response.text || "";
   } catch (error) {
     handleGeminiError(error);
@@ -365,7 +400,7 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
 
         const apiKey = getApiKey();
         return `${downloadLink}&key=${apiKey}`;
-    }, 3, 5000);
+    }, 5, 5000); // More retries for video ops
   } catch (error) {
     handleGeminiError(error);
     return "";
@@ -390,14 +425,14 @@ const generateStructuredContent = async <T>(prompt: string, schema: Schema, mode
        };
     }
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model,
       contents,
       config: {
         responseMimeType: 'application/json',
         responseSchema: schema
       }
-    });
+    }));
     const text = response.text || "{}";
     return JSON.parse(text) as T;
   } catch (error) {
@@ -432,6 +467,77 @@ export const generateStoryScript = async (topic: string, style: string, charDesc
     }
   };
   return generateStructuredContent<StorybookData>(prompt, schema);
+};
+
+export const generateComicScriptFromImages = async (images: string[], topic: string): Promise<StorybookData> => {
+  const ai = getAiClient();
+  const parts: any[] = [];
+  
+  // Add images
+  images.forEach(img => {
+    const base64Data = img.split(',')[1];
+    const mimeType = img.split(';')[0].split(':')[1];
+    parts.push({ inlineData: { mimeType, data: base64Data } });
+  });
+
+  // Add prompt
+  const promptText = `
+    Analyze these images. They are the seed for a short comic strip story.
+    Topic/Context: ${topic || "Create a fun narrative connecting these images."}
+    
+    Task: Write a script for a 4-panel comic strip based on these characters/scenes.
+    Style: Comic Book.
+    
+    Return JSON with:
+    - title
+    - author (Creative name)
+    - characterDescription (Detailed visual description of the main character seen in images for consistency)
+    - pages (Array of 4 objects, one for each panel):
+      - pageNumber
+      - text (Speech bubble text or caption)
+      - imagePrompt (Detailed visual prompt for this specific panel. Include 'comic book style', 'bold lines', 'speech bubble space' in the prompt.)
+  `;
+  parts.push({ text: promptText });
+
+  const schema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      title: { type: Type.STRING },
+      style: { type: Type.STRING },
+      characterDescription: { type: Type.STRING },
+      author: { type: Type.STRING },
+      dedication: { type: Type.STRING },
+      authorBio: { type: Type.STRING },
+      backCoverBlurb: { type: Type.STRING },
+      pages: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            pageNumber: { type: Type.INTEGER },
+            text: { type: Type.STRING },
+            imagePrompt: { type: Type.STRING }
+          }
+        }
+      }
+    }
+  };
+
+  try {
+    const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: { parts },
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: schema
+      }
+    }));
+    const text = response.text || "{}";
+    return JSON.parse(text) as StorybookData;
+  } catch (error) {
+    handleGeminiError(error);
+    return {} as StorybookData;
+  }
 };
 
 export const generateMemeConcept = async (topic: string): Promise<MemeData> => {
@@ -598,10 +704,10 @@ export const generateUiCode = async (prompt: string, device: string, style: stri
      contents.push({ inlineData: { mimeType: 'image/png', data: base64Data } });
   }
 
-  const response = await ai.models.generateContent({
+  const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
     model: 'gemini-3-pro-preview', 
     contents: { parts: contents }
-  });
+  }));
   
   let code = response.text || "";
   code = code.replace(/```html/g, '').replace(/```/g, '');
@@ -637,10 +743,10 @@ export const generateHiddenMessage = async (secret: string, cover: string): Prom
   Format the output so that every word belonging to the secret message is wrapped in double curly braces, e.g. {{secret}}.
   The text should read naturally and make sense as a paragraph about ${cover}.`;
   
-  const response = await ai.models.generateContent({
+  const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
     model: 'gemini-3-pro-preview',
     contents: prompt
-  });
+  }));
   return response.text || "";
 };
 

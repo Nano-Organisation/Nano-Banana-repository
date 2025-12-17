@@ -59,7 +59,8 @@ export enum ToolId {
   LinkedInCarousel = 'LINKEDIN_CAROUSEL',
   CalendarCreator = 'CALENDAR_CREATOR',
   AIMimicry = 'AI_MIMICRY',
-  DesignCritic = 'DESIGN_CRITIC'
+  DesignCritic = 'DESIGN_CRITIC',
+  ComicStrip = 'COMIC_STRIP'
 }
 
 export interface ToolConfig {
@@ -118,6 +119,7 @@ export interface StorybookData {
   style: string;
   characterDescription: string;
   author: string;
+  authorImage?: string;
   dedication: string;
   authorBio: string;
   backCoverBlurb: string;

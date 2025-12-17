@@ -59,8 +59,9 @@ import CarouselMaker from './components/tools/CarouselMaker';
 import CalendarCreator from './components/tools/CalendarCreator';
 import AIMimicryTool from './components/tools/AIMimicryTool';
 import DesignCritic from './components/tools/DesignCritic';
+import ComicStripTool from './components/tools/ComicStripTool';
 
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign, CalendarCheck, Baby, Clapperboard, Box, GalleryHorizontal, Calendar, Copy as CopyIcon, AlertCircle } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign, CalendarCheck, Baby, Clapperboard, Box, GalleryHorizontal, Calendar, Copy as CopyIcon, AlertCircle, Grid } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -91,6 +92,15 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.ComicStrip,
+    title: "AI Comic Strip",
+    description: "Turn photos into 4-panel comic narratives.",
+    icon: Grid,
+    color: "yellow",
+    gradient: "from-yellow-500 to-orange-500",
+    releaseDate: '2025-12-15'
   },
   {
     id: ToolId.AIMimicry,
@@ -637,6 +647,8 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.ComicStrip:
+        return <ComicStripTool />;
       case ToolId.AIMimicry:
         return <AIMimicryTool />;
       case ToolId.CalendarCreator:
