@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen, Sparkles, RefreshCw, ChevronLeft, ChevronRight, Download, Edit3, FileText, Smartphone, Save, User, Trash2, CheckCircle2, Settings, X, FileJson, Book, Image as ImageIcon } from 'lucide-react';
-import { generateStoryScript, generateImageWithGemini } from '../../services/geminiService';
+import { BookOpen, Sparkles, RefreshCw, ChevronLeft, ChevronRight, Download, Edit3, FileText, Smartphone, Save, User, Trash2, CheckCircle2, Settings, X, FileJson, Book, Image as ImageIcon, Music, Volume2, VolumeX } from 'lucide-react';
+import { generateStoryScript, generateImageWithGemini, generateBackgroundMusic } from '../../services/geminiService';
 import { StorybookData, StoryPage, LoadingState, SavedCharacter } from '../../types';
 import jsPDF from 'jspdf';
 import { WATERMARK_TEXT } from '../../utils/watermark';
@@ -46,6 +45,12 @@ const StorybookTool: React.FC = () => {
   const [editData, setEditData] = useState<Partial<StorybookData>>({});
   const authorImageRef = useRef<HTMLInputElement>(null);
 
+  // Music State
+  const [musicUrl, setMusicUrl] = useState<string | null>(null);
+  const [generatingMusic, setGeneratingMusic] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
   useEffect(() => {
     const stored = localStorage.getItem('nano_saved_characters');
     if (stored) {
@@ -56,6 +61,22 @@ const StorybookTool: React.FC = () => {
       }
     }
   }, []);
+
+  // Audio Volume Control
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = 0.15; // Default low volume
+      if (musicUrl && !isMuted) {
+        audioRef.current.play().catch(e => console.log("Auto-play prevented"));
+      }
+    }
+  }, [musicUrl]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
 
   const saveToLocalStorage = (chars: SavedCharacter[]) => {
     setSavedCharacters(chars);
@@ -105,6 +126,7 @@ const StorybookTool: React.FC = () => {
 
     setStatus('loading');
     setBookData(null);
+    setMusicUrl(null); // Reset music
     setViewIndex(0);
 
     try {
@@ -130,7 +152,7 @@ const StorybookTool: React.FC = () => {
 
       // Generate First Page
       try {
-         const firstPagePrompt = `${script.characterDescription}. ${script.pages[0].imagePrompt}. Visual Style: ${script.style}`;
+         const firstPagePrompt = `Visual Style: ${script.style}. Scene: ${script.pages[0].imagePrompt}. Main Character: ${script.characterDescription}`;
          const imageUrl = await generateImageWithGemini(firstPagePrompt, '1:1');
          characterReferenceImage = imageUrl;
 
@@ -141,38 +163,39 @@ const StorybookTool: React.FC = () => {
             return { ...prev, pages: newPages };
          });
       } catch (e) {
-         console.error("Failed to generate first page", e);
+         console.warn("Failed to generate first page image. Continuing without reference...", e);
       }
 
-      // Generate remaining pages using reference
-      if (characterReferenceImage) {
-         for (let i = 1; i < script.pages.length; i++) {
-            // Buffer delay to prevent rate limits on sequential generations
-            await new Promise(resolve => setTimeout(resolve, 3000));
+      // Generate remaining pages
+      for (let i = 1; i < script.pages.length; i++) {
+          // Buffer delay to prevent rate limits on sequential generations
+          await new Promise(resolve => setTimeout(resolve, 3500));
 
-            setProgressMsg(`Illustrating Page ${i + 1}/${script.pages.length}...`);
-            try {
-               // Updated Prompt Construction for Better Consistency
-               // We rely on the script generator's detailed descriptions in imagePrompt now
-               const pagePrompt = `
-                  Visual Style: ${script.style}.
-                  Scene: ${script.pages[i].imagePrompt}.
-                  Main Character Reference: ${script.characterDescription}.
-                  Instruction: Ensure all characters match their descriptions in the scene text exactly. Maintain consistent character identity, gender features, and clothing across all panels.
-               `.replace(/\s+/g, ' ').trim();
+          setProgressMsg(`Illustrating Page ${i + 1}/${script.pages.length}...`);
+          try {
+             const pagePrompt = `
+                Visual Style: ${script.style}.
+                Scene: ${script.pages[i].imagePrompt}.
+                Main Character: ${script.characterDescription}.
+                Maintain strict character consistency.
+             `.replace(/\s+/g, ' ').trim();
 
-               const imageUrl = await generateImageWithGemini(pagePrompt, '1:1', characterReferenceImage);
-               
-               setBookData(prev => {
-                  if (!prev) return null;
-                  const newPages = [...prev.pages];
-                  newPages[i] = { ...newPages[i], imageUrl };
-                  return { ...prev, pages: newPages };
-               });
-            } catch (e) {
-               console.error(`Failed to gen image for page ${i + 1}`, e);
-            }
-         }
+             const imageUrl = await generateImageWithGemini(pagePrompt, '1:1', characterReferenceImage);
+             
+             // Update the reference if we just got a valid image and didn't have one before
+             if (!characterReferenceImage && imageUrl) {
+                characterReferenceImage = imageUrl;
+             }
+
+             setBookData(prev => {
+                if (!prev) return null;
+                const newPages = [...prev.pages];
+                newPages[i] = { ...newPages[i], imageUrl };
+                return { ...prev, pages: newPages };
+             });
+          } catch (e) {
+             console.error(`Failed to gen image for page ${i + 1}. Skipping image for this page.`, e);
+          }
       }
 
       setStatus('success');
@@ -181,6 +204,26 @@ const StorybookTool: React.FC = () => {
       console.error(e);
       setStatus('error');
     }
+  };
+
+  const handleGenerateMusic = async () => {
+    if (!bookData) return;
+    setGeneratingMusic(true);
+    try {
+      const url = await generateBackgroundMusic(bookData.title, bookData.style);
+      
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to load music stream.");
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      
+      setMusicUrl(objectUrl);
+      setIsMuted(false);
+    } catch (e) {
+      console.error("Music generation failed", e);
+      alert("Could not generate music. Please ensure you have a paid API key for Veo connected in Settings.");
+    }
+    setGeneratingMusic(false);
   };
 
   const openMetadataEditor = () => {
@@ -358,8 +401,17 @@ const StorybookTool: React.FC = () => {
                 </>
               ) : (
                 <div className="text-center space-y-2">
-                   <RefreshCw className="w-8 h-8 text-amber-500 animate-spin mx-auto" />
-                   <p className="text-xs text-slate-500 font-medium">Illustrating...</p>
+                   {status === 'loading' ? (
+                      <>
+                        <RefreshCw className="w-8 h-8 text-amber-500 animate-spin mx-auto" />
+                        <p className="text-xs text-slate-500 font-medium">Illustrating...</p>
+                      </>
+                   ) : (
+                      <>
+                        <ImageIcon className="w-8 h-8 text-slate-300 mx-auto" />
+                        <p className="text-xs text-slate-400 font-medium">No Image Generated</p>
+                      </>
+                   )}
                 </div>
               )}
               <div className="absolute top-2 left-2 text-xs font-bold text-slate-400 bg-white/80 px-2 py-1 rounded">Page {page.pageNumber}</div>
@@ -537,9 +589,14 @@ const StorybookTool: React.FC = () => {
                   <Book className="w-4 h-4" /> Edit Book Details
                </button>
              </div>
-             <div className="flex flex-wrap gap-2 justify-center">
+             <div className="flex flex-wrap gap-2 justify-center items-center">
                 <button onClick={() => setShowSaveCharDialog(true)} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg border border-slate-700 transition-colors shadow-sm">
                   <Save className="w-4 h-4" /> Save Character
+                </button>
+                <div className="h-8 w-px bg-slate-700 mx-2 hidden md:block"></div>
+                <button onClick={handleGenerateMusic} disabled={generatingMusic} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors shadow-lg shadow-indigo-900/20 disabled:opacity-50 disabled:cursor-not-allowed">
+                   {generatingMusic ? <RefreshCw className="w-4 h-4 animate-spin"/> : <Music className="w-4 h-4"/>}
+                   {musicUrl ? 'Regenerate Music' : 'Add Music'}
                 </button>
                 <div className="h-8 w-px bg-slate-700 mx-2 hidden md:block"></div>
                 <button onClick={() => handleDownloadBook('portrait')} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-700 transition-colors shadow-sm">
@@ -556,7 +613,7 @@ const StorybookTool: React.FC = () => {
              <div className="absolute left-1/2 top-0 bottom-0 w-8 -ml-4 bg-gradient-to-r from-transparent via-black/10 to-transparent pointer-events-none"></div>
           </div>
 
-          <div className="flex items-center justify-center gap-6 pb-6">
+          <div className="flex items-center justify-center gap-6 pb-6 relative">
             <button onClick={prevView} disabled={viewIndex === 0} className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white p-4 rounded-full transition-colors"><ChevronLeft className="w-6 h-6" /></button>
             <div className="flex gap-1 items-center">
                <span className="text-xs font-mono text-slate-500 uppercase mr-2">{viewIndex === 0 ? 'Cover' : viewIndex === 1 ? 'Intro' : viewIndex >= totalViews - 2 ? 'Back' : `Page ${viewIndex - 1}`}</span>
@@ -567,6 +624,16 @@ const StorybookTool: React.FC = () => {
                </div>
             </div>
             <button onClick={nextView} disabled={viewIndex === totalViews - 1} className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white p-4 rounded-full transition-colors"><ChevronRight className="w-6 h-6" /></button>
+            
+            {/* Music Player Control */}
+            {musicUrl && (
+               <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-2 bg-slate-900 border border-slate-700 p-2 rounded-full shadow-xl animate-fade-in">
+                  <button onClick={() => setIsMuted(!isMuted)} className="p-2 text-indigo-400 hover:text-indigo-300 transition-colors">
+                     {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                  </button>
+                  <audio ref={audioRef} src={musicUrl} loop className="hidden" />
+               </div>
+            )}
           </div>
         </div>
       )}

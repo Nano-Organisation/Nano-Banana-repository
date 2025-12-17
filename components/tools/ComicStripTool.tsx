@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Layout, RefreshCw, Upload, X, Download, Image as ImageIcon, MessageSquare, Palette } from 'lucide-react';
 import { generateComicScriptFromImages, generateImageWithGemini } from '../../services/geminiService';
@@ -75,9 +74,11 @@ const ComicStripTool: React.FC = () => {
       const newPages = [...script.pages];
 
       for (let i = 0; i < newPages.length; i++) {
+         // Buffer delay to prevent rate limits
+         if (i > 0) await new Promise(r => setTimeout(r, 3500));
+
          setProgressMsg(`Drawing Panel ${i + 1}/${newPages.length}...`);
          try {
-            // Prompt engineered for comic style without text inside the image (to avoid spelling errors)
             const panelPrompt = `Comic book panel. ${script.characterDescription}. Action: ${newPages[i].imagePrompt}. 
             Style: ${selectedStyle.label} - ${selectedStyle.desc}.
             Do NOT include speech bubbles or text.`;
@@ -85,10 +86,9 @@ const ComicStripTool: React.FC = () => {
             const imageUrl = await generateImageWithGemini(panelPrompt, '1:1', refImage);
             newPages[i] = { ...newPages[i], imageUrl };
             
-            // Update state incrementally to show progress
             setComicData(prev => prev ? { ...prev, pages: [...newPages] } : null);
          } catch (e) {
-            console.error(`Failed panel ${i}`, e);
+            console.error(`Failed panel ${i+1}. Continuing to next panel...`, e);
          }
       }
 
@@ -125,6 +125,10 @@ const ComicStripTool: React.FC = () => {
              doc.addImage(page.imageUrl, 'PNG', margin, y, 90, 90);
              doc.rect(margin, y, 90, 90); // Border
           } catch(e) {}
+       } else {
+          doc.rect(margin, y, 90, 90);
+          doc.setFontSize(8);
+          doc.text("Image failed to generate", margin + 25, y + 45);
        }
 
        // Text Bubble Representation (Side by side)
@@ -263,7 +267,13 @@ const ComicStripTool: React.FC = () => {
                                  {panel.imageUrl ? (
                                     <img src={panel.imageUrl} className="w-full h-full object-cover" />
                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center"><RefreshCw className="w-8 h-8 text-slate-300 animate-spin"/></div>
+                                    <div className="w-full h-full flex items-center justify-center">
+                                       {status === 'loading' ? (
+                                          <RefreshCw className="w-8 h-8 text-slate-300 animate-spin"/>
+                                       ) : (
+                                          <ImageIcon className="w-8 h-8 text-slate-200" />
+                                       )}
+                                    </div>
                                  )}
                               </div>
                               
@@ -279,7 +289,7 @@ const ComicStripTool: React.FC = () => {
                         ))}
                      </div>
                      
-                     <div className="mt-8 pt-4 border-t-2 border-black text-center text-xs font-bold font-mono">
+                     <div className="mt-8 pt-4 border-t-2 border-black text-center text-xs font-bold font-mono text-black">
                         Written & Directed by AI • Illustrated by Gemini
                      </div>
                   </div>

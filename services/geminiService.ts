@@ -37,7 +37,7 @@ export const getAiClient = () => {
  * Enhanced retry logic with exponential backoff and jitter.
  * Specifically tuned for 503 Overloaded and 429 Rate Limit errors.
  */
-export const withRetry = async <T>(fn: () => Promise<T>, retries = 10, baseDelay = 2000): Promise<T> => {
+export const withRetry = async <T>(fn: () => Promise<T>, retries = 15, baseDelay = 2000): Promise<T> => {
   let lastError: any;
   
   for (let attempt = 0; attempt < retries; attempt++) {
@@ -63,7 +63,7 @@ export const withRetry = async <T>(fn: () => Promise<T>, retries = 10, baseDelay
 
       // Calculate wait time: Exponential backoff with jitter
       // Cap at 30 seconds to avoid overly long hangs, but give enough time for recovery
-      const backoff = baseDelay * Math.pow(1.5, attempt); 
+      const backoff = baseDelay * Math.pow(1.6, attempt); 
       const jitter = Math.random() * 1000;
       const waitTime = Math.min(backoff + jitter, 30000);
 
@@ -124,6 +124,7 @@ export const generateTextWithGemini = async (prompt: string, systemInstruction?:
 
 export const generateImageWithGemini = async (prompt: string, aspectRatio: string = '1:1', referenceImage?: string): Promise<string> => {
   const ai = getAiClient();
+  let lastFailureReason = "";
 
   // Internal helper to run a single generation attempt
   const attemptGeneration = async (includeRefImage: boolean, model: string): Promise<string | null> => {
@@ -148,16 +149,29 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
         config: {
           imageConfig: { aspectRatio: aspectRatio as any }
         }
-      }), 5, 2000); // Shorter retry for internal attempts to allow fallback
+      }), 7, 2500); // 7 retries for each model fallback
 
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
+      const candidates = response.candidates || [];
+      if (candidates.length === 0) {
+        lastFailureReason = "Model returned empty candidates list.";
+        return null;
+      }
+
+      const partsOut = candidates[0].content?.parts || [];
+      for (const part of partsOut) {
         if (part.inlineData) {
           return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
         }
       }
+
+      if (candidates[0].finishReason === 'SAFETY') {
+        lastFailureReason = "Image generation blocked by safety filters.";
+      } else {
+        lastFailureReason = `Model returned no image data (Finish Reason: ${candidates[0].finishReason}).`;
+      }
       return null;
-    } catch (e) {
-      // Log warning but don't throw yet, allow fallback
+    } catch (e: any) {
+      lastFailureReason = e.message || JSON.stringify(e);
       console.warn(`Image generation attempt failed on ${model}:`, e);
       return null;
     }
@@ -166,31 +180,32 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
   try {
     // Strategy:
     // 1. Flash Image (with Ref if applicable)
-    // 2. Pro Image (with Ref if applicable) -> Higher quality fallback
-    // 3. Flash Image (Text Only) -> Fallback if ref is the issue
-    // 4. Pro Image (Text Only) -> Last resort
+    // 2. Pro Image (with Ref if applicable) -> Higher capacity / quality fallback
+    // 3. Flash Image (Text Only) -> Fallback if ref is causing rejection or failure
+    // 4. Pro Image (Text Only) -> Final effort
 
     if (referenceImage) {
-      // Try Flash with Ref
+      console.log("Attempting Image Gen: Flash + Reference");
       let result = await attemptGeneration(true, 'gemini-2.5-flash-image');
       if (result) return result;
       
-      // Try Pro with Ref (if Flash failed/overloaded)
+      console.log("Attempting Image Gen: Pro + Reference");
       result = await attemptGeneration(true, 'gemini-3-pro-image-preview');
       if (result) return result;
 
-      console.warn("Reference image generation failed on both models. Falling back to text-only...");
+      console.warn("Reference-based image generation failed. Falling back to text-only mode...");
     }
 
-    // Text Only Fallbacks
+    console.log("Attempting Image Gen: Flash Text-Only");
     let result = await attemptGeneration(false, 'gemini-2.5-flash-image');
     if (result) return result;
 
+    console.log("Attempting Image Gen: Pro Text-Only");
     result = await attemptGeneration(false, 'gemini-3-pro-image-preview');
     if (result) return result;
 
     // Final Failure
-    throw new Error("No image generated.");
+    throw new Error(`AI was unable to generate an image. ${lastFailureReason || "The service may be temporarily unavailable."}`);
   } catch (error) {
     handleGeminiError(error);
     return "";
@@ -215,7 +230,7 @@ export const generateProImageWithGemini = async (prompt: string, size: string = 
         return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
       }
     }
-    throw new Error("No pro image generated.");
+    throw new Error("No pro image data returned by model.");
   } catch (error) {
     handleGeminiError(error);
     return "";
@@ -248,7 +263,7 @@ export const editImageWithGemini = async (image: string, prompt: string): Promis
         return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
       }
     }
-    throw new Error("No edited image returned.");
+    throw new Error("No edited image returned by model.");
   } catch (error) {
     handleGeminiError(error);
     return "";
@@ -257,11 +272,12 @@ export const editImageWithGemini = async (image: string, prompt: string): Promis
 
 export const generateBatchImages = async (prompt: string, count: number): Promise<string[]> => {
   const results: string[] = [];
-  // Run sequentially to be kind to the API and avoid triggering rate limits immediately
   for (let i = 0; i < count; i++) {
     try {
       const img = await generateImageWithGemini(prompt);
-      results.push(img);
+      if (img) results.push(img);
+      // Pacing for rate limits
+      await new Promise(r => setTimeout(r, 1000));
     } catch (e) {
       console.error(`Batch image ${i+1} failed`, e);
     }
@@ -282,7 +298,8 @@ export const generateViralThumbnails = async (topic: string): Promise<string[]> 
   for (const style of styles) {
     try {
       const img = await generateImageWithGemini(`YouTube Thumbnail for "${topic}". Style: ${style}. 16:9 aspect ratio.`, '16:9');
-      results.push(img);
+      if (img) results.push(img);
+      await new Promise(r => setTimeout(r, 1500));
     } catch (e) {
       console.error("Thumbnail gen failed", e);
     }
@@ -384,7 +401,7 @@ export const generateSpeechWithGemini = async (
     }));
 
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!base64Audio) throw new Error("No audio generated.");
+    if (!base64Audio) throw new Error("No audio data generated.");
     
     return `data:audio/mp3;base64,${base64Audio}`;
   } catch (error) {
@@ -450,16 +467,24 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
 
         const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
         if (!downloadLink) {
-           throw new Error("Video generation completed but returned no video.");
+           throw new Error("Video generation completed but returned no video URI.");
         }
 
         const apiKey = getApiKey();
         return `${downloadLink}&key=${apiKey}`;
-    }, 5, 5000); // 5 retries for video ops specifically
+    }, 5, 5000); 
   } catch (error) {
     handleGeminiError(error);
     return "";
   }
+};
+
+export const generateBackgroundMusic = async (title: string, style: string): Promise<string> => {
+  const prompt = `Generate background music for a story titled "${title}". Style: ${style}. 
+  AUDIO REQUIREMENTS: High quality, instrumental, atmospheric background music fitting the style. 
+  VISUAL: Static abstract album art or minimal visualizer.`;
+  
+  return generateVideoWithGemini(prompt, '16:9');
 };
 
 // --- Structured Content Generation (JSON) ---
@@ -497,20 +522,7 @@ const generateStructuredContent = async <T>(prompt: string, schema: Schema, mode
 };
 
 export const generateStoryScript = async (topic: string, style: string, charDesc?: string): Promise<StorybookData> => {
-  const prompt = `
-    Write a children's storybook script about: ${topic}. 
-    Style: ${style}. 
-    ${charDesc ? `Main Character: ${charDesc}` : ''}
-
-    CRITICAL RULES FOR VISUAL CONSISTENCY:
-    1. Define the visual appearance of the Main Character AND any Secondary Characters (parents, grandparents, friends) immediately.
-    2. In the 'imagePrompt' for EACH page:
-       - You MUST repeat the FULL visual description of EVERY character present in that scene.
-       - Do NOT just say "Grandpa". Say "Grandpa, an elderly man with a white beard, glasses, bald head, wearing a green vest".
-       - Do NOT just say "Mother". Say "Mother, an adult woman with long brown hair, no facial hair, wearing a blue dress".
-       - Ensure distinct gender features are described to prevent AI confusion (e.g. "smooth face" for women, "beard" for men if applicable).
-       - Maintain strict consistency of these descriptions across all pages.
-  `;
+  const prompt = `Write a children's storybook script about: ${topic}. Style: ${style}. ${charDesc ? `Character Description: ${charDesc}` : ''}`;
   const schema: Schema = {
     type: Type.OBJECT,
     properties: {
