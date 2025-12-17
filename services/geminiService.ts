@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Schema, Chat, Part, Modality, GenerateContentResponse } from "@google/genai";
 import {
   StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis,
@@ -15,26 +14,38 @@ export const getAiClient = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
-export const withRetry = async <T>(fn: () => Promise<T>, retries = 5, baseDelay = 1000): Promise<T> => {
+export const withRetry = async <T>(fn: () => Promise<T>, retries = 5, baseDelay = 3000): Promise<T> => {
   let lastError: any;
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       return await fn();
     } catch (error: any) {
       lastError = error;
-      const status = error.status || error.response?.status || error?.error?.code;
+      
+      const status = error.status || 
+                     error.response?.status || 
+                     error?.error?.code || 
+                     (error?.message?.includes('429') ? 429 : null);
+                     
       const message = (error.message || JSON.stringify(error) || "").toLowerCase();
       
+      // Determine if this is an "Exhausted" error (Daily/Billing) vs a "Rate" error (temporary speed)
+      const isHardExhaustion = message.includes('quota') || message.includes('billing') || message.includes('plan');
       const isOverloaded = status === 503 || message.includes('overloaded') || message.includes('503') || message.includes('unavailable');
-      const isRateLimit = status === 429 || message.includes('429') || message.includes('quota') || message.includes('resource_exhausted') || message.includes('too many requests');
+      const isRateLimit = status === 429 || message.includes('429') || message.includes('resource_exhausted') || message.includes('too many requests');
+      
+      // If it's a "Hard" exhaustion (billing/daily limit), stop retrying immediately
+      if (isHardExhaustion && isRateLimit) throw error;
       
       if (!isOverloaded && !isRateLimit) throw error;
       if (attempt === retries - 1) break;
       
-      // Use longer backoff for rate limits
-      const multiplier = isRateLimit ? 3 : 2;
+      // Exponential backoff
+      const multiplier = isRateLimit ? 5 : 2;
       const backoff = baseDelay * Math.pow(multiplier, attempt); 
-      const jitter = Math.random() * 500;
+      const jitter = Math.random() * 1000;
+      
+      console.warn(`Gemini API Busy/Limited (Attempt ${attempt + 1}/${retries}). Waiting ${Math.round((backoff + jitter)/1000)}s...`);
       await new Promise(resolve => setTimeout(resolve, backoff + jitter));
     }
   }
@@ -45,30 +56,32 @@ export const handleGeminiError = (error: any) => {
   console.error("Gemini API Error Detail:", error);
   
   let rawMsg = "";
-  if (typeof error === 'string') {
-    rawMsg = error;
-  } else if (error?.message) {
-    rawMsg = error.message;
-  } else {
-    rawMsg = JSON.stringify(error) || "";
+  if (typeof error === 'string') rawMsg = error;
+  else if (error?.message) rawMsg = error.message;
+  else {
+    try { rawMsg = JSON.stringify(error); } 
+    catch (e) { rawMsg = String(error); }
   }
   
   const msg = rawMsg.toLowerCase();
   
+  // High-precision error identification
   if (msg.includes('429') || msg.includes('quota') || msg.includes('resource_exhausted')) {
-     throw new Error("Quota exceeded or rate limited. Please ensure your API key is from a paid GCP project with billing enabled, or wait a few minutes before trying again. Check limits at ai.google.dev.");
-  }
-  if (msg.includes('503') || msg.includes('overloaded')) {
-     throw new Error("Server busy. Please try again in a few seconds.");
-  }
-  if (msg.includes('requested entity was not found')) {
-     throw new Error("Requested entity not found. Check your API key settings or re-select your key in Settings.");
-  }
-  if (msg.includes("cannot read properties of undefined (reading 'name')")) {
-     throw new Error("Video operation failed to initialize. This can happen during peak load. Please try again.");
+     if (msg.includes('billing') || msg.includes('plan')) {
+        throw new Error("Billing Issue: Your Google Cloud project has no active billing or has reached its budget. Enable billing at console.cloud.google.com to continue.");
+     }
+     throw new Error("API Quota Exceeded. To fix this: 1) Ensure your API key is from a project with billing enabled at ai.google.dev. 2) Check your usage and limits at ai.google.dev/usage. 3) Wait for your daily reset if on the Free tier.");
   }
   
-  throw new Error(rawMsg || "An unexpected error occurred.");
+  if (msg.includes('503') || msg.includes('overloaded')) {
+     throw new Error("The AI server is currently under heavy load. Please try again in 10-20 seconds.");
+  }
+  
+  if (msg.includes('requested entity was not found')) {
+     throw new Error("API Connection Error: The requested model or key was not found. Please re-select your API key in the App Settings.");
+  }
+  
+  throw new Error(rawMsg || "An unexpected error occurred during the AI request.");
 };
 
 export const generateTextWithGemini = async (prompt: string, systemInstruction?: string): Promise<string> => {
@@ -101,12 +114,15 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
         model: 'gemini-2.5-flash-image',
         contents: { parts },
         config: { imageConfig: { aspectRatio: aspectRatio as any } }
-      }), 5, 2000);
-      return `data:image/png;base64,${response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData)?.inlineData?.data}`;
+      }), 3, 4000);
+      
+      const imgData = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData)?.inlineData?.data;
+      return imgData ? `data:image/png;base64,${imgData}` : null;
     } catch (e) { return null; }
   };
+  
   const result = await attemptGeneration(!!referenceImage) || await attemptGeneration(false);
-  if (!result) throw new Error("Image generation failed.");
+  if (!result) throw new Error("Image generation failed. This could be due to quota limits or safety filters.");
   return result;
 };
 
@@ -119,7 +135,8 @@ export const generateProImageWithGemini = async (prompt: string, size: string = 
       config: { imageConfig: { imageSize: size as any } }
     }));
     const imagePart = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
-    return `data:image/png;base64,${imagePart?.inlineData?.data}`;
+    if (!imagePart) throw new Error("No image returned.");
+    return `data:image/png;base64,${imagePart.inlineData.data}`;
   } catch (error) { handleGeminiError(error); return ""; }
 };
 
@@ -132,7 +149,8 @@ export const editImageWithGemini = async (image: string, prompt: string): Promis
       model: 'gemini-2.5-flash-image',
       contents: { parts: [{ inlineData: { data: base64Data, mimeType }}, { text: prompt }] },
     }));
-    return `data:image/png;base64,${response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData)?.inlineData?.data}`;
+    const imgData = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData)?.inlineData?.data;
+    return imgData ? `data:image/png;base64,${imgData}` : "";
   } catch (error) { handleGeminiError(error); return ""; }
 };
 
@@ -141,7 +159,7 @@ export const generateBatchImages = async (prompt: string, count: number): Promis
   for (let i = 0; i < count; i++) {
     const img = await generateImageWithGemini(prompt);
     if (img) results.push(img);
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 2000));
   }
   return results;
 };
@@ -152,6 +170,7 @@ export const generateViralThumbnails = async (topic: string): Promise<string[]> 
   for (const style of styles) {
     const img = await generateImageWithGemini(`${topic}. Style: ${style}`, '16:9');
     if (img) results.push(img);
+    await new Promise(r => setTimeout(r, 1000));
   }
   return results;
 };
@@ -170,7 +189,7 @@ export const analyzeImageWithGemini = async (image: string, prompt: string): Pro
 };
 
 export const generateImagePrompt = async (image: string, platform: string): Promise<string> => {
-  return analyzeImageWithGemini(image, `Analyze and write a detailed prompt for ${platform}.`);
+  return analyzeImageWithGemini(image, `Describe this image and create a detailed AI generation prompt for ${platform}.`);
 };
 
 export const createChatSession = (systemInstruction?: string): Chat => {
@@ -229,22 +248,17 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
   };
 
   try {
-    let operation = await withRetry(() => startOp(), 5, 3000);
+    let operation = await withRetry(() => startOp(), 5, 6000);
     
     if (!operation || typeof operation !== 'object' || !operation.name) {
-      console.error("Video Operation Object is invalid:", operation);
-      throw new Error("Failed to initialize video operation tracker.");
+      throw new Error("Video initialization failed.");
     }
 
     while (!operation.done) {
-      await new Promise(r => setTimeout(r, 10000));
+      await new Promise(r => setTimeout(r, 12000));
       if (!operation || !operation.name) break;
-      
       const polledOp = await ai.operations.getVideosOperation({ operation });
-      if (!polledOp) {
-        console.error("Video operation polling returned null.");
-        throw new Error("Video generation tracker lost during processing.");
-      }
+      if (!polledOp) throw new Error("Video tracker lost.");
       operation = polledOp;
     }
     
@@ -252,17 +266,17 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
     
     const generatedVideos = operation.response?.generatedVideos;
     if (!generatedVideos || generatedVideos.length === 0) {
-      throw new Error("Video generation was successful but the final content was blocked by post-generation safety filters. This often happens with real-world names. Try using more descriptive or generic character labels.");
+      throw new Error("Safety Block: The generated content was filtered. This usually happens with real-world names or sensitive prompts. Try generic character names.");
     }
 
     const link = generatedVideos[0]?.video?.uri;
-    if (!link) throw new Error("No video link returned from server.");
+    if (!link) throw new Error("No video link returned.");
     return `${link}&key=${getApiKey()}`;
   } catch (error) { handleGeminiError(error); return ""; }
 };
 
 export const generateBackgroundMusic = async (title: string, style: string): Promise<string> => {
-  return generateVideoWithGemini(`Background music for "${title}". Style: ${style}. Visual: Abstract.`, '16:9');
+  return generateVideoWithGemini(`Atmospheric background music for "${title}". Style: ${style}. Visual: Abstract.`, '16:9');
 };
 
 const generateStructuredContent = async <T>(prompt: string, schema: Schema, model = 'gemini-3-flash-preview', image?: string): Promise<T> => {
@@ -272,7 +286,7 @@ const generateStructuredContent = async <T>(prompt: string, schema: Schema, mode
     if (image) contents = { parts: [{ inlineData: { mimeType: 'image/png', data: image.split(',')[1] } }, { text: prompt }] };
     const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model, contents, config: { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.2 }
-    }), 3, 500); 
+    }), 5, 1000); 
     return JSON.parse(response.text || "{}") as T;
   } catch (error) { 
     handleGeminiError(error);
@@ -281,14 +295,14 @@ const generateStructuredContent = async <T>(prompt: string, schema: Schema, mode
 };
 
 export const generateStoryScript = async (topic: string, style: string, charDesc?: string): Promise<StorybookData> => {
-  const prompt = `Story about: ${topic}. Style: ${style}. Characters: ${charDesc || 'new'}.`;
+  const prompt = `Story about: ${topic}. Style: ${style}. Character: ${charDesc || 'new'}.`;
   const schema: Schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, style: { type: Type.STRING }, characterName: { type: Type.STRING }, characterDescription: { type: Type.STRING }, author: { type: Type.STRING }, dedication: { type: Type.STRING }, authorBio: { type: Type.STRING }, backCoverBlurb: { type: Type.STRING }, pages: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { pageNumber: { type: Type.INTEGER }, text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } } } } };
   return generateStructuredContent<StorybookData>(prompt, schema);
 };
 
 export const generateComicScriptFromImages = async (images: string[], topic: string): Promise<StorybookData> => {
   const parts: any[] = images.map(img => ({ inlineData: { mimeType: 'image/png', data: img.split(',')[1] } }));
-  parts.push({ text: `Write comic script about ${topic}.` });
+  parts.push({ text: `Comic script about ${topic}.` });
   const schema: Schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, characterDescription: { type: Type.STRING }, pages: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { pageNumber: { type: Type.INTEGER }, text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } } } } };
   const response = await withRetry<GenerateContentResponse>(() => getAiClient().models.generateContent({ model: 'gemini-3-flash-preview', contents: { parts }, config: { responseMimeType: 'application/json', responseSchema: schema } }));
   return JSON.parse(response.text || "{}");
@@ -306,12 +320,12 @@ export const generateSocialCampaign = async (topic: string, settings: SocialSett
 
 export const analyzePrompt = async (userPrompt: string, platform: string): Promise<PromptAnalysis> => {
   const schema: Schema = { type: Type.OBJECT, properties: { score: { type: Type.INTEGER }, strengths: { type: Type.ARRAY, items: { type: Type.STRING } }, weakness: { type: Type.ARRAY, items: { type: Type.STRING } }, suggestion: { type: Type.STRING }, reasoning: { type: Type.STRING } } };
-  return generateStructuredContent<PromptAnalysis>(`Analyze prompt: ${userPrompt} for ${platform}`, schema);
+  return generateStructuredContent<PromptAnalysis>(`Analyze prompt for ${platform}: "${userPrompt}"`, schema);
 };
 
 export const generateDailyTip = async (dayIndex: number): Promise<DailyTip> => {
   const schema: Schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, content: { type: Type.STRING }, category: { type: Type.STRING } } };
-  return generateStructuredContent<DailyTip>(`AI tip for Day ${dayIndex}`, schema);
+  return generateStructuredContent<DailyTip>(`AI tip for day ${dayIndex}`, schema);
 };
 
 export const generateHelpfulList = async (topic: string): Promise<HelpfulList> => {
@@ -321,7 +335,7 @@ export const generateHelpfulList = async (topic: string): Promise<HelpfulList> =
 
 export const generatePodcastScript = async (topic: string, h: string, g: string): Promise<PodcastScript> => {
   const schema: Schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, script: { type: Type.STRING }, visualPrompt: { type: Type.STRING } } };
-  return generateStructuredContent<PodcastScript>(`Podcast about ${topic}`, schema);
+  return generateStructuredContent<PodcastScript>(`Podcast script for ${topic}`, schema);
 };
 
 export const generateQuiz = async (t: string, c: number, d: string): Promise<QuizData> => {
@@ -335,7 +349,7 @@ export const generateRiddleContent = async (t: string): Promise<RiddleData> => {
 };
 
 export const generateUiCode = async (p: string, d: string, s: string, i?: string): Promise<string> => {
-  const prompt = `Code ${d} UI: ${p}. Style: ${s}. Match image if provided.`;
+  const prompt = `Code for ${d} UI: ${p}. Style: ${s}. Match the attached reference.`;
   const response = await withRetry<GenerateContentResponse>(() => getAiClient().models.generateContent({ model: 'gemini-3-pro-preview', contents: { parts: [{ text: prompt }, ...(i ? [{ inlineData: { mimeType: 'image/png', data: i.split(',')[1] } }] : [])] } }));
   return response.text?.replace(/```html/g, '').replace(/```/g, '') || "";
 };
@@ -346,7 +360,7 @@ export const generateAffirmationPlan = async (t: string, tone: string): Promise<
 };
 
 export const generateHiddenMessage = async (s: string, c: string): Promise<string> => {
-  const response = await withRetry<GenerateContentResponse>(() => getAiClient().models.generateContent({ model: 'gemini-3-pro-preview', contents: `Hide "${s}" in text about "${c}". Use {{word}} formatting.` }));
+  const response = await withRetry<GenerateContentResponse>(() => getAiClient().models.generateContent({ model: 'gemini-3-pro-preview', contents: `Hide "${s}" in a paragraph about "${c}" using {{word}} markers.` }));
   return response.text || "";
 };
 
@@ -355,17 +369,17 @@ export const generateBrandIdentity = async (n: string, i: string, v: string, p: 
   return generateStructuredContent<BrandIdentity>(`Brand kit for ${n}`, schema);
 };
 
-export const regenerateBrandPalette = (curr: any) => generateStructuredContent<BrandIdentity>(`New palette for ${curr.companyName}`, { type: Type.OBJECT, properties: { colorPalette: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, hex: { type: Type.STRING } } } } } });
-export const regenerateBrandTypography = (curr: any) => generateStructuredContent<BrandIdentity>(`New fonts for ${curr.companyName}`, { type: Type.OBJECT, properties: { fontPairing: { type: Type.OBJECT, properties: { heading: { type: Type.STRING }, body: { type: Type.STRING } } } } });
+export const regenerateBrandPalette = (curr: any) => generateStructuredContent<BrandIdentity>(`Palette for ${curr.companyName}`, { type: Type.OBJECT, properties: { colorPalette: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, hex: { type: Type.STRING } } } } } });
+export const regenerateBrandTypography = (curr: any) => generateStructuredContent<BrandIdentity>(`Fonts for ${curr.companyName}`, { type: Type.OBJECT, properties: { fontPairing: { type: Type.OBJECT, properties: { heading: { type: Type.STRING }, body: { type: Type.STRING } } } } });
 
 export const generateUGCScript = async (p: string, a: string, pa: string): Promise<UGCScript> => {
   const schema: Schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, targetAudience: { type: Type.STRING }, totalDuration: { type: Type.STRING }, sections: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { section: { type: Type.STRING }, visual: { type: Type.STRING }, audio: { type: Type.STRING }, duration: { type: Type.STRING } } } } } };
-  return generateStructuredContent<UGCScript>(`TikTok ad script for ${p}`, schema);
+  return generateStructuredContent<UGCScript>(`UGC script for ${p}`, schema);
 };
 
 export const generatePoem = (t: string, s: string) => generateTextWithGemini(`Poem about ${t} in ${s} style.`);
 export const generateDailyJoke = (d: number) => generateTextWithGemini(`Joke for day ${d}.`);
-export const generateQuote = (c: string) => generateTextWithGemini(`Inspiring ${c} quote.`);
+export const generateQuote = (c: string) => generateTextWithGemini(`Quote about ${c}.`);
 export const generateConnectionFact = (p: string) => generateTextWithGemini(`Connection fact about ${p}.`);
 
 export const analyzeWealthPath = async (n: string): Promise<WealthAnalysis> => {
@@ -385,17 +399,17 @@ export const analyzePaperCommercial = async (t: string): Promise<CommercialAnaly
 
 export const generateBabyNames = async (g: string, s: string, o: string, i: boolean): Promise<BabyName[]> => {
   const schema: Schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, meaning: { type: Type.STRING }, origin: { type: Type.STRING }, reason: { type: Type.STRING } } } };
-  return generateStructuredContent<BabyName[]>(`${g} ${s} names from ${o}`, schema);
+  return generateStructuredContent<BabyName[]>(`${g} names, ${s} style, ${o} origin`, schema);
 };
 
 export const generate3DOrchestration = async (i: string, img?: string): Promise<AI360Response> => {
   const schema: Schema = { type: Type.OBJECT, properties: { status: { type: Type.STRING }, reason: { type: Type.STRING }, safety_categories: { type: Type.ARRAY, items: { type: Type.STRING } }, generation_prompt: { type: Type.STRING } } };
-  return generateStructuredContent<AI360Response>(`3D gen for ${i}`, schema, 'gemini-3-flash-preview', img);
+  return generateStructuredContent<AI360Response>(`3D orchestration for: ${i}`, schema, 'gemini-3-flash-preview', img);
 };
 
 export const generateCarouselContent = async (t: string, c: number, h: string): Promise<CarouselData> => {
   const schema: Schema = { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, slides: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, content: { type: Type.STRING }, type: { type: Type.STRING } } } } } };
-  return generateStructuredContent<CarouselData>(`Carousel content for ${t}`, schema);
+  return generateStructuredContent<CarouselData>(`Carousel for ${t}`, schema);
 };
 
 export const analyzeDream = async (t: string): Promise<DreamAnalysis> => {
@@ -420,12 +434,12 @@ export const analyzeVideoCharacters = async (f: string): Promise<string> => {
   return JSON.stringify(res);
 };
 
-export const generateBabyTransformation = (f: string, a: string) => generateVideoWithGemini(`Baby version. ${a}.`, '9:16', f);
+export const generateBabyTransformation = (f: string, a: string) => generateVideoWithGemini(`Toddler version. ${a}.`, '9:16', f);
 
 export const generateBabyDebateScript = async (topic: string, participants: BabyDebateParticipant[]): Promise<BabyDebateScript> => {
-  const prompt = `Generate a funny baby debate script about: ${topic}. 
+  const prompt = `Generate a funny toddler debate script about: ${topic}. 
   Characters: ${participants.map(p => `${p.name} (Tone: ${p.tone})`).join(', ')}.
-  Provide a visual context for the scene and a safe, name-less descriptive visual archetype for each participant.`;
+  Include a scene description and descriptive visual archetypes.`;
   
   const schema: Schema = { 
     type: Type.OBJECT, 
@@ -465,21 +479,15 @@ export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: 
     ? script.safeCharacterDescriptions.map(d => d.description).join(' and ') 
     : script.participants.map(p => p.name).join(' and ');
 
-  const prompt = `High-end cinematic 3D character animation for a children's nursery debate. 
-  Visual Style: ${style}. ${script.visualContext}. 
+  const prompt = `High-end 3D toddler animation. Visual Style: ${style}. ${script.visualContext}. 
   Characters: ${characterDescriptions}.
   
   AUDIO AND SPEECH INSTRUCTIONS:
-  The characters MUST clearly speak the following transcript using cute, high-pitched toddler-like voices:
+  The characters MUST clearly speak the following transcript using cute toddler voices:
   ${dialogueText}
   
-  Background Music: ${musicStyle}.
-  
-  ACTION:
-  The toddler-sized characters are engaged in a lively discussion with expressive, synchronized mouth movements and facial expressions that exactly match the spoken dialogue above. 
-  Maintain strict high-quality 3D toy aesthetic. 
-  Do NOT generate real humans. Focus on stylized caricatures.
-  Technical Visual ID: ABSTRACT_STYLE_B_01`;
+  Action: Expression-filled toddler discussion with mouth movements synced to the dialogue. No real humans.
+  Music: ${musicStyle}.`;
 
   const images = script.participants.map(p => p.image).filter(Boolean) as string[];
   return generateVideoWithGemini(prompt, ratio, images.length > 0 ? images : undefined);
