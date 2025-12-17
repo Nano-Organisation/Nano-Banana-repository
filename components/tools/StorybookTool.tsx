@@ -152,7 +152,15 @@ const StorybookTool: React.FC = () => {
 
             setProgressMsg(`Illustrating Page ${i + 1}/${script.pages.length}...`);
             try {
-               const pagePrompt = `Character: ${script.characterDescription}. Action: ${script.pages[i].imagePrompt}. Visual Style: ${script.style}. Maintain strict visual consistency.`;
+               // Updated Prompt Construction for Better Consistency
+               // We rely on the script generator's detailed descriptions in imagePrompt now
+               const pagePrompt = `
+                  Visual Style: ${script.style}.
+                  Scene: ${script.pages[i].imagePrompt}.
+                  Main Character Reference: ${script.characterDescription}.
+                  Instruction: Ensure all characters match their descriptions in the scene text exactly. Maintain consistent character identity, gender features, and clothing across all panels.
+               `.replace(/\s+/g, ' ').trim();
+
                const imageUrl = await generateImageWithGemini(pagePrompt, '1:1', characterReferenceImage);
                
                setBookData(prev => {

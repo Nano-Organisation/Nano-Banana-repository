@@ -497,7 +497,20 @@ const generateStructuredContent = async <T>(prompt: string, schema: Schema, mode
 };
 
 export const generateStoryScript = async (topic: string, style: string, charDesc?: string): Promise<StorybookData> => {
-  const prompt = `Write a children's storybook script about: ${topic}. Style: ${style}. ${charDesc ? `Character Description: ${charDesc}` : ''}`;
+  const prompt = `
+    Write a children's storybook script about: ${topic}. 
+    Style: ${style}. 
+    ${charDesc ? `Main Character: ${charDesc}` : ''}
+
+    CRITICAL RULES FOR VISUAL CONSISTENCY:
+    1. Define the visual appearance of the Main Character AND any Secondary Characters (parents, grandparents, friends) immediately.
+    2. In the 'imagePrompt' for EACH page:
+       - You MUST repeat the FULL visual description of EVERY character present in that scene.
+       - Do NOT just say "Grandpa". Say "Grandpa, an elderly man with a white beard, glasses, bald head, wearing a green vest".
+       - Do NOT just say "Mother". Say "Mother, an adult woman with long brown hair, no facial hair, wearing a blue dress".
+       - Ensure distinct gender features are described to prevent AI confusion (e.g. "smooth face" for women, "beard" for men if applicable).
+       - Maintain strict consistency of these descriptions across all pages.
+  `;
   const schema: Schema = {
     type: Type.OBJECT,
     properties: {
