@@ -33,34 +33,57 @@ export const getAiClient = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
-export const withRetry = async <T>(fn: () => Promise<T>, retries = 12, delay = 4000): Promise<T> => {
-  try {
-    return await fn();
-  } catch (error: any) {
-    // Check various locations for error code
-    const status = error.status || error.response?.status || error?.error?.code;
-    const message = (error.message || JSON.stringify(error)).toLowerCase();
-    
-    const isOverloaded = status === 503 || message.includes('overloaded') || message.includes('503') || message.includes('unavailable');
-    const isRateLimit = status === 429 || message.includes('429') || message.includes('quota') || message.includes('too many requests');
-    const isServerErr = typeof status === 'number' && status >= 500;
+/**
+ * Enhanced retry logic with exponential backoff and jitter.
+ * Specifically tuned for 503 Overloaded and 429 Rate Limit errors.
+ */
+export const withRetry = async <T>(fn: () => Promise<T>, retries = 15, baseDelay = 2000): Promise<T> => {
+  let lastError: any;
+  
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      
+      const status = error.status || error.response?.status || error?.error?.code;
+      const message = (error.message || JSON.stringify(error)).toLowerCase();
+      
+      const isOverloaded = status === 503 || message.includes('overloaded') || message.includes('503') || message.includes('unavailable');
+      const isRateLimit = status === 429 || message.includes('429') || message.includes('quota') || message.includes('too many requests');
+      const isServerErr = typeof status === 'number' && status >= 500;
 
-    if (retries > 0 && (isOverloaded || isRateLimit || isServerErr)) {
-      const jitter = Math.random() * 2000; // Increased jitter for better distribution
-      const waitTime = delay + jitter;
-      console.warn(`Gemini API Busy/Error (${status || 'Unknown'}). Retrying in ${Math.round(waitTime)}ms... (${retries} attempts left)`);
+      // If it's a permanent error (client side 4xx except 429), throw immediately
+      if (!isOverloaded && !isRateLimit && !isServerErr) {
+        throw error;
+      }
+
+      // If we used up all retries, break loop to throw error
+      if (attempt === retries - 1) break;
+
+      // Calculate wait time: Exponential backoff with jitter
+      // Cap at 30 seconds to avoid overly long hangs, but give enough time for recovery
+      const backoff = baseDelay * Math.pow(1.5, attempt); 
+      const jitter = Math.random() * 1000;
+      const waitTime = Math.min(backoff + jitter, 30000);
+
+      if (isOverloaded || isRateLimit) {
+         console.warn(`Gemini API Busy (Attempt ${attempt + 1}/${retries}). Retrying in ${Math.round(waitTime)}ms...`);
+      } else {
+         console.warn(`Gemini API Error ${status} (Attempt ${attempt + 1}/${retries}). Retrying in ${Math.round(waitTime)}ms...`);
+      }
+      
       await new Promise(resolve => setTimeout(resolve, waitTime));
-      // More aggressive backoff: Double delay, cap at 30 seconds
-      const nextDelay = Math.min(delay * 2, 30000); 
-      return withRetry(fn, retries - 1, nextDelay);
     }
-    throw error;
   }
+  
+  throw lastError;
 };
 
 export const handleGeminiError = (error: any) => {
   const msg = (error.message || JSON.stringify(error)).toLowerCase();
-  // Suppress console logging for expected safety filter blocks or specific video generation errors
+  
+  // Suppress console logging for expected safety filter blocks
   const isSafetyError = msg.includes("safety filters") || msg.includes("returned no video") || msg.includes("safety");
   const isOverloaded = msg.includes('503') || msg.includes('overloaded') || msg.includes('unavailable');
 
@@ -71,7 +94,7 @@ export const handleGeminiError = (error: any) => {
   }
   
   if (isOverloaded) {
-     throw new Error("The AI model is currently experiencing heavy traffic and is overloaded. Please try again in a minute.");
+     throw new Error("The AI model is currently experiencing extremely high traffic. Please wait a minute and try again.");
   }
   
   throw new Error(error.message || "An unexpected error occurred with Gemini.");
@@ -105,7 +128,6 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
     let contents: any = { parts: [{ text: prompt }] };
     
     if (referenceImage) {
-      // Remove data url prefix if present
       const base64Data = referenceImage.includes(',') ? referenceImage.split(',')[1] : referenceImage;
       const mimeType = referenceImage.includes(';') ? referenceImage.split(';')[0].split(':')[1] : 'image/png';
       
@@ -198,8 +220,8 @@ export const editImageWithGemini = async (image: string, prompt: string): Promis
 };
 
 export const generateBatchImages = async (prompt: string, count: number): Promise<string[]> => {
-  // Execute sequentially to avoid rate limits
   const results: string[] = [];
+  // Run sequentially to be kind to the API and avoid triggering rate limits immediately
   for (let i = 0; i < count; i++) {
     try {
       const img = await generateImageWithGemini(prompt);
@@ -220,7 +242,6 @@ export const generateViralThumbnails = async (topic: string): Promise<string[]> 
     "Action shot, motion blur, explosion effect, vibrant colors"
   ];
   
-  // Sequential generation for stability
   const results: string[] = [];
   for (const style of styles) {
     try {
@@ -230,7 +251,6 @@ export const generateViralThumbnails = async (topic: string): Promise<string[]> 
       console.error("Thumbnail gen failed", e);
     }
   }
-  
   return results;
 };
 
@@ -283,7 +303,7 @@ export const createThinkingChatSession = (): Chat => {
   return ai.chats.create({
     model: 'gemini-3-pro-preview',
     config: {
-      thinkingConfig: { thinkingBudget: 1024 } // allocating some budget for reasoning
+      thinkingConfig: { thinkingBudget: 1024 }
     }
   });
 };
@@ -394,13 +414,12 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
 
         const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
         if (!downloadLink) {
-           // We throw a specific message here that handleGeminiError will recognize as a safety block
-           throw new Error("Video generation completed but returned no video. This is likely due to safety filters blocking the content (e.g. realistic people).");
+           throw new Error("Video generation completed but returned no video.");
         }
 
         const apiKey = getApiKey();
         return `${downloadLink}&key=${apiKey}`;
-    }, 5, 5000); // More retries for video ops
+    }, 5, 5000); // 5 retries for video ops specifically
   } catch (error) {
     handleGeminiError(error);
     return "";
@@ -473,14 +492,12 @@ export const generateComicScriptFromImages = async (images: string[], topic: str
   const ai = getAiClient();
   const parts: any[] = [];
   
-  // Add images
   images.forEach(img => {
     const base64Data = img.split(',')[1];
     const mimeType = img.split(';')[0].split(':')[1];
     parts.push({ inlineData: { mimeType, data: base64Data } });
   });
 
-  // Add prompt
   const promptText = `
     Analyze these images. They are the seed for a short comic strip story.
     Topic/Context: ${topic || "Create a fun narrative connecting these images."}

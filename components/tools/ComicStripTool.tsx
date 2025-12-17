@@ -1,15 +1,29 @@
 
 import React, { useState, useRef } from 'react';
-import { Layout, RefreshCw, Upload, X, Download, Image as ImageIcon, MessageSquare } from 'lucide-react';
+import { Layout, RefreshCw, Upload, X, Download, Image as ImageIcon, MessageSquare, Palette } from 'lucide-react';
 import { generateComicScriptFromImages, generateImageWithGemini } from '../../services/geminiService';
 import { LoadingState, StorybookData } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
 import jsPDF from 'jspdf';
 import { WATERMARK_TEXT } from '../../utils/watermark';
 
+const COMIC_STYLES = [
+  { 
+    id: 'graphic_novel', 
+    label: 'Graphic Novel', 
+    desc: 'Vibrant colors, dynamic lighting, detailed modern digital art style, cinematic composition.' 
+  },
+  { 
+    id: 'sunday_strip', 
+    label: 'Sunday Strip', 
+    desc: 'Bold outlines, flat colors, classic newspaper cartoon aesthetic, expressive caricatures.' 
+  }
+];
+
 const ComicStripTool: React.FC = () => {
   const [seedImages, setSeedImages] = useState<string[]>([]);
   const [topic, setTopic] = useState('');
+  const [selectedStyleId, setSelectedStyleId] = useState(COMIC_STYLES[0].id);
   const [comicData, setComicData] = useState<StorybookData | null>(null);
   const [status, setStatus] = useState<LoadingState>('idle');
   const [progressMsg, setProgressMsg] = useState('');
@@ -48,10 +62,12 @@ const ComicStripTool: React.FC = () => {
     setComicData(null);
     setProgressMsg('Scripting comic narrative...');
 
+    const selectedStyle = COMIC_STYLES.find(s => s.id === selectedStyleId) || COMIC_STYLES[0];
+
     try {
       // 1. Generate Script
       const script = await generateComicScriptFromImages(seedImages, topic);
-      script.style = 'Comic Book'; // Force style
+      script.style = selectedStyle.label;
       setComicData(script);
 
       // 2. Generate Panels
@@ -63,7 +79,7 @@ const ComicStripTool: React.FC = () => {
          try {
             // Prompt engineered for comic style without text inside the image (to avoid spelling errors)
             const panelPrompt = `Comic book panel. ${script.characterDescription}. Action: ${newPages[i].imagePrompt}. 
-            Style: American Comic Book, bold outlines, vibrant flat colors, dynamic angle. 
+            Style: ${selectedStyle.label} - ${selectedStyle.desc}.
             Do NOT include speech bubbles or text.`;
             
             const imageUrl = await generateImageWithGemini(panelPrompt, '1:1', refImage);
@@ -174,12 +190,34 @@ const ComicStripTool: React.FC = () => {
                </div>
 
                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase">2. Comic Context</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
+                     <Palette className="w-3 h-3" /> 2. Visual Style
+                  </label>
+                  <div className="flex flex-col gap-2">
+                     {COMIC_STYLES.map(style => (
+                        <button
+                           key={style.id}
+                           onClick={() => setSelectedStyleId(style.id)}
+                           className={`p-3 rounded-xl border text-left transition-all ${
+                              selectedStyleId === style.id 
+                              ? 'bg-yellow-500/20 border-yellow-500 text-white' 
+                              : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'
+                           }`}
+                        >
+                           <div className="text-sm font-bold">{style.label}</div>
+                           <div className="text-[10px] opacity-70 leading-tight mt-1">{style.desc}</div>
+                        </button>
+                     ))}
+                  </div>
+               </div>
+
+               <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase">3. Comic Context</label>
                   <textarea 
                      value={topic}
                      onChange={(e) => setTopic(e.target.value)}
                      placeholder="e.g. A heist goes wrong... (Optional)"
-                     className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-yellow-500 h-24 resize-none"
+                     className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-yellow-500 h-20 resize-none"
                   />
                </div>
 
