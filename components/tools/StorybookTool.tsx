@@ -184,14 +184,29 @@ const StorybookTool: React.FC = () => {
       setBookData(script);
 
       // Generate Images Sequentially
-      setProgressMsg('Illustrating Page 1...');
-      
       let characterReferenceImage: string | undefined = undefined;
+
+      // Internal Helper for Per-Page Retries
+      const drawPage = async (idx: number, prompt: string, ref?: string) => {
+         let lastErr: any = null;
+         for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+               setProgressMsg(`Illustrating Page ${idx + 1}/${script.pages.length}${attempt > 0 ? ` (Attempt ${attempt + 1})` : ''}...`);
+               const imageUrl = await generateImageWithGemini(prompt, '1:1', ref);
+               return imageUrl;
+            } catch (e) {
+               lastErr = e;
+               console.warn(`Local retry ${attempt + 1} for page ${idx + 1} failed.`);
+               await new Promise(r => setTimeout(r, 5000)); // Wait before local retry
+            }
+         }
+         throw lastErr;
+      };
 
       // Generate First Page
       try {
          const firstPagePrompt = `Visual Style: ${script.style}. Scene: ${script.pages[0].imagePrompt}. Characters: ${script.characterDescription}. Anatomy: Perfectly correct human anatomy, exactly two legs, no hybrid body parts.`;
-         const imageUrl = await generateImageWithGemini(firstPagePrompt, '1:1');
+         const imageUrl = await drawPage(0, firstPagePrompt);
          characterReferenceImage = imageUrl;
 
          setBookData(prev => {
@@ -201,15 +216,14 @@ const StorybookTool: React.FC = () => {
             return { ...prev, pages: newPages };
          });
       } catch (e) {
-         console.warn("Failed to generate first page image. Continuing without reference...", e);
+         console.warn("Failed to generate first page image. Continuing book creation...", e);
       }
 
       // Generate remaining pages
       for (let i = 1; i < script.pages.length; i++) {
-          // Buffer delay to prevent rate limits on sequential generations
-          await new Promise(resolve => setTimeout(resolve, 3500));
+          // Significant buffer delay between different pages during high traffic
+          await new Promise(resolve => setTimeout(resolve, 6500));
 
-          setProgressMsg(`Illustrating Page ${i + 1}/${script.pages.length}...`);
           try {
              const pagePrompt = `
                 Visual Style: ${script.style}.
@@ -218,9 +232,8 @@ const StorybookTool: React.FC = () => {
                 Anatomy Protocol: Ensure anatomically correct human bodies, exactly two legs and two arms per person, no floating limbs or hybrid baby-adult features.
              `.replace(/\s+/g, ' ').trim();
 
-             const imageUrl = await generateImageWithGemini(pagePrompt, '1:1', characterReferenceImage);
+             const imageUrl = await drawPage(i, pagePrompt, characterReferenceImage);
              
-             // Update the reference if we just got a valid image and didn't have one before
              if (!characterReferenceImage && imageUrl) {
                 characterReferenceImage = imageUrl;
              }
@@ -231,8 +244,8 @@ const StorybookTool: React.FC = () => {
                 newPages[i] = { ...newPages[i], imageUrl };
                 return { ...prev, pages: newPages };
              });
-          } catch (e) {
-             console.error(`Failed to gen image for page ${i + 1}. Skipping image for this page.`, e);
+          } catch (e: any) {
+             console.error(`Failed to gen image for page ${i + 1} after retries. Skipping image for this page.`, e);
           }
       }
 

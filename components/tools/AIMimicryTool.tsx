@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Video, RefreshCw, Upload, Lock, Play, Pause, Zap, Sparkles, Ghost, Camera, Box, Type, Activity, Image as ImageIcon, Download, AlertTriangle } from 'lucide-react';
 import { generateVideoWithGemini } from '../../services/geminiService';
@@ -139,21 +138,20 @@ const AIMimicryTool: React.FC = () => {
     setResultVideoUrl(null);
 
     try {
-      // Construct prompt to guide structure preservation
-      const styleDesc = hallucinate ? "Surreal, dreamlike, abstract art style" : "High fidelity, photorealistic cinematic video";
+      // Refined: Use highly stylized descriptions to avoid safety filters for realistic faces
+      const styleDesc = hallucinate 
+        ? "Surreal, abstract digital art style, non-humanoid aesthetic, dreamlike geometric patterns" 
+        : "Vibrant, stylized 3D toy animation style, handcrafted miniature aesthetic, non-photorealistic features";
       
-      // Use phrasing that aligns the new subject with the visual structure of the input
-      // This helps when the user asks for plural subjects (e.g. "Lionesses") to map to multiple people in the video
       const subjectDesc = replaceSubject 
          ? `${replaceSubject} occupying the exact position, pose, and composition of the subjects in the reference image` 
-         : "The subjects from the reference image";
+         : "The subjects from the reference image interpreted as adorable stylized 3D models";
 
       const envDesc = environment === 'Studio' ? "" : `in a ${environment} environment`;
       const bgDesc = backgroundType === 'Original' ? "" : `with ${backgroundType} background`;
       const motionDesc = smoothMotion ? "smooth fluid motion" : "dynamic action matching the reference";
       const textDesc = textOverlay ? `displaying text "${textOverlay}"` : "";
 
-      // Descriptive prompt
       const prompt = `${styleDesc}. ${subjectDesc} ${envDesc} ${bgDesc}. ${motionDesc}. ${textDesc}. 4k resolution.`;
 
       const url = await generateVideoWithGemini(prompt, '16:9', frameToSend);
@@ -168,9 +166,8 @@ const AIMimicryTool: React.FC = () => {
     } catch (e: any) {
       console.error(e);
       let msg = e.message || "Failed to mimic video.";
-      // Catch specific safety filter messages from service
       if (msg.includes("safety filters") || msg.includes("returned no video")) {
-         msg = "Generation blocked by safety filters. Veo avoids generating videos of realistic people or harmful content. Try using a different source video (e.g. without people) or abstract prompt.";
+         msg = "Generation blocked by safety filters. Realistic human faces or sensitive content can trigger this. The system automatically retried with Level 2 abstraction, but it was still blocked. Try a more abstract prompt or a different source video (e.g. landscapes or objects instead of people).";
       }
       setErrorMessage(msg);
       setStatus('error');
@@ -372,7 +369,7 @@ const AIMimicryTool: React.FC = () => {
                   <div className="relative w-full max-w-2xl aspect-video bg-black rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(192,38,211,0.3)] border border-fuchsia-500/30">
                      <video 
                         src={resultVideoUrl} 
-                        className="w-full h-full object-contain" 
+                        className="w-full h-full object-cover" 
                         controls 
                         autoPlay 
                         loop

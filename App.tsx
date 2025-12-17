@@ -60,8 +60,9 @@ import CalendarCreator from './components/tools/CalendarCreator';
 import AIMimicryTool from './components/tools/AIMimicryTool';
 import DesignCritic from './components/tools/DesignCritic';
 import ComicStripTool from './components/tools/ComicStripTool';
+import BabyVisionTransformer from './components/tools/BabyVisionTransformer';
 
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign, CalendarCheck, Baby, Clapperboard, Box, GalleryHorizontal, Calendar, Copy as CopyIcon, AlertCircle, Grid } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign, CalendarCheck, Baby, Clapperboard, Box, GalleryHorizontal, Calendar, Copy as CopyIcon, AlertCircle, Grid, Stars } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -92,6 +93,15 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.BabyVisionTransformer,
+    title: "Baby Transformer",
+    description: "Turn YouTube Shorts characters into baby versions.",
+    icon: Stars,
+    color: "pink",
+    gradient: "from-pink-500 to-rose-600",
+    releaseDate: '2025-12-16'
   },
   {
     id: ToolId.ComicStrip,
@@ -647,6 +657,8 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.BabyVisionTransformer:
+        return <BabyVisionTransformer />;
       case ToolId.ComicStrip:
         return <ComicStripTool />;
       case ToolId.AIMimicry:

@@ -60,7 +60,8 @@ export enum ToolId {
   CalendarCreator = 'CALENDAR_CREATOR',
   AIMimicry = 'AI_MIMICRY',
   DesignCritic = 'DESIGN_CRITIC',
-  ComicStrip = 'COMIC_STRIP'
+  ComicStrip = 'COMIC_STRIP',
+  BabyVisionTransformer = 'BABY_VISION_TRANSFORMER'
 }
 
 export interface ToolConfig {
@@ -234,6 +235,7 @@ export interface BrandIdentity {
   colorPalette: { name: string; hex: string }[];
   fontPairing: { heading: string; body: string };
   logoPrompt: string;
+  borderPadding?: number;
   brandVoice: string;
   // Template Prompts
   stationaryPrompt: string;
