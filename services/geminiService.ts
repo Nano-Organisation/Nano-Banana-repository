@@ -24,7 +24,8 @@ import {
   EmojiPuzzle,
   WordPuzzle,
   TwoTruthsPuzzle,
-  RiddlePuzzle
+  RiddlePuzzle,
+  BabyDebateScript
 } from '../types';
 
 export const getApiKey = () => process.env.API_KEY;
@@ -1156,4 +1157,54 @@ export const generateBabyTransformation = async (frameBase64: string, attireData
   Visual Style: High-quality 3D render, smooth surfaces, non-photorealistic artistic features. (ABSTRACT_STYLE_B_01)`;
 
   return generateVideoWithGemini(prompt, '9:16', frameBase64);
+};
+
+// --- Baby Debates Logic ---
+
+export const generateBabyDebateScript = async (topic: string, participants: string[]): Promise<BabyDebateScript> => {
+  const prompt = `Write a script for a funny "Baby Debate" video. 
+  Participants: ${participants.join(', ')}. 
+  Topic: ${topic}. 
+  The participants are tiny 3D baby versions of themselves. 
+  Capture the essence of their real-life personalities but translate it into a hilarious nursery/playground context.
+  
+  Format as JSON with:
+  - topic (string)
+  - scriptLines (array of { speaker, text })
+  - visualContext (detailed prompt describing the 3D nursery set and baby likenesses)`;
+
+  const schema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      topic: { type: Type.STRING },
+      scriptLines: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            speaker: { type: Type.STRING },
+            text: { type: Type.STRING }
+          }
+        }
+      },
+      visualContext: { type: Type.STRING }
+    }
+  };
+
+  return generateStructuredContent<BabyDebateScript>(prompt, schema);
+};
+
+export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: string): Promise<string> => {
+  const dialogueText = script.scriptLines.map(l => `${l.speaker}: "${l.text}"`).join(' ');
+  
+  // Refined prompt to maximize lip sync and character preservation
+  const prompt = `High-end 3D animated debate video. Style: ${style}. 
+  Scene: ${script.visualContext}. 
+  Characters are talking directly to the camera or each other. 
+  ACTION REQUIREMENTS: Precise lip-sync and mouth articulation matched to the following conversation: [${dialogueText}]. 
+  Characters must have expressive eyebrow movements and animated facial expressions. 
+  Visual Style: 4K render, smooth subsurface scattering, playful lighting. 
+  Constraint: Characters are adorable miniature baby figurines. (ABSTRACT_STYLE_B_01)`;
+
+  return generateVideoWithGemini(prompt, '16:9');
 };

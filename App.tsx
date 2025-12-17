@@ -61,8 +61,9 @@ import AIMimicryTool from './components/tools/AIMimicryTool';
 import DesignCritic from './components/tools/DesignCritic';
 import ComicStripTool from './components/tools/ComicStripTool';
 import BabyVisionTransformer from './components/tools/BabyVisionTransformer';
+import BabyDebates from './components/tools/BabyDebates';
 
-import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign, CalendarCheck, Baby, Clapperboard, Box, GalleryHorizontal, Calendar, Copy as CopyIcon, AlertCircle, Grid, Stars } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, X, ClipboardList, MonitorPlay, Quote, Network, DollarSign, CalendarCheck, Baby, Clapperboard, Box, GalleryHorizontal, Calendar, Copy as CopyIcon, AlertCircle, Grid, Stars, Users } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
   green: 'rgba(34, 197, 94, 0.4)',
@@ -93,6 +94,15 @@ const TOOLS = [
     icon: MessageSquare,
     color: "green",
     gradient: "from-green-500 to-emerald-600"
+  },
+  {
+    id: ToolId.BabyDebates,
+    title: "Baby Debates",
+    description: "Generate talking baby videos of famous people with scripts.",
+    icon: Users,
+    color: "sky",
+    gradient: "from-sky-400 to-blue-600",
+    releaseDate: '2025-12-17'
   },
   {
     id: ToolId.BabyVisionTransformer,
@@ -657,6 +667,8 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.Chat:
         return <ChatInterface />;
+      case ToolId.BabyDebates:
+        return <BabyDebates />;
       case ToolId.BabyVisionTransformer:
         return <BabyVisionTransformer />;
       case ToolId.ComicStrip:

@@ -61,7 +61,8 @@ export enum ToolId {
   AIMimicry = 'AI_MIMICRY',
   DesignCritic = 'DESIGN_CRITIC',
   ComicStrip = 'COMIC_STRIP',
-  BabyVisionTransformer = 'BABY_VISION_TRANSFORMER'
+  BabyVisionTransformer = 'BABY_VISION_TRANSFORMER',
+  BabyDebates = 'BABY_DEBATES'
 }
 
 export interface ToolConfig {
@@ -327,4 +328,10 @@ export interface PetProfile {
   jobTitle: string;
   quote: string;
   visualPrompt: string;
+}
+
+export interface BabyDebateScript {
+  topic: string;
+  scriptLines: { speaker: string; text: string }[];
+  visualContext: string;
 }
