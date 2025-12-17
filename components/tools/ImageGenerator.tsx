@@ -104,7 +104,8 @@ const ImageGenerator: React.FC = () => {
     return new Promise((resolve) => {
       const canvas = canvasRef.current!;
       const ctx = canvas.getContext('2d');
-      const img = new Image();
+      // Fixed: replaced 'new Image()' with 'document.createElement("img")' to prevent Illegal constructor errors
+      const img = document.createElement('img');
       img.crossOrigin = "anonymous";
       img.src = resultImage;
       

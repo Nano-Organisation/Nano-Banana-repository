@@ -1,7 +1,5 @@
 {
-  "name": "Nano Banana AI Suite",
-  "description": "A comprehensive suite of AI tools powered by Gemini 2.5 models, featuring advanced image editing, generation, and intelligent text analysis.",
-  "requestFramePermissions": [
-    "microphone"
-  ]
+  "requestFramePermissions": [],
+  "name": "",
+  "description": ""
 }

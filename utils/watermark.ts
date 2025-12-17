@@ -35,7 +35,8 @@ export const drawWatermarkOnCanvas = (ctx: CanvasRenderingContext2D, width: numb
  */
 export const addWatermarkToImage = (base64Image: string): Promise<string> => {
   return new Promise((resolve) => {
-    const img = new Image();
+    // Fixed: replaced 'new Image()' with 'document.createElement("img")' to prevent Illegal constructor errors
+    const img = document.createElement('img');
     img.src = base64Image;
     img.crossOrigin = "anonymous";
     img.onload = () => {

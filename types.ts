@@ -78,7 +78,7 @@ export interface ChatMessage {
   text: string;
   image?: string;
   feedback?: 'up' | 'down';
-  isThinking?: boolean; // Visual indicator for thinking models
+  isThinking?: boolean;
 }
 
 export type LoadingState = 'idle' | 'loading' | 'success' | 'error';
@@ -87,7 +87,6 @@ export interface EmojiPuzzle {
   emojis: string;
   answer: string;
   category: string;
-  // hint?: string; // Optional if you decide to add hints later
 }
 
 export interface WordPuzzle {
@@ -113,7 +112,7 @@ export interface StoryPage {
   pageNumber: number;
   text: string;
   imagePrompt: string;
-  imageUrl?: string; // Populated after image generation
+  imageUrl?: string;
 }
 
 export interface StorybookData {
@@ -143,7 +142,7 @@ export interface MemeData {
 }
 
 export interface SocialPostContent {
-  text: string | string[]; // Array for threads
+  text: string | string[];
   imagePrompt: string;
   hashtags?: string;
 }
@@ -198,7 +197,7 @@ export interface HelpfulList {
 
 export interface PodcastScript {
   title: string;
-  script: string; // The formatted script for TTS
+  script: string;
   visualPrompt: string;
 }
 
@@ -238,14 +237,13 @@ export interface BrandIdentity {
   logoPrompt: string;
   borderPadding?: number;
   brandVoice: string;
-  // Template Prompts
   stationaryPrompt: string;
   pptTemplatePrompt: string;
   calendarPrompt: string;
 }
 
 export interface UGCSection {
-  section: string; // Hook, Pain Point, etc.
+  section: string;
   visual: string;
   audio: string;
   duration: string;
@@ -261,11 +259,11 @@ export interface UGCScript {
 export interface WealthAnalysis {
   personName: string;
   estimatedNetWorth: string;
-  originStart: string; // "Wealthy", "Middle Class", "Poverty"
-  privilegeAnalysis: string; // Description of family wealth/connections
+  originStart: string;
+  privilegeAnalysis: string;
   keySuccessFactors: string[];
-  actionableSteps: string[]; // Steps for a normal person
-  realityCheck: string; // The "gap" between them and us
+  actionableSteps: string[];
+  realityCheck: string;
 }
 
 export interface CommercialAnalysis {
@@ -282,18 +280,16 @@ export interface BabyName {
   gender: string;
   origin: string;
   meaning: string;
-  lineage: string; // Historical context
-  reason: string; // Why it was suggested
+  lineage: string;
+  reason: string;
 }
 
 export interface LearnerBrief {
-  summary: string; // Bulleted summary
-  podcastScript: string; // Script for TTS
+  summary: string;
+  podcastScript: string;
 }
 
-export interface ExportData {
-  // Define structure for export data if needed
-}
+export interface ExportData {}
 
 export interface AI360Response {
   status: "accepted" | "rejected" | "needs_clarification";
@@ -330,8 +326,15 @@ export interface PetProfile {
   visualPrompt: string;
 }
 
+export interface BabyDebateParticipant {
+  name: string;
+  image?: string;
+  tone: string;
+}
+
 export interface BabyDebateScript {
   topic: string;
   scriptLines: { speaker: string; text: string }[];
   visualContext: string;
+  participants: BabyDebateParticipant[];
 }

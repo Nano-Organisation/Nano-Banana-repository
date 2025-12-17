@@ -40,7 +40,8 @@ const MemeGenerator: React.FC = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      const img = new Image();
+      // Fixed: replaced 'new Image()' with 'document.createElement("img")' to prevent Illegal constructor errors
+      const img = document.createElement('img');
       img.src = imageBase64;
       img.onload = () => {
         // Set canvas size
@@ -110,7 +111,7 @@ const MemeGenerator: React.FC = () => {
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder="e.g. Monday Mornings, Programmers vs Bugs, Cats..."
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 h-32 resize-none"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 h-32 resize-none text-sm"
             />
           </div>
 

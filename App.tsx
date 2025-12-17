@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types';
 import Layout from './components/Layout';
@@ -97,7 +96,7 @@ const TOOLS = [
   },
   {
     id: ToolId.BabyDebates,
-    title: "Baby Debates",
+    title: "AI Baby Debates",
     description: "Generate talking baby videos of famous people with scripts.",
     icon: Users,
     color: "sky",
@@ -565,6 +564,14 @@ const TOOLS = [
     icon: PenTool,
     color: "fuchsia",
     gradient: "from-fuchsia-500 to-pink-600"
+  },
+  {
+    id: ToolId.DesignCritic,
+    title: "AI Design Critic",
+    description: "Get brutal or constructive feedback on your UI/UX.",
+    icon: AlertCircle,
+    color: "red",
+    gradient: "from-red-500 to-rose-600"
   },
   {
     id: ToolId.DocTool,

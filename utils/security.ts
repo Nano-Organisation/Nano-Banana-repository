@@ -12,9 +12,6 @@ export const sanitizeInput = (input: string): string => {
   if (!input) return "";
   // Strip HTML tags
   let clean = input.replace(/<[^>]*>?/gm, '');
-  // Escape potentially dangerous characters if needed, but for prompt engineering,
-  // we usually want raw text. React handles output escaping by default.
-  // We trim whitespace to prevent empty-spam.
   return clean.trim();
 };
 
@@ -134,7 +131,6 @@ export const scanForMalwarePatterns = (file: File): boolean => {
   if (dangerousExtensions.some(ext => name.endsWith(ext))) return true;
   
   // Check for double extensions (e.g. image.png.exe)
-  // Simple check: if there is a dangerous extension anywhere in the name
   return dangerousExtensions.some(ext => name.includes(ext + '.'));
 };
 
@@ -152,15 +148,6 @@ export const validateMagicNumbers = async (file: File, type: 'image' | 'pdf' | '
       for (let i = 0; i < arr.length; i++) {
         header += arr[i].toString(16).toUpperCase().padStart(2, '0');
       }
-
-      // Signatures
-      // PDF: 25 50 44 46 (%PDF)
-      // JPG: FF D8 FF
-      // PNG: 89 50 4E 47
-      // GIF: 47 49 46 38
-      // ID3 (MP3): 49 44 33
-      // RIFF (WAV): 52 49 46 46
-      // WebM: 1A 45 DF A3
       
       if (type === 'pdf') {
         resolve(header.startsWith("25504446"));
@@ -171,22 +158,15 @@ export const validateMagicNumbers = async (file: File, type: 'image' | 'pdf' | '
           header.startsWith("47494638") // GIF
         );
       } else if (type === 'audio') {
-        // Audio is trickier with many formats, checking common ones
         resolve(
           header.startsWith("494433") || // MP3 ID3
           header.startsWith("52494646") || // WAV RIFF
           header.startsWith("FFF") // MP3 Frame Sync
         );
       } else if (type === 'video') {
-        // WebM
         if (header.startsWith("1A45DFA3")) return resolve(true);
-        
-        // MP4/MOV usually have 'ftyp' starting at byte 4 (index 4..7)
-        // Check bytes 4-7 for 'ftyp' (Hex: 66 74 79 70)
-        // Note: header string has 2 chars per byte. Index 4 is char index 8.
         const ftyp = header.substring(8, 16);
         if (ftyp === "66747970") return resolve(true);
-        
         resolve(false);
       } else {
         resolve(true);
@@ -202,11 +182,11 @@ export const validateMagicNumbers = async (file: File, type: 'image' | 'pdf' | '
  */
 export const validateImageDimensions = (file: File): Promise<boolean> => {
   return new Promise((resolve) => {
-    const img = new Image();
+    // Fixed: Using document.createElement('img') instead of 'new Image()' to prevent 'Illegal constructor' errors
+    const img = document.createElement('img');
     img.src = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(img.src);
-      // Max 4096 x 4096 (16MP)
       if (img.width > 4096 || img.height > 4096) resolve(false);
       else resolve(true);
     };
@@ -227,10 +207,7 @@ export const runFileSecurityChecks = async (file: File, type: 'image' | 'pdf' | 
   }
 
   const isValidMagic = await validateMagicNumbers(file, type);
-  // Audio/Video magic numbers can be complex, usually we are strict for PDF/Images
-  // But strictness helps security. 
   if (!isValidMagic && type !== 'audio') { 
-     // We are slightly lenient on audio as before, but strict on video/image/pdf
      if (type === 'video') {
         throw new Error(`Security Alert: Invalid video file format. Supported formats: MP4, MOV, WebM.`);
      }

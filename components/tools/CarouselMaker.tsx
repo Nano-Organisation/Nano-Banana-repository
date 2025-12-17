@@ -352,7 +352,8 @@ const CarouselMaker: React.FC = () => {
 
     // Helper to load image
     const loadImage = (src: string) => new Promise<HTMLImageElement>((resolve) => {
-        const img = new Image();
+        // Fixed: replaced 'new Image()' with 'document.createElement("img")' to prevent Illegal constructor errors
+        const img = document.createElement('img');
         img.onload = () => resolve(img);
         img.src = src;
     });
@@ -546,7 +547,7 @@ const CarouselMaker: React.FC = () => {
              <div className="space-y-4 pt-4 border-t border-slate-800">
                 <div className="space-y-2">
                    <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2"><Palette className="w-3 h-3" /> Visual Theme</label>
-                   <div className="grid grid-cols-2 gap-2 h-32 overflow-y-auto custom-scrollbar">
+                   <div className="grid grid-cols-2 gap-2 h-32 overflow-y-auto custom-scrollbar pr-1">
                       {THEMES.map(t => (
                          <button key={t.id} onClick={() => setThemeId(t.id)} className={`px-3 py-2 rounded-lg text-xs font-bold transition-all border flex items-center gap-2 ${themeId === t.id ? 'bg-slate-800 border-blue-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-900'}`}>
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: t.bg, border: '1px solid #ffffff55' }}></div> {t.label}
