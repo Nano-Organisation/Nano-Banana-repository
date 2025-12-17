@@ -337,4 +337,5 @@ export interface BabyDebateScript {
   scriptLines: { speaker: string; text: string }[];
   visualContext: string;
   participants: BabyDebateParticipant[];
+  safeCharacterDescriptions: { name: string; description: string }[];
 }
