@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { FileAudio, Upload, RefreshCw, Copy, Check, FileText, ThumbsUp, ThumbsDown, Video } from 'lucide-react';
 import { transcribeMediaWithGemini } from '../../services/geminiService';
@@ -73,7 +72,7 @@ const AudioTranscriber: React.FC = () => {
           {fileType === 'video' ? <Video className="w-8 h-8 text-sky-500" /> : <FileAudio className="w-8 h-8 text-sky-500" />}
           AI Media Scribe
           <span className="text-xs font-normal bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 px-2 py-1 rounded-full border border-sky-200 dark:border-sky-800 ml-2">
-             Model: gemini-2.5-flash
+             Model: gemini-3-flash-preview
           </span>
         </h2>
         <p className="text-slate-600 dark:text-slate-400">Accurate audio & video transcription powered by Gemini.</p>

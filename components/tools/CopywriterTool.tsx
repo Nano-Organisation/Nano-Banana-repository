@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Pen, RefreshCw, Copy, Check, FileText, Target, Users, Sparkles, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { generateTextWithGemini } from '../../services/geminiService';
@@ -92,13 +91,14 @@ const CopywriterTool: React.FC = () => {
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
-          <Pen className="w-8 h-8 text-emerald-500" />
+          <span className="text-emerald-500"><Pen className="w-8 h-8" /></span>
           Nano Copy
         </h2>
         <div className="flex flex-col items-center gap-1">
            <p className="text-slate-600 dark:text-slate-400">Generate professional, high-converting copy for any project.</p>
            <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
-              Model: gemini-2.5-flash
+              /* Fix: Updated label to match the actual model used (gemini-3-flash-preview). */
+              Model: gemini-3-flash-preview
            </span>
         </div>
       </div>

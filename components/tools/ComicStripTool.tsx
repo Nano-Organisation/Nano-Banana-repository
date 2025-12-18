@@ -48,8 +48,8 @@ const ART_STYLES = [
   {
     id: 'edewede_ai_o3',
     label: 'Edewede-AI-O3',
-    desc: 'Analog 2D storybook minimalism inspired by mid-century printmaking and educational infographics. Features clean, intentional contours and flat color blocks. Characters are essential symbols: bodies as bold silhouettes, hair as solid geometric shapes, limbs as thin tapered lines, and faces with tiny dot eyes and small circular cheeks. Zero gradients, zero highlights, and zero 3D depth cues.',
-    uiDesc: 'Mid-century minimalism with flat geometric characters and earthy tones.'
+    desc: 'Analog 2D storybook minimalism inspired by mid-century printmaking. Features intentional contours and flat color blocks with misregistered ink edges mimicking vintage offset printing. Palette: strictly limited earthy tones on off-white paper. Compositions are flattened frontal views with zero gradients, zero highlights, and zero 3D depth cues. Environment props are reduced to primitive geometric blocks.',
+    uiDesc: 'Pure 2D minimalism, flat tones, vintage print aesthetic.'
   }
 ];
 
@@ -95,7 +95,7 @@ const ComicStripTool: React.FC = () => {
     if (seedImages.length === 0) return;
     setStatus('loading');
     setComicData(null);
-    setProgressMsg('Analyzing character Visual DNA...');
+    setProgressMsg('Extracting Character Clinical Blueprint...');
 
     const stripStyle = STRIP_STYLES.find(s => s.id === selectedStripStyleId) || STRIP_STYLES[0];
     const artStyle = ART_STYLES.find(s => s.id === selectedArtStyleId) || ART_STYLES[0];
@@ -103,11 +103,11 @@ const ComicStripTool: React.FC = () => {
     try {
       const ai = getAiClient();
 
-      // 1. CHARACTER ANALYSIS: Create a strict physical description from all seed images
+      // 1. CHARACTER ANALYSIS: Extract strict geometry to prevent mutation
       const analysisParts = seedImages.map(img => ({
          inlineData: { mimeType: 'image/png', data: img.split(',')[1] }
       }));
-      analysisParts.push({ text: "Perform a forensic visual analysis of the main character in these images. Create a strict 'Visual DNA' description including: Exact hat shape and color, specific feather details (if any), hair color and style (is it straight, curly, bobbed?), face shape, glasses type, specific outfit color and cut, and any accessories like canes. Be extremely precise to ensure 100% consistency." } as any);
+      analysisParts.push({ text: "Perform a clinical visual audit of the main character. Identify the EXACT geometry of the following features: 1. Hat (shape, size, color, specific feather angle). 2. Hair (exact texture, color, length). 3. Glasses (frame shape, thickness). 4. Clothing (cut, color). 5. Accessories (cane handle shape). Describe them as 'Locked Assets' that cannot change regardless of artistic style." } as any);
       
       const dnaResponse = await ai.models.generateContent({
          model: 'gemini-3-flash-preview',
@@ -116,37 +116,37 @@ const ComicStripTool: React.FC = () => {
       const visualDNA = dnaResponse.text || "Main character from reference images.";
 
       // 2. Generate Script
-      setProgressMsg('Scripting comic narrative...');
+      setProgressMsg('Scripting narrative continuity...');
       const script = await generateComicScriptFromImages(seedImages, topic);
       script.style = `${stripStyle.label} with ${artStyle.label} art`;
-      script.characterDescription = visualDNA; // Replace with detailed DNA
+      script.characterDescription = visualDNA; 
       setComicData(script);
 
-      // 3. Generate Panels (Pro Engine with Multi-Reference)
+      // 3. Generate Panels
       const newPages = [...script.pages];
 
       for (let i = 0; i < newPages.length; i++) {
          if (i > 0) await new Promise(r => setTimeout(r, 6500));
 
-         setProgressMsg(`Forging Panel ${i + 1}/${newPages.length} with Pro Engine...`);
+         setProgressMsg(`Inking Panel ${i + 1}/${newPages.length} [Identity Locked]...`);
          try {
-            // MULTI-REFERENCE PROTOCOL: Pass all seed images to the Pro model for every panel
+            // MULTI-REFERENCE SATURATION
             const panelParts = seedImages.map(img => ({
                inlineData: { mimeType: 'image/png', data: img.split(',')[1] }
             }));
 
             const panelPrompt = `
-               ASSET LOCK PROTOCOL: You are generating Panel ${i + 1} of a comic.
-               STRICT VISUAL IDENTITY: The character MUST be identical to the one in the provided reference images.
-               LOCKED DNA: ${visualDNA}.
+               STRICT IDENTITY LOCK PROTOCOL: 
+               The character in this panel MUST match the reference images EXACTLY. 
+               LOCKED CHARACTER BLUEPRINT: ${visualDNA}.
                
-               STYLE: ${artStyle.label} - ${artStyle.desc}. 
-               IMPORTANT: If the DNA says the character has straight hair, do NOT use afro or bob styles even if the Art Style description suggests geometric hair. The character DNA always overrides generic style rules.
+               RENDERING RULES: ${artStyle.label} - ${artStyle.desc}. 
+               CRITICAL CONSTRAINT: Do NOT allow Style rules to change the character's physical features (e.g. do not change hair texture or hat size). The Style only applies to the flat color and ink texture. 
                
-               FORMAT: ${stripStyle.label} comic panel.
+               VISUALS: Flat 2D art, zero gradients, zero shading, high-contrast silhouettes. 
                ACTION: ${newPages[i].imagePrompt}. 
                
-               REQUIREMENTS: Zero text, zero speech bubbles. Maintain 100% consistency in facial features, clothing, and the specific hat/feather/cane assets.
+               OUTPUT: Single comic panel. No text. No speech bubbles. Consistent character model.
             `.replace(/\s+/g, ' ').trim();
 
             panelParts.push({ text: panelPrompt } as any);
@@ -160,12 +160,12 @@ const ComicStripTool: React.FC = () => {
             const imgPart = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
             const imageUrl = imgPart ? `data:image/png;base64,${imgPart.inlineData.data}` : null;
             
-            if (!imageUrl) throw new Error("No image generated");
+            if (!imageUrl) throw new Error("Synthesis failed");
 
             newPages[i] = { ...newPages[i], imageUrl };
             setComicData(prev => prev ? { ...prev, pages: [...newPages] } : null);
          } catch (e) {
-            console.error(`Failed panel ${i+1}.`, e);
+            console.error(`Panel ${i+1} synthesis error:`, e);
          }
       }
 
@@ -426,7 +426,7 @@ const ComicStripTool: React.FC = () => {
                         ))}
                      </div>
                      <div className="mt-8 pt-4 border-t-2 border-black text-center text-xs font-bold font-mono text-black sticky left-0">
-                        Engine: PRO • Art: {selectedArtStyleId.toUpperCase()}
+                        Visual Integrity: PRO ENGINE • Art: {selectedArtStyleId.toUpperCase()}
                      </div>
                   </div>
 

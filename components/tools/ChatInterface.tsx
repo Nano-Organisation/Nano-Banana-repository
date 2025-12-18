@@ -159,7 +159,8 @@ const ChatInterface: React.FC = () => {
         </h2>
         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-mono transition-colors ${isThinkingMode ? 'bg-purple-900/20 border-purple-500/30 text-purple-400' : 'bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400'}`}>
            {isThinkingMode ? <BrainCircuit className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
-           Model: {isThinkingMode ? 'gemini-3-pro-preview (Thinking)' : 'gemini-2.5-flash'}
+           /* Fix: Updated label to match the actual models used (gemini-3-flash-preview and gemini-3-pro-preview). */
+           Model: {isThinkingMode ? 'gemini-3-pro-preview (Deep Reasoning)' : 'gemini-3-flash-preview'}
         </div>
       </div>
 

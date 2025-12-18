@@ -141,8 +141,9 @@ const ImagesToMovie: React.FC = () => {
       canvas.height = isLandscape ? 720 : 1280;
 
       // Load all images into memory
+      /* Fix: Replaced 'new Image()' with 'document.createElement("img")' per guidelines. */
       const loadedImages = await Promise.all(images.map(src => new Promise<HTMLImageElement>((resolve, reject) => {
-         const img = new Image();
+         const img = document.createElement('img');
          img.onload = () => resolve(img);
          img.onerror = reject;
          img.src = src;

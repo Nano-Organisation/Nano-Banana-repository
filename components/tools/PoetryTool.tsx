@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Feather, RefreshCw, Copy, Check, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { generatePoem } from '../../services/geminiService';
@@ -61,7 +60,7 @@ const PoetryTool: React.FC = () => {
         <div className="flex flex-col items-center gap-1">
            <p className="text-slate-600 dark:text-slate-400">Generate beautiful poems in any style.</p>
            <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
-              Model: gemini-2.5-flash
+              Model: gemini-3-flash-preview
            </span>
         </div>
       </div>
@@ -116,23 +115,19 @@ const PoetryTool: React.FC = () => {
                     >
                        <ThumbsUp className="w-3.5 h-3.5" />
                     </button>
-                    <div className="w-px bg-slate-300 dark:bg-slate-800 mx-0.5"></div>
+                    <div className="w-px bg-slate-200 dark:bg-slate-800 mx-0.5"></div>
                     <button 
                       onClick={() => toggleFeedback('down')} 
                       className={`p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors ${feedback === 'down' ? 'text-red-500' : 'text-slate-500'}`}
                     >
                        <ThumbsDown className="w-3.5 h-3.5" />
                     </button>
-                 </div>
-               <button 
-                  onClick={handleCopy}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-2 rounded-lg transition-colors"
-                  title="Copy"
-               >
-                  {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-               </button>
+                </div>
+                <button onClick={handleCopy} className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-2">
+                   {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
+                </button>
             </div>
-            <pre className="whitespace-pre-wrap font-serif text-lg leading-relaxed text-slate-800 dark:text-slate-200 text-center">
+            <pre className="whitespace-pre-wrap font-serif text-lg leading-relaxed text-slate-800 dark:text-slate-200">
                {poem}
             </pre>
          </div>

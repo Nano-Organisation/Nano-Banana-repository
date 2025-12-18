@@ -1,3 +1,2 @@
-
-/* Placeholder file to prevent build conflicts on case-insensitive systems. The application logic is now in App.tsx. */
+/* Placeholder file to resolve casing conflicts. The main application logic has been moved to App.tsx to align with the root file casing requirements. */
 export {};

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Eye, Send, Upload, RefreshCw, Copy, Check, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { analyzeImageWithGemini } from '../../services/geminiService';
@@ -65,7 +64,8 @@ const VisualQA: React.FC = () => {
         <div className="flex flex-col items-center gap-1">
            <p className="text-slate-600 dark:text-slate-400">Upload an image and ask Gemini anything about it.</p>
            <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
-              Model: gemini-2.5-flash
+              /* Fix: Updated label to match the actual model used (gemini-3-flash-preview). */
+              Model: gemini-3-flash-preview
            </span>
         </div>
       </div>

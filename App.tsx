@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types';
 import Layout from './components/Layout';
@@ -72,7 +71,7 @@ import {
   Laugh, Quote, Network, Scan, FileQuestion, Lightbulb, Mic2, UserPlus, 
   ListChecks, BookMarked, Brain, Activity, Share2, Youtube, Pin, Film, 
   Volume2, Eraser, FileType, Terminal, FileText, Image as ImageIcon, Palette, 
-  Eye, Code, Search, X, Clapperboard as MovieIcon, Gamepad2, GraduationCap, PenTool, Bot, FlaskConical
+  Eye, Code, Search, X, Gamepad2, GraduationCap, PenTool, Bot, FlaskConical
 } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
@@ -99,7 +98,7 @@ const SHADOW_COLORS: Record<string, string> = {
 const TOOLS = [
   { id: ToolId.Chat, title: "AI Chat", description: "Conversational AI assistant for general queries.", icon: MessageSquare, color: "green", gradient: "from-green-500 to-emerald-600" },
   { id: ToolId.StyleEngine, title: "AI Style Forge", description: "Create, name, and reuse your own visual recipes for consistent art.", icon: FlaskConical, color: "indigo", gradient: "from-indigo-600 to-violet-700", releaseDate: '2025-12-19' },
-  { id: ToolId.ImagesToMovie, title: "AI Images to movie", description: "Turn a collection of photos into a cinematic movie sequence.", icon: MovieIcon, color: "amber", gradient: "from-amber-400 to-orange-600", releaseDate: '2025-12-18' },
+  { id: ToolId.ImagesToMovie, title: "AI Images to movie", description: "Turn a collection of photos into a cinematic movie sequence.", icon: Clapperboard, color: "amber", gradient: "from-amber-400 to-orange-600", releaseDate: '2025-12-18' },
   { id: ToolId.BabyDebates, title: "AI Baby Debates", description: "Generate talking baby videos of famous people with scripts.", icon: Users, color: "sky", gradient: "from-sky-400 to-blue-600", releaseDate: '2025-12-17' },
   { id: ToolId.BabyVisionTransformer, title: "AI Baby Transformer", description: "Turn YouTube Shorts characters into baby versions.", icon: Stars, color: "pink", gradient: "from-pink-500 to-rose-600", releaseDate: '2025-12-16' },
   { id: ToolId.ComicStrip, title: "AI Comic Strip", description: "Turn photos into 4-panel comic narratives.", icon: Grid, color: "yellow", gradient: "from-yellow-500 to-orange-500", releaseDate: '2025-12-15' },
@@ -235,7 +234,6 @@ const App: React.FC = () => {
       case ToolId.LiveNotetaker: return <LiveNotetaker />;
       case ToolId.BrandCollateral: return <BrandCollateralTool />;
       case ToolId.UGCAds: return <UGCAdsTool />;
-      /* Fix: Mapped ToolId.Cipher to CipherTool component. */
       case ToolId.Cipher: return <CipherTool />; 
       case ToolId.Magic: return <MagicTool />;
       case ToolId.VideoGenerator: return <VideoGenerator />;
