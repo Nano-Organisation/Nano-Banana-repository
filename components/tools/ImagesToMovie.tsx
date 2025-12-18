@@ -284,9 +284,9 @@ const ImagesToMovie: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in pb-12">
       <div className="text-center space-y-2">
-        <h2 className="text-4xl font-black text-slate-900 dark:text-white flex items-center justify-center gap-3 tracking-tighter uppercase">
+        <h2 className="text-4xl font-black text-slate-900 dark:text-white flex items-center justify-center gap-3 tracking-tighter">
           <Clapperboard className="w-10 h-10 text-amber-500" />
-          AI_Images_to_movie
+          AI Images to movie
         </h2>
         <div className="flex flex-col items-center gap-1">
           <p className="text-slate-600 dark:text-slate-400">Assemble precise cinematic stories from your photo gallery.</p>

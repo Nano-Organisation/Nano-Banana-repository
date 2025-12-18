@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageSquare, User, Bot, RefreshCw, Mic, MicOff, ThumbsUp, ThumbsDown, Trash2, BrainCircuit, Sparkles } from 'lucide-react';
 import { Chat } from "@google/genai";
@@ -164,13 +163,13 @@ const ChatInterface: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+      <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
         
         {/* Chat Header */}
-        <div className={`px-6 py-4 border-b flex justify-between items-center transition-colors ${isThinkingMode ? 'bg-purple-900/10 border-purple-900/30' : 'bg-slate-950/50 border-slate-800'}`}>
-          <div className="flex items-center gap-2 text-slate-400 text-sm font-medium">
+        <div className={`px-6 py-4 border-b flex justify-between items-center transition-colors ${isThinkingMode ? 'bg-purple-900/10 border-purple-900/30' : 'bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800'}`}>
+          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium">
              <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)] ${isThinkingMode ? 'bg-purple-500 shadow-purple-500/50' : 'bg-green-500'}`}></div>
-             {isThinkingMode ? <span className="text-purple-300 font-bold">Deep Reasoning Mode</span> : 'Flash Session'}
+             {isThinkingMode ? <span className="text-purple-600 dark:text-purple-300 font-bold">Deep Reasoning Mode</span> : 'Flash Session'}
           </div>
           <div className="flex items-center gap-3">
              <button
@@ -178,7 +177,7 @@ const ChatInterface: React.FC = () => {
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
                    isThinkingMode 
                     ? 'bg-purple-600 text-white border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.3)]' 
-                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
                 }`}
                 title={isThinkingMode ? "Disable Thinking Mode" : "Enable Thinking Mode for complex tasks"}
              >
@@ -187,7 +186,7 @@ const ChatInterface: React.FC = () => {
              </button>
              <button 
                onClick={handleClear}
-               className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/50 border border-slate-700 rounded-lg text-xs font-bold text-slate-300 transition-all group"
+               className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-500/50 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 transition-all group"
                title="Clear conversation and start new chat"
              >
                <RefreshCw className="w-3.5 h-3.5 group-hover:rotate-180 transition-transform" />
@@ -197,7 +196,7 @@ const ChatInterface: React.FC = () => {
         </div>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-gradient-to-b from-slate-900 to-[#0B0F17]">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-slate-50 dark:bg-gradient-to-b dark:from-slate-900 dark:to-[#0B0F17]">
           {messages.map((msg, idx) => (
             <div 
               key={idx} 
@@ -214,24 +213,24 @@ const ChatInterface: React.FC = () => {
                 {/* Thinking Indicator Label for Model Messages */}
                 {msg.role === 'model' && msg.isThinking && (
                    <div className="flex items-center gap-1.5 ml-1 mb-1 opacity-100 animate-fade-in bg-purple-500/10 w-fit px-2 py-0.5 rounded-full border border-purple-500/20">
-                      <BrainCircuit className="w-3 h-3 text-purple-400" />
-                      <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider">Thought Process</span>
+                      <BrainCircuit className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                      <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">Thought Process</span>
                    </div>
                 )}
 
                 <div className={`
-                  rounded-2xl px-6 py-4 text-sm leading-relaxed whitespace-pre-wrap shadow-md relative group transition-all duration-500
+                  rounded-2xl px-6 py-4 text-sm leading-relaxed whitespace-pre-wrap shadow-md relative group transition-all duration-500 border
                   ${msg.role === 'user' 
-                    ? 'bg-slate-800 text-slate-100 rounded-tr-none' 
+                    ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tr-none border-slate-200 dark:border-slate-700' 
                     : msg.isThinking
-                        ? 'bg-gradient-to-br from-purple-900/20 to-slate-900/80 border border-purple-500/30 text-purple-50 rounded-tl-none shadow-[0_0_15px_rgba(168,85,247,0.05)] hover:shadow-[0_0_20px_rgba(168,85,247,0.1)]'
-                        : 'bg-slate-950/50 border border-slate-800 text-slate-300 rounded-tl-none'}
+                        ? 'bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-slate-900/80 border-purple-200 dark:border-purple-500/30 text-slate-800 dark:text-purple-50 rounded-tl-none shadow-[0_0_15px_rgba(168,85,247,0.05)] hover:shadow-[0_0_20px_rgba(168,85,247,0.1)]'
+                        : 'bg-white dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-300 rounded-tl-none'}
                 `}>
                   {msg.text}
                   {/* Subtle pulse indicator for thinking messages */}
                   {msg.role === 'model' && msg.isThinking && (
                     <div className="absolute top-3 right-3 opacity-20">
-                       <BrainCircuit className="w-4 h-4 text-purple-500" />
+                       <BrainCircuit className="w-4 h-4 text-purple-600 dark:text-purple-500" />
                     </div>
                   )}
                 </div>
@@ -241,7 +240,7 @@ const ChatInterface: React.FC = () => {
                     <button
                       onClick={() => handleFeedback(idx, 'up')}
                       className={`p-1 rounded-full transition-colors ${
-                        msg.feedback === 'up' ? 'text-green-500 bg-green-500/10' : 'text-slate-600 hover:text-slate-400 hover:bg-slate-800'
+                        msg.feedback === 'up' ? 'text-green-500 bg-green-500/10' : 'text-slate-400 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                     >
                       <ThumbsUp className={`w-3.5 h-3.5 ${msg.feedback === 'up' ? 'fill-current' : ''}`} />
@@ -249,7 +248,7 @@ const ChatInterface: React.FC = () => {
                     <button
                       onClick={() => handleFeedback(idx, 'down')}
                       className={`p-1 rounded-full transition-colors ${
-                        msg.feedback === 'down' ? 'text-red-500 bg-red-500/10' : 'text-slate-600 hover:text-slate-400 hover:bg-slate-800'
+                        msg.feedback === 'down' ? 'text-red-500 bg-red-500/10' : 'text-slate-400 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                     >
                       <ThumbsDown className={`w-3.5 h-3.5 ${msg.feedback === 'down' ? 'fill-current' : ''}`} />
@@ -268,25 +267,25 @@ const ChatInterface: React.FC = () => {
                
                {isThinkingMode ? (
                   // Thinking Mode Specific Loader
-                  <div className="rounded-2xl rounded-tl-none px-6 py-4 bg-purple-900/10 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)] flex flex-col gap-3 min-w-[240px]">
+                  <div className="rounded-2xl rounded-tl-none px-6 py-4 bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)] flex flex-col gap-3 min-w-[240px]">
                      <div className="flex items-center gap-3">
                         <div className="relative">
-                           <BrainCircuit className="w-5 h-5 text-purple-400" />
+                           <BrainCircuit className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                            <span className="absolute inset-0 animate-ping opacity-75 rounded-full bg-purple-400/30"></span>
                         </div>
-                        <span className="text-sm font-bold text-purple-300">Deep Reasoning...</span>
+                        <span className="text-sm font-bold text-purple-700 dark:text-purple-300">Deep Reasoning...</span>
                      </div>
-                     <div className="w-full bg-purple-900/30 h-1.5 rounded-full overflow-hidden">
+                     <div className="w-full bg-slate-200 dark:bg-purple-900/30 h-1.5 rounded-full overflow-hidden">
                         <div className="h-full bg-gradient-to-r from-purple-500 to-fuchsia-500 animate-[loading_1.5s_ease-in-out_infinite] w-1/3 rounded-full shadow-[0_0_10px_rgba(168,85,247,0.5)]"></div>
                      </div>
-                     <span className="text-[10px] text-purple-400/60 font-mono uppercase tracking-widest">Analyzing logic paths</span>
+                     <span className="text-[10px] text-purple-600 dark:text-purple-400/60 font-mono uppercase tracking-widest">Analyzing logic paths</span>
                   </div>
                ) : (
                   // Standard Loader
-                  <div className="rounded-2xl rounded-tl-none px-5 py-4 bg-slate-950/50 border border-slate-800 flex items-center gap-1">
-                    <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  <div className="rounded-2xl rounded-tl-none px-5 py-4 bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 flex items-center gap-1 shadow-sm">
+                    <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                   </div>
                )}
             </div>
@@ -295,10 +294,10 @@ const ChatInterface: React.FC = () => {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 bg-slate-950 border-t border-slate-800 flex gap-3 items-end">
+        <div className="p-4 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex gap-3 items-end">
           <button 
             onClick={handleClear} 
-            className="p-3 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-xl transition-colors mb-[2px]"
+            className="p-3 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors mb-[2px]"
             title="Clear Chat"
           >
             <Trash2 className="w-5 h-5" />
@@ -311,7 +310,7 @@ const ChatInterface: React.FC = () => {
               className={`p-3 rounded-xl transition-all mb-[2px] ${
                 isListening 
                   ? 'bg-red-500/20 text-red-500 animate-pulse border border-red-500/50' 
-                  : 'bg-slate-900 border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800'
+                  : 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
@@ -324,7 +323,7 @@ const ChatInterface: React.FC = () => {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={isThinkingMode ? "Ask a complex question requiring reasoning..." : "Type your message..."}
-              className={`w-full bg-slate-900 border border-slate-700 rounded-xl pl-4 pr-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 resize-none max-h-32 min-h-[50px] custom-scrollbar shadow-inner transition-all ${isThinkingMode ? 'focus:ring-purple-500' : 'focus:ring-green-500'}`}
+              className={`w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-4 py-3 text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 resize-none max-h-32 min-h-[50px] custom-scrollbar shadow-inner transition-all ${isThinkingMode ? 'focus:ring-purple-500' : 'focus:ring-green-500'}`}
               style={{ height: '52px' }}
             />
           </div>

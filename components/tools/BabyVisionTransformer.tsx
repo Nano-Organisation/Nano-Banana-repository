@@ -87,7 +87,7 @@ const BabyVisionTransformer: React.FC = () => {
       <div className="text-center space-y-2">
         <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-600 flex items-center justify-center gap-3 tracking-tighter">
           <Baby className="w-10 h-10 text-pink-500" />
-          Baby_Transformer
+          AI Baby Transformer
         </h2>
         <p className="text-slate-400 uppercase tracking-widest text-xs font-bold">YouTube Character Miniaturization Pipeline</p>
       </div>
@@ -96,7 +96,7 @@ const BabyVisionTransformer: React.FC = () => {
         
         {/* INPUT: Source Video & Frame Capture */}
         <div className="space-y-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
+          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
             <div className="flex justify-between items-center">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Source Short / Video</label>
               <button 
@@ -108,7 +108,7 @@ const BabyVisionTransformer: React.FC = () => {
               <input type="file" ref={fileInputRef} className="hidden" accept="video/*" onChange={handleFileUpload} />
             </div>
 
-            <div className="aspect-[9/16] bg-black rounded-2xl border border-slate-800 relative overflow-hidden group max-w-[280px] mx-auto">
+            <div className="aspect-[9/16] bg-black rounded-2xl border border-slate-200 dark:border-slate-800 relative overflow-hidden group max-w-[280px] mx-auto">
               {videoSrc ? (
                 <video 
                   ref={videoRef}
@@ -137,20 +137,20 @@ const BabyVisionTransformer: React.FC = () => {
 
           {/* Progress Multi-stage */}
           {status === 'loading' && (
-             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 animate-fade-in">
+             <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4 animate-fade-in">
                 <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase">
                    <span>Pipeline Status</span>
                    <span className="text-pink-500">{stage.replace('_', ' ')}...</span>
                 </div>
                 <div className="flex gap-2">
-                   <div className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${stage !== 'idle' ? 'bg-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.5)]' : 'bg-slate-800'}`}></div>
-                   <div className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${stage === 'transforming' || stage === 'syncing' || stage === 'done' ? 'bg-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.5)]' : 'bg-slate-800'}`}></div>
-                   <div className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${stage === 'syncing' || stage === 'done' ? 'bg-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.5)]' : 'bg-slate-800'}`}></div>
+                   <div className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${stage !== 'idle' ? 'bg-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.5)]' : 'bg-slate-200 dark:bg-slate-800'}`}></div>
+                   <div className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${stage === 'transforming' || stage === 'syncing' || stage === 'done' ? 'bg-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.5)]' : 'bg-slate-200 dark:bg-slate-800'}`}></div>
+                   <div className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${stage === 'syncing' || stage === 'done' ? 'bg-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.5)]' : 'bg-slate-200 dark:bg-slate-800'}`}></div>
                 </div>
                 <div className="grid grid-cols-3 text-[9px] font-bold text-center uppercase tracking-tighter">
-                   <div className={stage === 'analyzing' ? 'text-pink-400' : 'text-slate-600'}>Analyzing Attire</div>
-                   <div className={stage === 'transforming' ? 'text-pink-400' : 'text-slate-600'}>Baby Conversion</div>
-                   <div className={stage === 'syncing' ? 'text-pink-400' : 'text-slate-600'}>Audio Sync</div>
+                   <div className={stage === 'analyzing' ? 'text-pink-400' : 'text-slate-500 dark:text-slate-600'}>Analyzing Attire</div>
+                   <div className={stage === 'transforming' ? 'text-pink-400' : 'text-slate-500 dark:text-slate-600'}>Baby Conversion</div>
+                   <div className={stage === 'syncing' ? 'text-pink-400' : 'text-slate-500 dark:text-slate-600'}>Audio Sync</div>
                 </div>
              </div>
           )}
@@ -159,19 +159,19 @@ const BabyVisionTransformer: React.FC = () => {
         {/* OUTPUT: Result & Comparison */}
         <div className="flex flex-col gap-6">
            <div className={`
-             relative bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center justify-center
+             relative bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center justify-center
              ${resultVideoUrl ? 'aspect-[9/16] max-w-[340px] mx-auto' : 'aspect-square'}
            `}>
              {status === 'loading' ? (
                 <div className="text-center p-8 space-y-4">
                    <div className="w-16 h-16 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
                    <p className="text-pink-400 font-bold animate-pulse uppercase tracking-widest text-xs">Miniaturizing Characters...</p>
-                   <p className="text-slate-600 text-[10px]">Processing 4K visual mimicry with Veo</p>
+                   <p className="text-slate-500 dark:text-slate-600 text-[10px]">Processing 4K visual mimicry with Veo</p>
                 </div>
              ) : errorMessage ? (
                 <div className="text-center p-8 space-y-4">
                    <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-                   <h3 className="font-bold text-white uppercase text-xs">Transformation Failed</h3>
+                   <h3 className="font-bold text-slate-900 dark:text-white uppercase text-xs">Transformation Failed</h3>
                    <p className="text-slate-500 text-[10px]">{errorMessage}</p>
                    <button onClick={() => setStatus('idle')} className="text-pink-500 font-bold text-xs uppercase underline">Reset</button>
                 </div>
