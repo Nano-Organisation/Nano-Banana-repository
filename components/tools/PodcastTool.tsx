@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic2, Play, Users, RefreshCw, Download, Image as ImageIcon, Music } from 'lucide-react';
 import { generatePodcastScript, generateSpeechWithGemini, generateImageWithGemini } from '../../services/geminiService';
@@ -75,7 +74,7 @@ const PodcastTool: React.FC = () => {
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Mic2 className="w-8 h-8 text-indigo-500" />
-          Nano Cast
+          AI Cast
         </h2>
         <p className="text-slate-600 dark:text-slate-400">
           Create instant dual-host audio podcasts from any topic.
@@ -86,14 +85,14 @@ const PodcastTool: React.FC = () => {
         
         {/* Configuration */}
         <div className="space-y-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg space-y-4">
              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-400 uppercase">Podcast Topic</label>
+                <label className="text-sm font-bold text-slate-500 uppercase">Podcast Topic</label>
                 <textarea
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   placeholder="e.g. The future of AI in 2030, Why cats are better than dogs, The history of pizza..."
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none h-24"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none h-24"
                 />
              </div>
 
@@ -105,7 +104,7 @@ const PodcastTool: React.FC = () => {
                    <select 
                       value={hostVoice}
                       onChange={(e) => setHostVoice(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                    >
                       {VOICES.map(v => <option key={v.name} value={v.name}>{v.label}</option>)}
                    </select>
@@ -117,7 +116,7 @@ const PodcastTool: React.FC = () => {
                    <select 
                       value={guestVoice}
                       onChange={(e) => setGuestVoice(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                    >
                       {VOICES.map(v => <option key={v.name} value={v.name}>{v.label}</option>)}
                    </select>
@@ -145,9 +144,9 @@ const PodcastTool: React.FC = () => {
 
           {/* Script Preview */}
           {scriptData && (
-             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg animate-fade-in-up max-h-[300px] overflow-y-auto custom-scrollbar">
-                <h3 className="text-lg font-bold text-white mb-2">{scriptData.title}</h3>
-                <div className="text-sm text-slate-400 whitespace-pre-wrap font-mono leading-relaxed">
+             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg animate-fade-in-up max-h-[300px] overflow-y-auto custom-scrollbar">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{scriptData.title}</h3>
+                <div className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed">
                    {scriptData.script}
                 </div>
              </div>
@@ -157,14 +156,14 @@ const PodcastTool: React.FC = () => {
         {/* Output Player */}
         <div className="flex flex-col items-center justify-center space-y-6">
            {status === 'idle' && !audioUrl && (
-              <div className="text-center text-slate-500 border-2 border-dashed border-slate-800 rounded-2xl p-12 w-full h-full flex flex-col items-center justify-center">
+              <div className="text-center text-slate-500 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl p-12 w-full h-full flex flex-col items-center justify-center">
                  <Music className="w-16 h-16 opacity-20 mb-4" />
                  <p>Your podcast will appear here.</p>
               </div>
            )}
 
            {status === 'loading' && (
-              <div className="w-full h-full bg-slate-900 rounded-2xl border border-slate-800 flex flex-col items-center justify-center space-y-4">
+              <div className="w-full h-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center space-y-4">
                  <div className="relative w-32 h-32">
                     <div className="absolute inset-0 border-4 border-indigo-500/20 rounded-full"></div>
                     <div className="absolute inset-0 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
@@ -179,14 +178,14 @@ const PodcastTool: React.FC = () => {
            )}
 
            {status === 'success' && audioUrl && (
-              <div className="w-full h-full bg-slate-900 rounded-2xl border border-slate-800 p-8 flex flex-col items-center justify-center space-y-6 relative overflow-hidden animate-fade-in">
+              <div className="w-full h-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 flex flex-col items-center justify-center space-y-6 relative overflow-hidden animate-fade-in">
                  {/* Cover Art */}
-                 <div className="relative w-48 h-48 rounded-xl overflow-hidden shadow-2xl ring-4 ring-slate-800">
+                 <div className="relative w-48 h-48 rounded-xl overflow-hidden shadow-2xl ring-4 ring-slate-100 dark:ring-slate-800">
                     {coverArt ? (
                        <img src={coverArt} alt="Cover Art" className="w-full h-full object-cover" />
                     ) : (
-                       <div className="w-full h-full bg-slate-800 flex items-center justify-center">
-                          <ImageIcon className="w-10 h-10 text-slate-600" />
+                       <div className="w-full h-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                          <ImageIcon className="w-10 h-10 text-slate-400 dark:text-slate-600" />
                        </div>
                     )}
                     <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm p-2 text-center">
@@ -195,14 +194,14 @@ const PodcastTool: React.FC = () => {
                  </div>
 
                  {/* Player */}
-                 <div className="w-full bg-slate-950 rounded-xl p-4 border border-slate-800">
+                 <div className="w-full bg-slate-50 dark:bg-slate-950 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
                     <audio ref={audioRef} controls src={audioUrl} className="w-full h-10" autoPlay />
                  </div>
 
                  <a 
                    href={audioUrl} 
-                   download={`nano-cast-${Date.now()}.wav`}
-                   className="inline-flex items-center gap-2 text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-6 py-3 rounded-xl font-medium transition-colors border border-slate-700"
+                   download={`ai-cast-${Date.now()}.wav`}
+                   className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 px-6 py-3 rounded-xl font-medium transition-colors border border-slate-300 dark:border-slate-700"
                  >
                    <Download className="w-5 h-5" />
                    Download Episode

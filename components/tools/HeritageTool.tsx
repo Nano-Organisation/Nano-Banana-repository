@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Shield, Crown, Scissors, RefreshCw, Download, Layers, PenTool } from 'lucide-react';
 import { generateImageWithGemini } from '../../services/geminiService';
@@ -78,7 +77,7 @@ const HeritageTool: React.FC = () => {
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Shield className="w-8 h-8 text-amber-600" />
-          Nano Heritage
+          AI Heritage
         </h2>
         <div className="flex flex-col items-center gap-1">
            <p className="text-slate-600 dark:text-slate-400">Design intricate family crests, signet rings, and authentic textiles.</p>
@@ -92,11 +91,11 @@ const HeritageTool: React.FC = () => {
         {/* Controls */}
         <div className="lg:col-span-1 space-y-6">
           {/* Mode Selector */}
-          <div className="bg-slate-900 p-1 rounded-xl flex border border-slate-800">
+          <div className="bg-white dark:bg-slate-900 p-1 rounded-xl flex border border-slate-200 dark:border-slate-800 shadow-sm">
             <button
               onClick={() => setMode('emblem')}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2 ${
-                mode === 'emblem' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'
+                mode === 'emblem' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <Crown className="w-3 h-3" /> Emblem
@@ -104,7 +103,7 @@ const HeritageTool: React.FC = () => {
             <button
               onClick={() => setMode('signet')}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2 ${
-                mode === 'signet' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'
+                mode === 'signet' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <PenTool className="w-3 h-3" /> Signet
@@ -112,14 +111,14 @@ const HeritageTool: React.FC = () => {
             <button
               onClick={() => setMode('textile')}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2 ${
-                mode === 'textile' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'
+                mode === 'textile' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <Scissors className="w-3 h-3" /> Textile
             </button>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg space-y-4">
             
             {/* EMBLEM FORM */}
             {mode === 'emblem' && (
@@ -129,7 +128,7 @@ const HeritageTool: React.FC = () => {
                   <input 
                     value={emblemName}
                     onChange={(e) => setEmblemName(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-600 focus:outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:border-amber-600 focus:outline-none transition-all"
                     placeholder="e.g. Windsor"
                   />
                 </div>
@@ -138,7 +137,7 @@ const HeritageTool: React.FC = () => {
                   <textarea 
                     value={emblemSymbols}
                     onChange={(e) => setEmblemSymbols(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-600 focus:outline-none h-20 resize-none"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:border-amber-600 focus:outline-none h-20 resize-none transition-all"
                     placeholder="e.g. A roaring lion, three stars, an oak tree..."
                   />
                 </div>
@@ -147,7 +146,7 @@ const HeritageTool: React.FC = () => {
                   <input 
                     value={emblemColors}
                     onChange={(e) => setEmblemColors(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-600 focus:outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:border-amber-600 focus:outline-none transition-all"
                     placeholder="e.g. Crimson and Gold"
                   />
                 </div>
@@ -156,7 +155,7 @@ const HeritageTool: React.FC = () => {
                   <input 
                     value={emblemMotto}
                     onChange={(e) => setEmblemMotto(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-600 focus:outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:border-amber-600 focus:outline-none transition-all"
                     placeholder="e.g. Fortis et Fidelis"
                   />
                 </div>
@@ -171,7 +170,7 @@ const HeritageTool: React.FC = () => {
                   <select 
                     value={signetMetal}
                     onChange={(e) => setSignetMetal(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-600 focus:outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:border-amber-600 focus:outline-none transition-all"
                   >
                     <option>Gold</option>
                     <option>Silver</option>
@@ -185,7 +184,7 @@ const HeritageTool: React.FC = () => {
                   <textarea 
                     value={signetSymbol}
                     onChange={(e) => setSignetSymbol(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-600 focus:outline-none h-20 resize-none"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:border-amber-600 focus:outline-none h-20 resize-none transition-all"
                     placeholder="e.g. A wolf's head, an anchor, a rose..."
                   />
                 </div>
@@ -194,7 +193,7 @@ const HeritageTool: React.FC = () => {
                   <input 
                     value={signetInitials}
                     onChange={(e) => setSignetInitials(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-600 focus:outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:border-amber-600 focus:outline-none transition-all"
                     placeholder="e.g. J.D."
                   />
                 </div>
@@ -209,7 +208,7 @@ const HeritageTool: React.FC = () => {
                   <select 
                     value={textileType}
                     onChange={(e) => setTextileType(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-600 focus:outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:border-amber-600 focus:outline-none transition-all"
                   >
                     <option>Tartan</option>
                     <option>Tweed</option>
@@ -220,7 +219,7 @@ const HeritageTool: React.FC = () => {
                   <input 
                     value={textileColors}
                     onChange={(e) => setTextileColors(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-600 focus:outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:border-amber-600 focus:outline-none transition-all"
                     placeholder="e.g. Forest green, navy blue, thin red line"
                   />
                 </div>
@@ -229,7 +228,7 @@ const HeritageTool: React.FC = () => {
                   <input 
                     value={textileRegion}
                     onChange={(e) => setTextileRegion(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-600 focus:outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-sm focus:border-amber-600 focus:outline-none transition-all"
                     placeholder="e.g. Scottish Highlands, Harris"
                   />
                 </div>
@@ -239,7 +238,7 @@ const HeritageTool: React.FC = () => {
             <button
               onClick={handleGenerate}
               disabled={status === 'loading'}
-              className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-900/20"
+              className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-900/20 mt-2"
             >
               {status === 'loading' ? <RefreshCw className="animate-spin" /> : <Layers />}
               Generate {mode === 'emblem' ? 'Emblem' : mode === 'signet' ? 'Ring' : 'Fabric'}
@@ -249,7 +248,7 @@ const HeritageTool: React.FC = () => {
 
         {/* Output */}
         <div className="lg:col-span-2">
-          <div className="aspect-square bg-slate-900 rounded-2xl border border-slate-800 flex items-center justify-center overflow-hidden relative shadow-2xl group max-w-xl mx-auto">
+          <div className="aspect-square bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-center overflow-hidden relative shadow-2xl group max-w-xl mx-auto">
             {status === 'loading' ? (
                <div className="text-center space-y-4">
                  <div className="w-16 h-16 border-4 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -269,9 +268,9 @@ const HeritageTool: React.FC = () => {
                   </div>
                </>
             ) : (
-               <div className="text-slate-600 flex flex-col items-center">
+               <div className="text-slate-400 dark:text-slate-600 flex flex-col items-center">
                  <Shield className="w-20 h-20 opacity-20 mb-4" />
-                 <p>Configure your heritage design.</p>
+                 <p className="font-bold text-sm tracking-widest uppercase opacity-40">Awaiting Heritage Config</p>
                </div>
             )}
           </div>
