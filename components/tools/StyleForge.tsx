@@ -1,0 +1,458 @@
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Palette, Plus, Save, Play, ChevronRight, ChevronLeft, Trash2, Edit3, Image as ImageIcon, Upload, X, RefreshCw, Layers, CheckCircle2, FlaskConical, AlertCircle, Info, Download } from 'lucide-react';
+import { generateImageWithGemini, generateTextWithGemini } from '../../services/geminiService';
+import { UserDefinedStyle, LoadingState } from '../../types';
+import { runFileSecurityChecks } from '../../utils/security';
+
+const StyleForge: React.FC = () => {
+  const [view, setView] = useState<'list' | 'create' | 'generate'>('list');
+  const [styles, setStyles] = useState<UserDefinedStyle[]>([]);
+  const [status, setStatus] = useState<LoadingState>('idle');
+  
+  // Creation Wizard State
+  const [step, setStep] = useState(1);
+  const [newStyle, setNewStyle] = useState<Partial<UserDefinedStyle>>({
+    version: 1,
+    rules: { rendering: '', colors: '', composition: '', world: '', negative: '' },
+    referenceImages: []
+  });
+  
+  // Generation State
+  const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
+  const [subject, setSubject] = useState('');
+  const [extraDetails, setExtraDetails] = useState('');
+  const [genResult, setGenResult] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('nano_user_styles');
+    if (saved) setStyles(JSON.parse(saved));
+  }, []);
+
+  const saveToDisk = (list: UserDefinedStyle[]) => {
+    setStyles(list);
+    localStorage.setItem('nano_user_styles', JSON.stringify(list));
+  };
+
+  const handleNextStep = () => setStep(s => s + 1);
+  const handlePrevStep = () => setStep(s => s - 1);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newImages: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+       if (newStyle.referenceImages!.length + newImages.length >= 30) break;
+       try {
+          await runFileSecurityChecks(files[i], 'image');
+          const reader = new FileReader();
+          const b64 = await new Promise<string>((res) => {
+             reader.onload = () => res(reader.result as string);
+             reader.readAsDataURL(files[i]);
+          });
+          newImages.push(b64);
+       } catch (err) {}
+    }
+    setNewStyle(prev => ({ ...prev, referenceImages: [...(prev.referenceImages || []), ...newImages] }));
+  };
+
+  const finalizeStyle = async () => {
+    setStatus('loading');
+    try {
+      const summaryPrompt = `Combine these style rules into a single, cohesive, reusable visual recipe paragraph for an AI image generator. 
+      STYLE NAME: ${newStyle.name}
+      CONCEPT: ${newStyle.concept}
+      RENDERING: ${newStyle.rules?.rendering}
+      COLORS: ${newStyle.rules?.colors}
+      COMPOSITION: ${newStyle.rules?.composition}
+      WORLD: ${newStyle.rules?.world}
+      AVOID: ${newStyle.rules?.negative}
+      Return ONLY the descriptive paragraph.`;
+
+      const block = await generateTextWithGemini(summaryPrompt);
+      
+      const completeStyle: UserDefinedStyle = {
+        id: newStyle.id || Date.now().toString(),
+        version: newStyle.version || 1,
+        name: newStyle.name || 'Unnamed Style',
+        concept: newStyle.concept || '',
+        rules: newStyle.rules as any,
+        referenceImages: newStyle.referenceImages || [],
+        styleBlock: block,
+        createdAt: new Date().toISOString()
+      };
+
+      // Generate a thumbnail if we have rules
+      const thumb = await generateImageWithGemini(`A sample visual showcasing the style: ${block}. Abstract shape.`, '1:1');
+      completeStyle.thumbnail = thumb;
+
+      const updated = newStyle.id 
+        ? styles.map(s => s.id === newStyle.id ? completeStyle : s)
+        : [completeStyle, ...styles];
+      
+      saveToDisk(updated);
+      setStatus('success');
+      setView('list');
+      setStep(1);
+      setNewStyle({ version: 1, rules: { rendering: '', colors: '', composition: '', world: '', negative: '' }, referenceImages: [] });
+    } catch (e) {
+      console.error(e);
+      setStatus('error');
+    }
+  };
+
+  const deleteStyle = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("Delete this style permanently?")) return;
+    saveToDisk(styles.filter(s => s.id !== id));
+  };
+
+  const handleGen = async () => {
+    const style = styles.find(s => s.id === selectedStyleId);
+    if (!style || !subject.trim()) return;
+    setStatus('loading');
+    setGenResult(null);
+    try {
+       const prompt = `${subject} in the ${style.name} style: ${style.styleBlock}, ${extraDetails}`;
+       const img = await generateImageWithGemini(prompt, '1:1');
+       setGenResult(img);
+       setStatus('success');
+    } catch (e) {
+       setStatus('error');
+    }
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in font-sans">
+      <div className="text-center space-y-2">
+        <h2 className="text-4xl font-black text-slate-900 dark:text-white flex items-center justify-center gap-3 tracking-tighter uppercase">
+          <FlaskConical className="w-10 h-10 text-indigo-500" />
+          AI Style Forge
+        </h2>
+        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Visual DNA Synthesis & Management</p>
+      </div>
+
+      {view === 'list' && (
+        <div className="space-y-6">
+           <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Your Visual Library</h3>
+              <button 
+                onClick={() => setView('create')}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 rounded-full flex items-center gap-2 shadow-lg shadow-indigo-900/20 transition-all active:scale-95"
+              >
+                 <Plus className="w-5 h-5" /> CREATE NEW STYLE
+              </button>
+           </div>
+
+           {styles.length === 0 ? (
+              <div className="bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-20 text-center space-y-4">
+                 <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto">
+                    <Palette className="w-10 h-10 text-slate-400" />
+                 </div>
+                 <h4 className="text-xl font-bold text-slate-400">No styles forged yet.</h4>
+                 <p className="text-sm text-slate-500 max-w-xs mx-auto">Build your first reusable visual recipe to maintain consistency across all your AI generations.</p>
+              </div>
+           ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 {styles.map(style => (
+                    <div 
+                      key={style.id}
+                      onClick={() => { setSelectedStyleId(style.id); setView('generate'); }}
+                      className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:border-indigo-500/50 transition-all cursor-pointer relative"
+                    >
+                       <div className="aspect-video bg-slate-100 dark:bg-slate-950 overflow-hidden relative">
+                          {style.thumbnail ? (
+                             <img src={style.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                          ) : (
+                             <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-700"><ImageIcon className="w-12 h-12" /></div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-5">
+                             <div className="flex justify-between items-center text-white">
+                                <span className="text-lg font-black uppercase tracking-tight">{style.name}</span>
+                                <span className="text-[10px] font-bold bg-indigo-600 px-2 py-0.5 rounded">v{style.version}</span>
+                             </div>
+                          </div>
+                       </div>
+                       <div className="p-5 space-y-3">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 italic">"{style.concept}"</p>
+                          <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-800">
+                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{style.referenceImages.length} Samples</span>
+                             <div className="flex gap-2">
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); setNewStyle(style); setView('create'); }}
+                                  className="p-2 text-slate-400 hover:text-indigo-500 transition-colors"
+                                ><Edit3 className="w-4 h-4" /></button>
+                                <button 
+                                  onClick={(e) => deleteStyle(style.id, e)}
+                                  className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                                ><Trash2 className="w-4 h-4" /></button>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                 ))}
+              </div>
+           )}
+        </div>
+      )}
+
+      {view === 'create' && (
+        <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col min-h-[600px]">
+           {/* Wizard Progress */}
+           <div className="h-1.5 bg-slate-100 dark:bg-slate-800 flex">
+              {[1,2,3,4].map(i => (
+                 <div key={i} className={`flex-1 transition-all duration-500 ${step >= i ? 'bg-indigo-500' : 'bg-transparent'}`}></div>
+              ))}
+           </div>
+
+           <div className="p-10 flex-1 flex flex-col">
+              {step === 1 && (
+                 <div className="space-y-8 animate-fade-in">
+                    <div className="space-y-1">
+                       <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Identity & Mission</h3>
+                       <p className="text-sm text-slate-500">Name your style and define its core spirit.</p>
+                    </div>
+                    <div className="space-y-4">
+                       <div className="space-y-1">
+                          <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Distinct Style Name</label>
+                          <input 
+                             value={newStyle.name}
+                             onChange={e => setNewStyle({...newStyle, name: e.target.value})}
+                             placeholder="e.g. Neo-Organic-v1"
+                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-6 py-4 text-slate-900 dark:text-white text-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                          />
+                       </div>
+                       <div className="space-y-1">
+                          <label className="text-xs font-black text-slate-500 uppercase tracking-widest">One-Sentence Concept</label>
+                          <textarea 
+                             value={newStyle.concept}
+                             onChange={e => setNewStyle({...newStyle, concept: e.target.value})}
+                             placeholder="e.g. A whimsical yet dark fusion of botanical life and cyberpunk circuitry."
+                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-6 py-4 text-slate-900 dark:text-white text-md h-24 resize-none focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                          />
+                       </div>
+                    </div>
+                 </div>
+              )}
+
+              {step === 2 && (
+                 <div className="space-y-6 animate-fade-in h-full flex flex-col">
+                    <div className="space-y-1">
+                       <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Visual Grammar</h3>
+                       <p className="text-sm text-slate-500">How should the AI render this world?</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                       <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Rendering & Lines</label>
+                          <textarea 
+                             value={newStyle.rules?.rendering}
+                             onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, rendering: e.target.value}})}
+                             placeholder="e.g. Thick charcoal outlines, heavy grain texture, messy sketch feel..."
+                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24"
+                          />
+                       </div>
+                       <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Colour & Lighting</label>
+                          <textarea 
+                             value={newStyle.rules?.colors}
+                             onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, colors: e.target.value}})}
+                             placeholder="e.g. Desaturated sepia tones, harsh high-key lighting, bioluminescent accents..."
+                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24"
+                          />
+                       </div>
+                       <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Composition & Lens</label>
+                          <textarea 
+                             value={newStyle.rules?.composition}
+                             onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, composition: e.target.value}})}
+                             placeholder="e.g. Extreme wide angle, low perspective, symmetrical framing..."
+                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24"
+                          />
+                       </div>
+                       <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">World & Character DNA</label>
+                          <textarea 
+                             value={newStyle.rules?.world}
+                             onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, world: e.target.value}})}
+                             placeholder="e.g. Victorian era, clockwork limbs, exaggerated tall proportions..."
+                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24"
+                          />
+                       </div>
+                    </div>
+                 </div>
+              )}
+
+              {step === 3 && (
+                 <div className="space-y-8 animate-fade-in">
+                    <div className="space-y-1 text-center">
+                       <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Negative Space</h3>
+                       <p className="text-sm text-slate-500">What elements are strictly forbidden in this style?</p>
+                    </div>
+                    <textarea 
+                       value={newStyle.rules?.negative}
+                       onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, negative: e.target.value}})}
+                       placeholder="e.g. No glossy 3D, no anime features, no neon colours, no sharp edges..."
+                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-slate-900 dark:text-white text-md h-48 resize-none"
+                    />
+                    <div className="bg-red-500/5 p-4 rounded-xl border border-red-500/10 flex items-start gap-3">
+                       <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                       <p className="text-xs text-red-600/80 leading-relaxed font-bold uppercase">These rules act as a persistent safety guard for your style, preventing drift over time.</p>
+                    </div>
+                 </div>
+              )}
+
+              {step === 4 && (
+                 <div className="space-y-8 animate-fade-in">
+                    <div className="space-y-1 text-center">
+                       <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Visual Evidence</h3>
+                       <p className="text-sm text-slate-500">Upload 10-30 reference images (Optional but recommended).</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-4 md:grid-cols-6 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar p-1">
+                       {newStyle.referenceImages?.map((img, idx) => (
+                          <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 group">
+                             <img src={img} className="w-full h-full object-cover" />
+                             <button 
+                                onClick={() => setNewStyle(prev => ({ ...prev, referenceImages: prev.referenceImages?.filter((_, i) => i !== idx) }))}
+                                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
+                             ><X className="w-5 h-5"/></button>
+                          </div>
+                       ))}
+                       <button 
+                          onClick={() => fileInputRef.current?.click()}
+                          className="aspect-square border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition-all"
+                       >
+                          <Upload className="w-6 h-6 mb-1" />
+                          <span className="text-[10px] font-bold">ADD SAMPLES</span>
+                       </button>
+                    </div>
+                    <input type="file" multiple ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+                    
+                    <div className="bg-indigo-50 dark:bg-indigo-900/10 p-5 rounded-2xl border border-indigo-500/10 flex items-start gap-4">
+                       <Info className="w-6 h-6 text-indigo-500 shrink-0" />
+                       <div className="space-y-1">
+                          <p className="text-xs text-indigo-900 dark:text-indigo-200 font-bold uppercase">Final Synthesis Looming</p>
+                          <p className="text-[10px] text-indigo-800/60 dark:text-indigo-400 leading-relaxed">Proceeding will use Gemini to condense your rules into a high-density "Style Block" for one-click reuse.</p>
+                       </div>
+                    </div>
+                 </div>
+              )}
+
+              <div className="mt-auto pt-10 flex justify-between gap-4">
+                 {step > 1 ? (
+                    <button 
+                       onClick={handlePrevStep}
+                       className="px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-800 font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all flex items-center gap-2"
+                    ><ChevronLeft className="w-4 h-4"/> Back</button>
+                 ) : (
+                    <button 
+                       onClick={() => setView('list')}
+                       className="px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-800 font-bold text-slate-500"
+                    >Cancel</button>
+                 )}
+                 
+                 {step < 4 ? (
+                    <button 
+                       onClick={handleNextStep}
+                       disabled={step === 1 && !newStyle.name}
+                       className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 px-10 py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center gap-2"
+                    >Next <ChevronRight className="w-4 h-4"/></button>
+                 ) : (
+                    <button 
+                       onClick={finalizeStyle}
+                       disabled={status === 'loading'}
+                       className="bg-indigo-600 hover:bg-indigo-700 px-10 py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center gap-2"
+                    >
+                       {status === 'loading' ? <RefreshCw className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}
+                       FORGE STYLE
+                    </button>
+                 )}
+              </div>
+           </div>
+        </div>
+      )}
+
+      {view === 'generate' && selectedStyleId && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in">
+           <div className="space-y-6">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-xl space-y-6">
+                 <div className="flex justify-between items-center">
+                    <div>
+                       <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Generate in {styles.find(s => s.id === selectedStyleId)?.name}</h3>
+                       <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">One-Click Consistent Styling</p>
+                    </div>
+                    <button onClick={() => setView('list')} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5"/></button>
+                 </div>
+
+                 <div className="space-y-4">
+                    <div className="space-y-1">
+                       <label className="text-xs font-bold text-slate-500 uppercase">Primary Subject</label>
+                       <textarea 
+                          value={subject}
+                          onChange={e => setSubject(e.target.value)}
+                          placeholder="e.g. A giant tortoise with an island on its back..."
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-slate-900 dark:text-white focus:ring-1 focus:ring-indigo-500 outline-none h-24"
+                       />
+                    </div>
+                    <div className="space-y-1">
+                       <label className="text-xs font-bold text-slate-500 uppercase">Extra Context (Action, Background, Ratio)</label>
+                       <input 
+                          value={extraDetails}
+                          onChange={e => setExtraDetails(e.target.value)}
+                          placeholder="e.g. cinematic lighting, 8k, walking across the ocean floor"
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-900 dark:text-white text-sm"
+                       />
+                    </div>
+                 </div>
+
+                 <div className="bg-indigo-500/5 p-4 rounded-xl border border-indigo-500/10">
+                    <p className="text-[10px] text-slate-500 font-bold uppercase mb-2">Automated Style Block Injection</p>
+                    <p className="text-xs text-indigo-400 italic font-medium leading-relaxed">
+                       {styles.find(s => s.id === selectedStyleId)?.styleBlock}
+                    </p>
+                 </div>
+
+                 <button 
+                    onClick={handleGen}
+                    disabled={!subject || status === 'loading'}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-black py-4 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3"
+                 >
+                    {status === 'loading' ? <RefreshCw className="animate-spin w-5 h-5" /> : <Play className="w-5 h-5 fill-current" />}
+                    GENERATE ARTWORK
+                 </button>
+              </div>
+           </div>
+
+           <div className="flex flex-col justify-center">
+              <div className="aspect-square bg-slate-100 dark:bg-slate-950 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[3rem] overflow-hidden relative shadow-2xl flex items-center justify-center group">
+                 {status === 'loading' ? (
+                    <div className="text-center space-y-4">
+                       <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                       <p className="text-indigo-500 font-bold animate-pulse">Forging consistent pixels...</p>
+                    </div>
+                 ) : genResult ? (
+                    <>
+                       <img src={genResult} className="w-full h-full object-cover" />
+                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                          <a href={genResult} download="forged-art.png" className="bg-white text-slate-900 px-8 py-3 rounded-full font-black flex items-center gap-2 hover:scale-105 transition-transform shadow-xl">
+                             <Download className="w-5 h-5" /> DOWNLOAD
+                          </a>
+                       </div>
+                    </>
+                 ) : (
+                    <div className="text-center opacity-10 space-y-4">
+                       <Layers className="w-24 h-24 mx-auto" />
+                       <p className="text-xl font-black uppercase tracking-[0.3em]">Awaiting_Input</p>
+                    </div>
+                 )}
+              </div>
+           </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default StyleForge;

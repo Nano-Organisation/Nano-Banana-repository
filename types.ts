@@ -1,3 +1,4 @@
+
 export enum ToolId {
   Dashboard = 'DASHBOARD',
   ImageEditor = 'IMAGE_EDITOR',
@@ -62,7 +63,8 @@ export enum ToolId {
   ComicStrip = 'COMIC_STRIP',
   BabyVisionTransformer = 'BABY_VISION_TRANSFORMER',
   BabyDebates = 'BABY_DEBATES',
-  ImagesToMovie = 'IMAGES_TO_MOVIE'
+  ImagesToMovie = 'IMAGES_TO_MOVIE',
+  StyleEngine = 'STYLE_ENGINE'
 }
 
 export interface ToolConfig {
@@ -344,4 +346,22 @@ export interface BabyDebateScript {
   visualContext: string;
   participants: BabyDebateParticipant[];
   safeCharacterDescriptions: { name: string; description: string }[];
+}
+
+export interface UserDefinedStyle {
+  id: string;
+  version: number;
+  name: string;
+  concept: string;
+  rules: {
+    rendering: string;
+    colors: string;
+    composition: string;
+    world: string;
+    negative: string;
+  };
+  referenceImages: string[];
+  styleBlock: string;
+  thumbnail?: string;
+  createdAt: string;
 }
