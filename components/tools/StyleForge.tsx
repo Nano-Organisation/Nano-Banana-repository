@@ -4,6 +4,7 @@ import { Palette, Plus, Save, Play, ChevronRight, ChevronLeft, Trash2, Edit3, Im
 import { generateImageWithGemini, generateTextWithGemini } from '../../services/geminiService';
 import { UserDefinedStyle, LoadingState } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
+import { dbService, STORES } from '../../utils/db';
 
 const StyleForge: React.FC = () => {
   const [view, setView] = useState<'list' | 'create' | 'generate'>('list');
@@ -27,13 +28,16 @@ const StyleForge: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('nano_user_styles');
-    if (saved) setStyles(JSON.parse(saved));
+    loadStyles();
   }, []);
 
-  const saveToDisk = (list: UserDefinedStyle[]) => {
-    setStyles(list);
-    localStorage.setItem('nano_user_styles', JSON.stringify(list));
+  const loadStyles = async () => {
+    try {
+      const saved = await dbService.getAll<UserDefinedStyle>(STORES.STYLES);
+      setStyles(saved.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    } catch (e) {
+      console.error("Failed to load styles from IndexedDB", e);
+    }
   };
 
   const handleNextStep = () => setStep(s => s + 1);
@@ -44,7 +48,7 @@ const StyleForge: React.FC = () => {
     if (!files) return;
     const newImages: string[] = [];
     for (let i = 0; i < files.length; i++) {
-       if (newStyle.referenceImages!.length + newImages.length >= 30) break;
+       if ((newStyle.referenceImages?.length || 0) + newImages.length >= 30) break;
        try {
           await runFileSecurityChecks(files[i], 'image');
           const reader = new FileReader();
@@ -75,7 +79,7 @@ const StyleForge: React.FC = () => {
       
       const completeStyle: UserDefinedStyle = {
         id: newStyle.id || Date.now().toString(),
-        version: newStyle.version || 1,
+        version: (newStyle.version || 1) + (newStyle.id ? 1 : 0),
         name: newStyle.name || 'Unnamed Style',
         concept: newStyle.concept || '',
         rules: newStyle.rules as any,
@@ -88,11 +92,9 @@ const StyleForge: React.FC = () => {
       const thumb = await generateImageWithGemini(`A sample visual showcasing the style: ${block}. Abstract shape.`, '1:1');
       completeStyle.thumbnail = thumb;
 
-      const updated = newStyle.id 
-        ? styles.map(s => s.id === newStyle.id ? completeStyle : s)
-        : [completeStyle, ...styles];
+      await dbService.put(STORES.STYLES, completeStyle);
+      await loadStyles();
       
-      saveToDisk(updated);
       setStatus('success');
       setView('list');
       setStep(1);
@@ -103,10 +105,15 @@ const StyleForge: React.FC = () => {
     }
   };
 
-  const deleteStyle = (id: string, e: React.MouseEvent) => {
+  const deleteStyle = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!window.confirm("Delete this style permanently?")) return;
-    saveToDisk(styles.filter(s => s.id !== id));
+    try {
+      await dbService.delete(STORES.STYLES, id);
+      setStyles(prev => prev.filter(s => s.id !== id));
+    } catch (e) {
+      console.error("Delete failed", e);
+    }
   };
 
   const handleGen = async () => {
@@ -218,7 +225,7 @@ const StyleForge: React.FC = () => {
                        <div className="space-y-1">
                           <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Distinct Style Name</label>
                           <input 
-                             value={newStyle.name}
+                             value={newStyle.name || ''}
                              onChange={e => setNewStyle({...newStyle, name: e.target.value})}
                              placeholder="e.g. Neo-Organic-v1"
                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-6 py-4 text-slate-900 dark:text-white text-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -227,7 +234,7 @@ const StyleForge: React.FC = () => {
                        <div className="space-y-1">
                           <label className="text-xs font-black text-slate-500 uppercase tracking-widest">One-Sentence Concept</label>
                           <textarea 
-                             value={newStyle.concept}
+                             value={newStyle.concept || ''}
                              onChange={e => setNewStyle({...newStyle, concept: e.target.value})}
                              placeholder="e.g. A whimsical yet dark fusion of botanical life and cyberpunk circuitry."
                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-6 py-4 text-slate-900 dark:text-white text-md h-24 resize-none focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -247,7 +254,7 @@ const StyleForge: React.FC = () => {
                        <div className="space-y-1">
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Rendering & Lines</label>
                           <textarea 
-                             value={newStyle.rules?.rendering}
+                             value={newStyle.rules?.rendering || ''}
                              onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, rendering: e.target.value}})}
                              placeholder="e.g. Thick charcoal outlines, heavy grain texture, messy sketch feel..."
                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24"
@@ -256,7 +263,7 @@ const StyleForge: React.FC = () => {
                        <div className="space-y-1">
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Colour & Lighting</label>
                           <textarea 
-                             value={newStyle.rules?.colors}
+                             value={newStyle.rules?.colors || ''}
                              onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, colors: e.target.value}})}
                              placeholder="e.g. Desaturated sepia tones, harsh high-key lighting, bioluminescent accents..."
                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24"
@@ -265,7 +272,7 @@ const StyleForge: React.FC = () => {
                        <div className="space-y-1">
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Composition & Lens</label>
                           <textarea 
-                             value={newStyle.rules?.composition}
+                             value={newStyle.rules?.composition || ''}
                              onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, composition: e.target.value}})}
                              placeholder="e.g. Extreme wide angle, low perspective, symmetrical framing..."
                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24"
@@ -274,7 +281,7 @@ const StyleForge: React.FC = () => {
                        <div className="space-y-1">
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">World & Character DNA</label>
                           <textarea 
-                             value={newStyle.rules?.world}
+                             value={newStyle.rules?.world || ''}
                              onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, world: e.target.value}})}
                              placeholder="e.g. Victorian era, clockwork limbs, exaggerated tall proportions..."
                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24"
@@ -291,7 +298,7 @@ const StyleForge: React.FC = () => {
                        <p className="text-sm text-slate-500">What elements are strictly forbidden in this style?</p>
                     </div>
                     <textarea 
-                       value={newStyle.rules?.negative}
+                       value={newStyle.rules?.negative || ''}
                        onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, negative: e.target.value}})}
                        placeholder="e.g. No glossy 3D, no anime features, no neon colours, no sharp edges..."
                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-slate-900 dark:text-white text-md h-48 resize-none"

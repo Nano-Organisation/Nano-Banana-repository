@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen, Sparkles, RefreshCw, ChevronLeft, ChevronRight, Download, Edit3, FileText, Smartphone, Save, User, Trash2, CheckCircle2, Settings, X, FileJson, Book, Image as ImageIcon, Music, Volume2, VolumeX, ToggleLeft, ToggleRight } from 'lucide-react';
 import { generateStoryScript, generateImageWithGemini, generateBackgroundMusic } from '../../services/geminiService';
@@ -5,6 +6,7 @@ import { StorybookData, StoryPage, LoadingState, SavedCharacter } from '../../ty
 import jsPDF from 'jspdf';
 import { WATERMARK_TEXT } from '../../utils/watermark';
 import { runFileSecurityChecks } from '../../utils/security';
+import { dbService, STORES } from '../../utils/db';
 
 const STYLES = [
   { id: 'fairytale', label: 'Fairy Tale', desc: 'Watercolor, whimsical, soft lighting, storybook style' },
@@ -53,15 +55,17 @@ const StorybookTool: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('nano_saved_characters');
-    if (stored) {
-      try {
-        setSavedCharacters(JSON.parse(stored));
-      } catch (e) {
-        console.error("Failed to load saved characters");
-      }
-    }
+    loadCharacters();
   }, []);
+
+  const loadCharacters = async () => {
+    try {
+      const saved = await dbService.getAll<SavedCharacter>(STORES.CHARACTERS);
+      setSavedCharacters(saved);
+    } catch (e) {
+      console.error("Failed to load saved characters from IndexedDB", e);
+    }
+  };
 
   // Audio Volume Control
   useEffect(() => {
@@ -116,11 +120,6 @@ const StorybookTool: React.FC = () => {
     } catch (e) {}
   };
 
-  const saveToLocalStorage = (chars: SavedCharacter[]) => {
-    setSavedCharacters(chars);
-    localStorage.setItem('nano_saved_characters', JSON.stringify(chars));
-  };
-
   const handleSaveCharacter = async () => {
     if (!bookData || !newCharName.trim()) return;
     setIsSavingChar(true);
@@ -141,22 +140,30 @@ const StorybookTool: React.FC = () => {
       previewImage: previewUrl
     };
 
-    const updated = [...savedCharacters, newChar];
-    saveToLocalStorage(updated);
+    try {
+      await dbService.put(STORES.CHARACTERS, newChar);
+      await loadCharacters();
+      alert(`Character "${newChar.name}" saved!`);
+    } catch (e) {
+      console.error("Save failed", e);
+    }
     
     setIsSavingChar(false);
     setShowSaveCharDialog(false);
     setNewCharName('');
-    alert(`Character "${newChar.name}" saved!`);
   };
 
-  const handleDeleteCharacter = (id: string, e?: React.MouseEvent) => {
+  const handleDeleteCharacter = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!window.confirm("Are you sure you want to delete this character?")) return;
     
-    const updated = savedCharacters.filter(c => c.id !== id);
-    saveToLocalStorage(updated);
-    if (selectedCharacterId === id) setSelectedCharacterId(null);
+    try {
+      await dbService.delete(STORES.CHARACTERS, id);
+      setSavedCharacters(prev => prev.filter(c => c.id !== id));
+      if (selectedCharacterId === id) setSelectedCharacterId(null);
+    } catch (e) {
+      console.error("Delete failed", e);
+    }
   };
 
   const handleGenerate = async () => {
