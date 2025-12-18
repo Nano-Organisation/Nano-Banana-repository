@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen, Sparkles, RefreshCw, ChevronLeft, ChevronRight, Download, Edit3, FileText, Smartphone, Save, User, Trash2, CheckCircle2, Settings, X, FileJson, Book, Image as ImageIcon, Music, Volume2, VolumeX, ToggleLeft, ToggleRight } from 'lucide-react';
 import { generateStoryScript, generateImageWithGemini, generateBackgroundMusic } from '../../services/geminiService';
@@ -23,7 +22,13 @@ const STYLES = [
   { id: 'lineart', label: 'Line Art', desc: 'Black ink on white, minimalist, clean lines, sketching style' },
   { id: 'papercut', label: 'Paper Cutout', desc: 'Layered paper aesthetic, depth shadows, craft style, collage' },
   { id: 'steampunk', label: 'Steampunk', desc: 'Victorian technology, brass and gears, sepia tones, retro-futuristic' },
-  { id: 'gothic', label: 'Gothic', desc: 'Dark, atmospheric, ornate details, moody, Tim Burton style' }
+  { id: 'gothic', label: 'Gothic', desc: 'Dark, atmospheric, ornate details, moody, Tim Burton style' },
+  { 
+    id: 'edewede_ai_o3', 
+    label: 'Edewede-AI-O3', 
+    desc: 'Analog 2D storybook minimalism inspired by mid-century printmaking and educational infographics. Features clean, intentional contours and flat color blocks with slight misregistered ink edges to mimic vintage offset printing. Compositions are calm and airy, utilizing generous negative space and geometric groupings in flattened frontal views. Palette: 3–5 strictly limited earthy tones (ochre, muted sage, dusty terracotta, charcoal) on off-white paper. Characters are essential symbols: bodies as bold silhouettes, hair as oversized solid geometric shapes (like large afros or circular bobs), limbs as thin tapered lines, and faces with tiny dot eyes and small pink circular cheeks. Zero gradients, zero highlights, and zero 3D depth cues. Environment props like trees and buildings are reduced to primitive geometric blocks, circles, and triangles.',
+    uiDesc: 'Mid-century minimalism with flat geometric characters and earthy tones.'
+  }
 ];
 
 const StorybookTool: React.FC = () => {
@@ -159,6 +164,7 @@ const StorybookTool: React.FC = () => {
     
     try {
       await dbService.delete(STORES.CHARACTERS, id);
+      /* Fix: Changed 'i.id' to 'c.id' to match the filter callback parameter 'c'. */
       setSavedCharacters(prev => prev.filter(c => c.id !== id));
       if (selectedCharacterId === id) setSelectedCharacterId(null);
     } catch (e) {
@@ -613,7 +619,7 @@ const StorybookTool: React.FC = () => {
                         }`}
                       >
                         <div className="font-bold text-sm">{style.label}</div>
-                        <div className="text-xs opacity-60 truncate">{style.desc}</div>
+                        <div className="text-xs opacity-60 truncate">{(style as any).uiDesc || style.desc}</div>
                       </button>
                     ))}
                   </div>
@@ -793,7 +799,7 @@ const StorybookTool: React.FC = () => {
                <input type="text" autoFocus value={newCharName} onChange={(e) => setNewCharName(e.target.value)} placeholder="e.g. Captain Sparky" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-500" onKeyDown={(e) => e.key === 'Enter' && handleSaveCharacter()} />
                <div className="flex gap-3">
                   <button onClick={() => setShowSaveCharDialog(false)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl font-medium transition-colors">Cancel</button>
-                  <button onClick={handleSaveCharacter} disabled={!newCharName.trim() || isSavingChar} className="flex-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2">{isSavingChar ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {isSavingChar ? 'Creating...' : 'Save'}</button>
+                  <button handleSaveCharacter={handleSaveCharacter} disabled={!newCharName.trim() || isSavingChar} className="flex-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2">{isSavingChar ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {isSavingChar ? 'Creating...' : 'Save'}</button>
                </div>
             </div>
          </div>

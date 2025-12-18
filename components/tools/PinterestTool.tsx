@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Pin, Download, RefreshCw, Palette, Camera, Scissors, Utensils, Home, Map, Smartphone } from 'lucide-react';
 import { generateImageWithGemini } from '../../services/geminiService';
@@ -41,6 +40,12 @@ const STYLES = [
     label: 'Travel', 
     icon: Map,
     promptSuffix: 'scenic travel photography, wanderlust, vibrant landscapes, golden hour, breathtaking view, adventure' 
+  },
+  { 
+    id: 'edewede_ai_o3', 
+    label: 'Edewede-AI-O3', 
+    icon: Palette,
+    promptSuffix: 'Analog 2D storybook minimalism inspired by mid-century printmaking and educational infographics. Features clean, intentional contours and flat color blocks with slight misregistered ink edges to mimic vintage offset printing. Compositions are calm and airy, utilizing generous negative space and geometric groupings in flattened frontal views. Palette: 3–5 strictly limited earthy tones (ochre, muted sage, dusty terracotta, charcoal) on off-white paper. Characters are essential symbols: bodies as bold silhouettes, hair as oversized solid geometric shapes (like large afros or circular bobs), limbs as thin tapered lines, and faces with tiny dot eyes and small pink circular cheeks. Zero gradients, zero highlights, and zero 3D depth cues. Environment props like trees and buildings are reduced to primitive geometric blocks, circles, and triangles.' 
   }
 ];
 

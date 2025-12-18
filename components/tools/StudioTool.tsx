@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MonitorPlay, Download, RefreshCw, Lock, Type, Music, Layout, AlertTriangle } from 'lucide-react';
 import { generateVideoWithGemini } from '../../services/geminiService';
@@ -8,7 +7,13 @@ const STYLES = [
   { id: 'gaming', label: 'Gaming', desc: 'Neon, glitch effects, energetic' },
   { id: 'tech', label: 'Tech Review', desc: 'Clean, minimalist, sleek, 4k' },
   { id: 'vlog', label: 'Vlog / Lifestyle', desc: 'Bright, cinematic, aesthetic' },
-  { id: 'minimal', label: 'Minimalist', desc: 'Simple text on solid color, elegant' }
+  { id: 'minimal', label: 'Minimalist', desc: 'Simple text on solid color, elegant' },
+  { 
+    id: 'edewede_ai_o3', 
+    label: 'Edewede-AI-O3', 
+    desc: 'Analog 2D storybook minimalism inspired by mid-century printmaking and educational infographics. Features clean, intentional contours and flat color blocks with slight misregistered ink edges to mimic vintage offset printing. Compositions are calm and airy, utilizing generous negative space and geometric groupings in flattened frontal views. Palette: 3–5 strictly limited earthy tones (ochre, muted sage, dusty terracotta, charcoal) on off-white paper. Characters are essential symbols: bodies as bold silhouettes, hair as oversized solid geometric shapes (like large afros or circular bobs), limbs as thin tapered lines, and faces with tiny dot eyes and small pink circular cheeks. Zero gradients, zero highlights, and zero 3D depth cues. Environment props like trees and buildings are reduced to primitive geometric blocks, circles, and triangles.',
+    uiDesc: 'Mid-century minimalism with flat geometric characters and earthy tones.'
+  }
 ];
 
 const StudioTool: React.FC = () => {
@@ -162,7 +167,7 @@ const StudioTool: React.FC = () => {
                          }`}
                       >
                          <div className="font-bold text-sm">{s.label}</div>
-                         <div className="text-xs opacity-60 truncate">{s.desc}</div>
+                         <div className="text-xs opacity-60 truncate">{(s as any).uiDesc || s.desc}</div>
                       </button>
                    ))}
                 </div>

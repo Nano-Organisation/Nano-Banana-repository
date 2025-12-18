@@ -10,7 +10,12 @@ const VISUAL_STYLES = [
   { id: 'blueprint', label: 'Art Sketch', desc: 'Technical blue' },
   { id: 'felted', label: 'Felted Wool', desc: 'Fuzzy characters' },
   { id: 'watercolor', label: 'Watercolor', desc: 'Storybook' },
-  { id: 'popart', label: 'Pop Art', desc: 'Comic style' }
+  { id: 'popart', label: 'Pop Art', desc: 'Comic style' },
+  { 
+    id: 'edewede_ai_o3', 
+    label: 'Edewede-AI-O3', 
+    desc: 'Analog 2D storybook minimalism inspired by mid-century printmaking and educational infographics. Features clean, intentional contours and flat color blocks with slight misregistered ink edges to mimic vintage offset printing. Compositions are calm and airy, utilizing generous negative space and geometric groupings in flattened frontal views. Palette: 3–5 strictly limited earthy tones (ochre, muted sage, dusty terracotta, charcoal) on off-white paper. Characters are essential symbols: bodies as bold silhouettes, hair as oversized solid geometric shapes (like large afros or circular bobs), limbs as thin tapered lines, and faces with tiny dot eyes and small pink circular cheeks. Zero gradients, zero highlights, and zero 3D depth cues. Environment props like trees and buildings are reduced to primitive geometric blocks, circles, and triangles.' 
+  }
 ];
 
 const MUSIC_STYLES = [
@@ -118,6 +123,7 @@ const BabyDebates: React.FC = () => {
     setStatus('loading');
     setStage('scripting');
     setErrorMessage('');
+    setTopic(topic);
     setScriptData(null);
     setVideoUrl(null);
     setIsScriptLocked(false);
@@ -172,7 +178,8 @@ const BabyDebates: React.FC = () => {
     setErrorMessage('');
 
     try {
-      const styleLabel = VISUAL_STYLES.find(s => s.id === selectedStyle)?.label || '3D';
+      const selectedStyleObj = VISUAL_STYLES.find(s => s.id === selectedStyle);
+      const styleLabel = selectedStyleObj ? `${selectedStyleObj.label}: ${selectedStyleObj.desc}` : '3D';
       const url = await generateTalkingBabyVideo(scriptData, styleLabel, selectedMusic, showCaptions, aspectRatio);
       
       if (!url) throw new Error("Video generation failed. No link returned.");
@@ -282,7 +289,7 @@ const BabyDebates: React.FC = () => {
                             {p.image ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Camera className="w-3.5 h-3.5" />}
                          </button>
                          {!isScriptLocked && (
-                            <button onClick={() => removeParticipant(i)} className="p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 hover:text-red-500 transition-colors rounded-lg">
+                            <button onClick={() => removeParticipant(i)} className="p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600 hover:text-red-500 transition-colors rounded-lg">
                                <X className="w-3.5 h-3.5" />
                             </button>
                          )}

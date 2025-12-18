@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types';
 import Layout from './components/Layout';
@@ -175,13 +176,31 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [pendingExternalUrl, setPendingExternalUrl] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [hasSelectedKey, setHasSelectedKey] = useState<boolean | null>(null);
 
   useEffect(() => {
     const hasAccess = localStorage.getItem('nano_access_granted');
     if (hasAccess === 'true') {
       setIsAuthenticated(true);
     }
+    
+    const checkKey = async () => {
+      if ((window as any).aistudio) {
+        const selected = await (window as any).aistudio.hasSelectedApiKey();
+        setHasSelectedKey(selected);
+      } else {
+        setHasSelectedKey(true);
+      }
+    };
+    checkKey();
   }, []);
+
+  const handleOpenSelectKey = async () => {
+    if ((window as any).aistudio) {
+      await (window as any).aistudio.openSelectKey();
+      setHasSelectedKey(true);
+    }
+  };
 
   const confirmExternalNavigation = () => {
     if (pendingExternalUrl) {
@@ -216,7 +235,8 @@ const App: React.FC = () => {
       case ToolId.LiveNotetaker: return <LiveNotetaker />;
       case ToolId.BrandCollateral: return <BrandCollateralTool />;
       case ToolId.UGCAds: return <UGCAdsTool />;
-      case ToolId.Cipher: return <MagicTool />; 
+      /* Fix: Mapped ToolId.Cipher to CipherTool component. */
+      case ToolId.Cipher: return <CipherTool />; 
       case ToolId.Magic: return <MagicTool />;
       case ToolId.VideoGenerator: return <VideoGenerator />;
       case ToolId.Copywriter: return <CopywriterTool />;
@@ -325,6 +345,33 @@ const App: React.FC = () => {
   );
 
   if (!isAuthenticated) return <LoginGate onLogin={() => setIsAuthenticated(true)} />;
+
+  if (hasSelectedKey === false) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center space-y-6">
+        <div className="bg-amber-600 p-5 rounded-[2.5rem] shadow-2xl shadow-amber-900/20">
+          <Lock className="w-12 h-12 text-white" />
+        </div>
+        <div className="max-w-md space-y-3">
+          <h1 className="text-3xl font-black text-white uppercase tracking-tighter">API Key Required</h1>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            To access the AI Suite (including Veo Video, Pro Image, and Live Audio), you must select your own paid Google Gemini API key.
+          </p>
+        </div>
+        <div className="flex flex-col gap-4 w-full max-w-xs">
+          <button 
+            onClick={handleOpenSelectKey}
+            className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-black px-10 py-4 rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+          >
+            Select API Key
+          </button>
+          <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-500 hover:text-amber-400 font-bold uppercase tracking-widest underline underline-offset-4 transition-colors">
+            View Billing & Setup Guide
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Layout 

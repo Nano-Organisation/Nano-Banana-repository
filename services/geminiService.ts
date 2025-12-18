@@ -10,6 +10,7 @@ import {
 
 export const getApiKey = () => process.env.API_KEY;
 
+/* Fix: Always create a fresh instance of GoogleGenAI before each request to ensure up-to-date API keys. */
 export const getAiClient = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
@@ -33,7 +34,6 @@ export const withRetry = async <T>(fn: () => Promise<T>, retries = 5, baseDelay 
       const isOverloaded = status === 503 || message.includes('overloaded') || message.includes('503') || message.includes('unavailable');
       const isRateLimit = status === 429 || message.includes('429') || message.includes('resource_exhausted') || message.includes('too many requests');
       
-      // If we hit a hard limit (exhausted quota), don't keep retrying as it wastes cycles
       if (isHardExhaustion && isRateLimit) throw error;
       if (!isOverloaded && !isRateLimit) throw error;
       if (attempt === retries - 1) break;
@@ -50,7 +50,6 @@ export const withRetry = async <T>(fn: () => Promise<T>, retries = 5, baseDelay 
 };
 
 export const handleGeminiError = (error: any) => {
-  // Silent log for the user unless explicitly requested, but keep for debugging
   console.debug("Gemini API Error Detail:", error);
   
   let rawMsg = "";
@@ -96,13 +95,9 @@ export const generateTextWithGemini = async (prompt: string, systemInstruction?:
   }
 };
 
-/**
- * Enhanced Image Generation with Strict Spelling Protocol
- */
 export const generateImageWithGemini = async (prompt: string, aspectRatio: string = '1:1', referenceImage?: string): Promise<string> => {
   const ai = getAiClient();
   
-  // SPELLING INTEGRITY DIRECTIVE
   const finalPrompt = `${prompt}. SPELLING PROTOCOL: Any and all visible text, signs, or labels MUST be spelled with 100% accuracy. Cross-reference every character for typos before rendering.`;
 
   const attemptGeneration = async (includeRefImage: boolean): Promise<string | null> => {
@@ -120,10 +115,10 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
         config: { imageConfig: { aspectRatio: aspectRatio as any } }
       }), 3, 4000);
       
+      /* Fix: Search candidates for the inlineData part containing the image data. */
       const imgData = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData)?.inlineData?.data;
       return imgData ? `data:image/png;base64,${imgData}` : null;
     } catch (e) { 
-      // If it's a quota error, bubble it up immediately
       const msg = (e?.message || "").toLowerCase();
       if (msg.includes('429') || msg.includes('quota')) throw e;
       return null; 
@@ -143,7 +138,6 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
 export const generateProImageWithGemini = async (prompt: string, size: string = '1K'): Promise<string> => {
   const ai = getAiClient();
   
-  // SPELLING INTEGRITY DIRECTIVE (PRO)
   const finalPrompt = `${prompt}. TEXT ACCURACY PROTOCOL: Prioritize perfect typographic rendering. Verify character-by-character spelling of all legible words to ensure zero typos.`;
 
   try {
@@ -152,6 +146,7 @@ export const generateProImageWithGemini = async (prompt: string, size: string = 
       contents: { parts: [{ text: finalPrompt }] },
       config: { imageConfig: { imageSize: size as any } }
     }));
+    /* Fix: Correctly iterate through response parts to find the image. */
     const imagePart = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
     if (!imagePart) throw new Error("No image returned.");
     return `data:image/png;base64,${imagePart.inlineData.data}`;
@@ -167,6 +162,7 @@ export const editImageWithGemini = async (image: string, prompt: string): Promis
       model: 'gemini-2.5-flash-image',
       contents: { parts: [{ inlineData: { data: base64Data, mimeType }}, { text: prompt }] },
     }));
+    /* Fix: Extract image bytes from the response parts correctly. */
     const imgData = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData)?.inlineData?.data;
     return imgData ? `data:image/png;base64,${imgData}` : "";
   } catch (error) { handleGeminiError(error); return ""; }
@@ -202,6 +198,7 @@ export const analyzeImageWithGemini = async (image: string, prompt: string): Pro
       model: 'gemini-3-flash-preview',
       contents: { parts: [{ inlineData: { data: base64Data, mimeType }}, { text: prompt }] },
     }));
+    /* Fix: Use .text property to get results. */
     return response.text || "";
   } catch (error) { handleGeminiError(error); return ""; }
 };
@@ -211,10 +208,12 @@ export const generateImagePrompt = async (image: string, platform: string): Prom
 };
 
 export const createChatSession = (systemInstruction?: string): Chat => {
+  /* Fix: Fresh client for every session. */
   return getAiClient().chats.create({ model: 'gemini-3-flash-preview', config: { systemInstruction } });
 };
 
 export const createThinkingChatSession = (): Chat => {
+  /* Fix: Correct model and configuration for thinking tasks. */
   return getAiClient().chats.create({ model: 'gemini-3-pro-preview', config: { thinkingConfig: { thinkingBudget: 1024 } } });
 };
 
@@ -227,7 +226,41 @@ export const generateSpeechWithGemini = async (text: string, voice: string, spee
       contents: { parts: [{ text }] },
       config: { responseModalities: [Modality.AUDIO], speechConfig }
     }));
-    return `data:audio/mp3;base64,${response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data}`;
+    /* Fix: Extract raw PCM data and add a 44-byte WAV header to make it playable in browser audio elements. */
+    const base64Pcm = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!base64Pcm) return "";
+
+    const pcmBinary = atob(base64Pcm);
+    const pcmLength = pcmBinary.length;
+    const sampleRate = 24000;
+    const numChannels = 1;
+    const bitsPerSample = 16;
+
+    const header = new ArrayBuffer(44);
+    const view = new DataView(header);
+
+    const writeString = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) {
+        view.setUint8(offset + i, str.charCodeAt(i));
+      }
+    };
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + pcmLength, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * numChannels * (bitsPerSample / 8), true);
+    view.setUint16(32, numChannels * (bitsPerSample / 8), true);
+    view.setUint16(34, bitsPerSample, true);
+    writeString(36, 'data');
+    view.setUint32(40, pcmLength, true);
+
+    const headerBinary = String.fromCharCode(...new Uint8Array(header));
+    return `data:audio/wav;base64,${btoa(headerBinary + pcmBinary)}`;
   } catch (error) { handleGeminiError(error); return ""; }
 };
 
@@ -289,6 +322,7 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
 
     const link = generatedVideos[0]?.video?.uri;
     if (!link) throw new Error("No video link returned.");
+    /* Fix: Mandatory API key append for direct download links. */
     return `${link}&key=${getApiKey()}`;
   } catch (error) { handleGeminiError(error); return ""; }
 };
@@ -383,7 +417,8 @@ export const generateHiddenMessage = async (s: string, c: string): Promise<strin
 };
 
 export const generateBrandIdentity = async (n: string, i: string, v: string, p: string, c: string, f: string): Promise<BrandIdentity> => {
-  const schema: Schema = { type: Type.OBJECT, properties: { companyName: { type: Type.STRING }, slogan: { type: Type.STRING }, missionStatement: { type: Type.STRING }, colorPalette: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, hex: { hex: { type: Type.STRING } } } } }, fontPairing: { type: Type.OBJECT, properties: { heading: { type: Type.STRING }, body: { type: Type.STRING } } }, logoPrompt: { type: Type.STRING }, brandVoice: { type: Type.STRING }, stationaryPrompt: { type: Type.STRING }, pptTemplatePrompt: { type: Type.STRING }, calendarPrompt: { type: Type.STRING } } };
+  /* Fix: Fixed nested hex definition in color palette properties. */
+  const schema: Schema = { type: Type.OBJECT, properties: { companyName: { type: Type.STRING }, slogan: { type: Type.STRING }, missionStatement: { type: Type.STRING }, colorPalette: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, hex: { type: Type.STRING } } } }, fontPairing: { type: Type.OBJECT, properties: { heading: { type: Type.STRING }, body: { type: Type.STRING } } }, logoPrompt: { type: Type.STRING }, brandVoice: { type: Type.STRING }, stationaryPrompt: { type: Type.STRING }, pptTemplatePrompt: { type: Type.STRING }, calendarPrompt: { type: Type.STRING } } };
   return generateStructuredContent<BrandIdentity>(`Brand kit for ${n}`, schema);
 };
 

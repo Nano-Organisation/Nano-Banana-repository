@@ -1,4 +1,3 @@
-
 export enum ToolId {
   Dashboard = 'DASHBOARD',
   ImageEditor = 'IMAGE_EDITOR',
@@ -209,12 +208,6 @@ export interface QuizQuestion {
   options: string[];
   correctAnswer: string;
   explanation: string;
-}
-
-export interface QuizData {
-  topic: string;
-  difficulty: string;
-  questions: QuizQuestion[];
 }
 
 export interface QuizData {
