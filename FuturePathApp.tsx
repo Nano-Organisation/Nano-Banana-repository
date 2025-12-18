@@ -1,6 +1,4 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
-/* Fixed: Added Sparkles to lucide-react imports */
 import { 
   Briefcase, 
   TrendingUp, 

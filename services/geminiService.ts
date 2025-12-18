@@ -475,7 +475,7 @@ export const generateBabyDebateScript = async (topic: string, participants: Baby
 };
 
 export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: string, musicStyle: string, showCaptions: boolean, ratio: string): Promise<string> => {
-  const dialogueText = script.scriptLines.map(l => `${l.speaker}: "${l.text}"`).join(' ');
+  const dialogueActs = script.scriptLines.map((l, i) => `ACT ${i + 1} - SPEAKER: ${l.speaker} - LINE: "${l.text}"`).join('\n');
   const characterDescriptions = script.safeCharacterDescriptions 
     ? script.safeCharacterDescriptions.map(d => `${d.name}: ${d.description}`).join('; ') 
     : script.participants.map(p => p.name).join(' and ');
@@ -484,24 +484,24 @@ export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: 
   SCENE CAST:
   ${characterDescriptions}.
   
-  VISUAL CONTINUITY PROTOCOL:
-  1. Each name is a STATIC IDENTITY. 
-  2. Character A must NOT take the appearance, accessories, or position of Character B. 
-  3. Outfits and accessories (hats, sweaters, glasses) are LOCKED to the specific character name and must not morph or swap between frames.
+  CHRONOLOGICAL PRODUCTION TIMELINE:
+  This video is 10 SECONDS LONG. You MUST divide the time proportionally to speak the entire script below in EXACT SEQUENCE. 
+  The video MUST NOT end before the final word of the final ACT is spoken.
   
-  AUDIO AND SPEECH INSTRUCTIONS:
-  The characters MUST clearly speak the following transcript using cute toddler voices.
-  CRITICAL: Each character MUST ONLY speak their own lines as attributed in the transcript below. 
-  Only the character currently speaking should have mouth movements and be the focus of the camera.
+  TRANSCRIPT TO ANIMATE (STRICT SEQUENCE):
+  ${dialogueActs}
   
-  TRANSCRIPT:
-  ${dialogueText}
+  EXCLUSIVE SPEAKER PROTOCOL:
+  - Each ACT corresponds to one character speaking while the others are PHYSICALLY FROZEN in a "Listening State".
+  - During ACT X, ONLY the character specified in that ACT is allowed to move their mouth, lips, or tongue.
+  - While one character is speaking, the other character MUST remain silent with their MOUTH COMPLETELY CLOSED AND STATIC. No accidental mouth movement for the listener.
+  - Mouth animations must perfectly sync with the adorable toddler voices generated for each dialogue line.
   
-  ${showCaptions ? 'BURNED-IN SUBTITLES: You MUST overlay clear, synchronized hard-coded text subtitles at the bottom center of the video frame. These subtitles must be visible for every single word spoken by the characters.' : 'No text overlays or subtitles.'}
+  ${showCaptions ? 'BURNED-IN SUBTITLES: You MUST overlay clear, synchronized hard-coded text subtitles at the bottom center of the video frame. These subtitles must match the spoken words exactly and remain visible for the duration of the line.' : 'No text overlays.'}
   
-  Action: Expression-filled toddler discussion with mouth movements synced to the dialogue. Back-and-forth debate. 
-  Ensure the video is 10 SECONDS LONG to cover all dialogue. No real humans.
-  Music: ${musicStyle}.`;
+  Action: Expression-filled toddler discussion. Back-and-forth debate. 
+  Music: ${musicStyle}. 
+  Ensure the animation cadence is natural and the full 10-second duration is utilized.`;
 
   const images = script.participants.map(p => p.image).filter(Boolean) as string[];
   return generateVideoWithGemini(prompt, ratio, images.length > 0 ? images : undefined);

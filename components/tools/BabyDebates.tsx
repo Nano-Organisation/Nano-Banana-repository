@@ -221,8 +221,8 @@ const BabyDebates: React.FC = () => {
           
           {/* Topic Section */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xl">
-            <h3 className="text-[10px] font-bold text-slate-500 flex items-center gap-2 uppercase tracking-widest mb-3">
-               <MessageSquare className="w-3.5 h-3.5 text-sky-500" /> 1. The Argument
+            <h3 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2 uppercase tracking-widest mb-3">
+               <MessageSquare className="w-3.5 h-3.5 text-sky-500" /> 1. THE ARGUMENT
             </h3>
             <textarea 
                value={topic}
@@ -236,8 +236,8 @@ const BabyDebates: React.FC = () => {
           {/* Casting Section */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xl flex-1">
              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-[10px] font-bold text-slate-500 flex items-center gap-2 uppercase tracking-widest">
-                   <Users className="w-3.5 h-3.5 text-sky-500" /> 2. The Panel
+                <h3 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2 uppercase tracking-widest">
+                   <Users className="w-3.5 h-3.5 text-sky-500" /> 2. THE PANEL
                 </h3>
                 {!isScriptLocked && participants.length < 5 && (
                    <form onSubmit={addParticipant} className="flex gap-1">
@@ -266,7 +266,7 @@ const BabyDebates: React.FC = () => {
                            value={p.tone}
                            disabled={isScriptLocked}
                            onChange={(e) => updateParticipantTone(i, e.target.value)}
-                           className="w-full bg-transparent border-none p-0 text-[10px] text-slate-500 focus:outline-none cursor-pointer hover:text-sky-400 disabled:cursor-not-allowed"
+                           className="w-full bg-transparent border-none p-0 text-[10px] text-slate-500 dark:text-slate-400 focus:outline-none cursor-pointer hover:text-sky-400 disabled:cursor-not-allowed"
                          >
                            {SPEAKER_TONES.map(t => <option key={t} value={t} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t}</option>)}
                          </select>
@@ -293,7 +293,7 @@ const BabyDebates: React.FC = () => {
              <input type="file" ref={fileRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
              <div className="mt-4 p-3 bg-blue-500/5 dark:bg-blue-900/10 border border-blue-500/20 rounded-xl">
                 <p className="text-[9px] text-blue-600 dark:text-blue-400 font-bold uppercase leading-tight">
-                   Pro Tip: Avoid real names to bypass likeness safety filters. Try role descriptions (e.g., "The Giant Tech CEO") for a 100% success rate.
+                   PRO TIP: AVOID REAL NAMES TO BYPASS LIKENESS SAFETY FILTERS. TRY ROLE DESCRIPTIONS (E.G., "THE GIANT TECH CEO") FOR A 100% SUCCESS RATE.
                 </p>
              </div>
           </div>
@@ -304,7 +304,7 @@ const BabyDebates: React.FC = () => {
             className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-900 dark:text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all border border-slate-200 dark:border-slate-700 mt-2"
           >
             {status === 'loading' && stage === 'scripting' ? <RefreshCw className="animate-spin w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
-            RE-GENERATE SCRIPT
+            {scriptData ? 'RE-GENERATE SCRIPT' : 'WRITE SCRIPT'}
           </button>
         </div>
 
@@ -315,7 +315,7 @@ const BabyDebates: React.FC = () => {
               
               {/* VIDEO PLAYER AREA */}
               <div className="flex flex-col gap-4">
-                <div className={`bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center justify-center relative ${aspectRatio === '9:16' ? 'aspect-[9/16] max-w-[320px] mx-auto' : 'aspect-video'}`}>
+                <div className={`bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center justify-center relative ${aspectRatio === '9:16' ? 'aspect-[9/16] max-w-[320px] mx-auto' : 'aspect-video'}`}>
                   {status === 'loading' && stage === 'rendering' ? (
                     <div className="text-center p-6 space-y-4">
                         <div className="relative mx-auto w-10 h-10">
@@ -361,19 +361,19 @@ const BabyDebates: React.FC = () => {
                  
                  {/* Production Settings */}
                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xl">
-                    <h3 className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-3"><Sliders className="w-3 h-3"/> Studio Config</h3>
+                    <h3 className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-3"><Sliders className="w-3 h-3"/> STUDIO CONFIG</h3>
                     
                     <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                        <div className="flex flex-col gap-1">
-                          <span className="text-[9px] text-slate-500 flex items-center gap-1 font-bold uppercase"><Music className="w-2.5 h-2.5"/> Audio Track</span>
+                          <span className="text-[9px] text-slate-500 dark:text-slate-400 flex items-center gap-1 font-bold uppercase"><Music className="w-2.5 h-2.5"/> AUDIO TRACK</span>
                           <select value={selectedMusic} onChange={e => setSelectedMusic(e.target.value)} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded text-slate-900 dark:text-white px-2 py-1 outline-none text-[10px]">
                              {MUSIC_STYLES.map(m => <option key={m}>{m}</option>)}
                           </select>
                        </div>
 
                        <div className="flex flex-col gap-1">
-                          <span className="text-[9px] text-slate-500 flex items-center gap-1 font-bold uppercase"><Monitor className="w-2.5 h-2.5"/> Aspect</span>
-                          <div className="flex bg-slate-50 dark:bg-slate-950 rounded p-0.5 border border-slate-200 dark:border-slate-800">
+                          <span className="text-[9px] text-slate-500 dark:text-slate-400 flex items-center gap-1 font-bold uppercase"><Monitor className="w-2.5 h-2.5"/> ASPECT</span>
+                          <div className="flex bg-slate-100 dark:bg-slate-950 rounded p-0.5 border border-slate-200 dark:border-slate-800">
                              <button 
                                 onClick={() => setAspectRatio('16:9')} 
                                 className={`flex-1 py-0.5 rounded text-[9px] font-bold ${aspectRatio === '16:9' ? 'bg-sky-600 text-white' : 'text-slate-400 dark:text-slate-500'}`}
@@ -392,18 +392,18 @@ const BabyDebates: React.FC = () => {
                        </div>
 
                        <div className="flex flex-col gap-1">
-                          <span className="text-[9px] text-slate-500 flex items-center gap-1 font-bold uppercase"><Palette className="w-2.5 h-2.5"/> Visual Filter</span>
+                          <span className="text-[9px] text-slate-500 dark:text-slate-400 flex items-center gap-1 font-bold uppercase"><Palette className="w-2.5 h-2.5"/> VISUAL FILTER</span>
                           <select value={selectedStyle} onChange={e => setSelectedStyle(e.target.value)} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded text-slate-900 dark:text-white px-2 py-1 outline-none text-[10px]">
                              {VISUAL_STYLES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                           </select>
                        </div>
 
                        <div className="flex flex-col gap-1">
-                          <span className="text-[9px] text-slate-500 flex items-center gap-1 font-bold uppercase"><Type className="w-2.5 h-2.5"/> Subtitles</span>
+                          <span className="text-[9px] text-slate-500 dark:text-slate-400 flex items-center gap-1 font-bold uppercase"><Type className="w-2.5 h-2.5"/> SUBTITLES</span>
                           <button onClick={() => setShowCaptions(!showCaptions)} className={`w-full h-5 rounded relative transition-all border border-slate-200 dark:border-slate-800 ${showCaptions ? 'bg-sky-100 dark:bg-sky-900/30' : 'bg-slate-50 dark:bg-slate-950'}`}>
                              <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded transition-all ${showCaptions ? 'translate-x-[calc(100%-8px)] bg-sky-500' : 'translate-x-0 bg-slate-300 dark:bg-slate-700'}`}></div>
-                             <span className={`text-[8px] font-bold uppercase absolute inset-0 flex items-center justify-center pointer-events-none ${showCaptions ? 'text-sky-700 dark:text-sky-300' : 'text-slate-400 dark:text-slate-600'}`}>
-                                {showCaptions ? 'Enabled' : 'Disabled'}
+                             <span className={`text-[8px] font-bold uppercase absolute inset-0 flex items-center justify-center pointer-events-none ${showCaptions ? 'text-sky-700 dark:text-sky-300' : 'text-slate-400 dark:text-slate-500'}`}>
+                                {showCaptions ? 'ENABLED' : 'DISABLED'}
                              </span>
                           </button>
                        </div>
@@ -411,24 +411,24 @@ const BabyDebates: React.FC = () => {
                  </div>
 
                  {/* Dialogue Feed / Script Editor */}
-                 <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex-1 overflow-hidden flex flex-col shadow-inner min-h-[250px]">
+                 <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex-1 overflow-hidden flex flex-col shadow-inner min-h-[250px]">
                     <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2 mb-3">
-                       <h4 className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1"><Volume2 className="w-3 h-3"/> Transcript_Output</h4>
+                       <h4 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1"><Volume2 className="w-3 h-3"/> TRANSCRIPT_OUTPUT</h4>
                        {scriptData && (
                           <div className="flex gap-2">
                              {isScriptLocked ? (
                                 <button 
                                    onClick={handleUnlockScript}
-                                   className="text-[9px] font-black text-amber-500 hover:text-amber-400 uppercase flex items-center gap-1 transition-colors"
+                                   className="text-[9px] font-black text-amber-500 hover:text-amber-600 dark:hover:text-amber-400 uppercase flex items-center gap-1 transition-colors"
                                 >
-                                   <Unlock className="w-2.5 h-2.5" /> Edit Script
+                                   <Unlock className="w-2.5 h-2.5" /> EDIT SCRIPT
                                 </button>
                              ) : (
                                 <button 
                                    onClick={handleSaveScript}
-                                   className="text-[9px] font-black text-green-500 hover:text-green-400 uppercase flex items-center gap-1 transition-colors"
+                                   className="text-[9px] font-black text-sky-600 hover:text-sky-700 dark:text-sky-500 dark:hover:text-sky-400 uppercase flex items-center gap-1 transition-colors"
                                 >
-                                   <Save className="w-2.5 h-2.5" /> Lock & Save
+                                   <Save className="w-2.5 h-2.5" /> SAVE CHANGES
                                 </button>
                              )}
                           </div>
@@ -439,15 +439,15 @@ const BabyDebates: React.FC = () => {
                           {editableLines.map((line, idx) => (
                              <div key={idx} className="space-y-1 group">
                                 <div className="flex items-center justify-between">
-                                   <span className="text-[8px] font-black text-sky-500 uppercase block">{line.speaker}</span>
-                                   {!isScriptLocked && <Edit2 className="w-2 h-2 text-slate-300 dark:text-slate-700 opacity-0 group-hover:opacity-100" />}
+                                   <span className="text-[8px] font-black text-sky-600 dark:text-sky-500 uppercase block">{line.speaker}</span>
+                                   {!isScriptLocked && <Edit2 className="w-2 h-2 text-slate-400 dark:text-slate-700 opacity-0 group-hover:opacity-100" />}
                                 </div>
                                 <textarea 
                                    value={line.text}
                                    readOnly={isScriptLocked}
                                    onChange={(e) => handleUpdateLine(idx, e.target.value)}
                                    rows={2}
-                                   className={`w-full border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-[10px] text-slate-700 dark:text-slate-300 leading-tight focus:outline-none focus:border-sky-500 resize-none font-sans transition-colors ${isScriptLocked ? 'bg-slate-100 dark:bg-slate-800 opacity-80' : 'bg-white dark:bg-slate-900'}`}
+                                   className={`w-full border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-[10px] text-slate-800 dark:text-slate-300 leading-tight focus:outline-none focus:border-sky-500 resize-none font-sans transition-colors ${isScriptLocked ? 'bg-slate-100 dark:bg-slate-800 opacity-80' : 'bg-white dark:bg-slate-900'}`}
                                    placeholder="Edit dialogue..."
                                 />
                              </div>
@@ -468,7 +468,7 @@ const BabyDebates: React.FC = () => {
               <div className="space-y-3">
                  {!isScriptLocked && (
                     <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl flex items-center gap-2 text-amber-600 dark:text-amber-500 text-[10px] font-bold uppercase">
-                       <AlertCircle className="w-3.5 h-3.5" /> Lock script above to produce video
+                       <AlertCircle className="w-3.5 h-3.5" /> LOCK SCRIPT ABOVE TO PRODUCE VIDEO
                     </div>
                  )}
                  <button 
