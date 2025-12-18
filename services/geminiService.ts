@@ -29,18 +29,14 @@ export const withRetry = async <T>(fn: () => Promise<T>, retries = 5, baseDelay 
                      
       const message = (error.message || JSON.stringify(error) || "").toLowerCase();
       
-      // Determine if this is an "Exhausted" error (Daily/Billing) vs a "Rate" error (temporary speed)
       const isHardExhaustion = message.includes('quota') || message.includes('billing') || message.includes('plan');
       const isOverloaded = status === 503 || message.includes('overloaded') || message.includes('503') || message.includes('unavailable');
       const isRateLimit = status === 429 || message.includes('429') || message.includes('resource_exhausted') || message.includes('too many requests');
       
-      // If it's a "Hard" exhaustion (billing/daily limit), stop retrying immediately
       if (isHardExhaustion && isRateLimit) throw error;
-      
       if (!isOverloaded && !isRateLimit) throw error;
       if (attempt === retries - 1) break;
       
-      // Exponential backoff
       const multiplier = isRateLimit ? 5 : 2;
       const backoff = baseDelay * Math.pow(multiplier, attempt); 
       const jitter = Math.random() * 1000;
@@ -65,7 +61,6 @@ export const handleGeminiError = (error: any) => {
   
   const msg = rawMsg.toLowerCase();
   
-  // High-precision error identification
   if (msg.includes('429') || msg.includes('quota') || msg.includes('resource_exhausted')) {
      if (msg.includes('billing') || msg.includes('plan')) {
         throw new Error("Billing Issue: Your Google Cloud project has no active billing or has reached its budget. Enable billing at console.cloud.google.com to continue.");
@@ -99,8 +94,15 @@ export const generateTextWithGemini = async (prompt: string, systemInstruction?:
   }
 };
 
+/**
+ * Enhanced Image Generation with Strict Spelling Protocol
+ */
 export const generateImageWithGemini = async (prompt: string, aspectRatio: string = '1:1', referenceImage?: string): Promise<string> => {
   const ai = getAiClient();
+  
+  // SPELLING INTEGRITY DIRECTIVE
+  const finalPrompt = `${prompt}. SPELLING PROTOCOL: Any and all visible text, signs, or labels MUST be spelled with 100% accuracy. Cross-reference every character for typos before rendering.`;
+
   const attemptGeneration = async (includeRefImage: boolean): Promise<string | null> => {
     try {
       const parts: any[] = [];
@@ -109,7 +111,7 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
         const mimeType = referenceImage.split(';')[0].split(':')[1];
         parts.push({ inlineData: { mimeType, data: base64Data } });
       }
-      parts.push({ text: prompt });
+      parts.push({ text: finalPrompt });
       const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts },
@@ -128,10 +130,14 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
 
 export const generateProImageWithGemini = async (prompt: string, size: string = '1K'): Promise<string> => {
   const ai = getAiClient();
+  
+  // SPELLING INTEGRITY DIRECTIVE (PRO)
+  const finalPrompt = `${prompt}. TEXT ACCURACY PROTOCOL: Prioritize perfect typographic rendering. Verify character-by-character spelling of all legible words to ensure zero typos.`;
+
   try {
     const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: 'gemini-3-pro-image-preview',
-      contents: { parts: [{ text: prompt }] },
+      contents: { parts: [{ text: finalPrompt }] },
       config: { imageConfig: { imageSize: size as any } }
     }));
     const imagePart = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
@@ -475,6 +481,7 @@ export const generateBabyDebateScript = async (topic: string, participants: Baby
 };
 
 export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: string, musicStyle: string, showCaptions: boolean, ratio: string): Promise<string> => {
+  // Format script into discrete, timed units for the video model
   const dialogueActs = script.scriptLines.map((l, i) => `ACT ${i + 1} - SPEAKER: ${l.speaker} - LINE: "${l.text}"`).join('\n');
   const characterDescriptions = script.safeCharacterDescriptions 
     ? script.safeCharacterDescriptions.map(d => `${d.name}: ${d.description}`).join('; ') 
@@ -492,10 +499,10 @@ export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: 
   ${dialogueActs}
   
   EXCLUSIVE SPEAKER PROTOCOL:
-  - Each ACT corresponds to one character speaking while the others are PHYSICALLY FROZEN in a "Listening State".
+  - Each ACT corresponds to one character speaking while the others are PHYSICALLY FROZEN in a "Static Listening State".
   - During ACT X, ONLY the character specified in that ACT is allowed to move their mouth, lips, or tongue.
   - While one character is speaking, the other character MUST remain silent with their MOUTH COMPLETELY CLOSED AND STATIC. No accidental mouth movement for the listener.
-  - Mouth animations must perfectly sync with the adorable toddler voices generated for each dialogue line.
+  - Mouth animations must start EXACTLY when the audio for their line begins and stop IMMEDIATELY when it ends.
   
   ${showCaptions ? 'BURNED-IN SUBTITLES: You MUST overlay clear, synchronized hard-coded text subtitles at the bottom center of the video frame. These subtitles must match the spoken words exactly and remain visible for the duration of the line.' : 'No text overlays.'}
   
