@@ -437,7 +437,8 @@ export const analyzeVideoCharacters = async (f: string): Promise<string> => {
 export const generateBabyTransformation = (f: string, a: string) => generateVideoWithGemini(`Toddler version. ${a}.`, '9:16', f);
 
 export const generateBabyDebateScript = async (topic: string, participants: BabyDebateParticipant[]): Promise<BabyDebateScript> => {
-  const prompt = `Generate a funny toddler debate script about: ${topic}. 
+  const prompt = `Generate a funny, VERY SHORT toddler debate script about: ${topic}. 
+  CRITICAL: Keep dialogue to MAXIMUM 2 lines per character. Total script length under 40 words.
   Characters: ${participants.map(p => `${p.name} (Tone: ${p.tone})`).join(', ')}.
   Include a scene description and descriptive visual archetypes.`;
   
@@ -483,10 +484,15 @@ export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: 
   Characters: ${characterDescriptions}.
   
   AUDIO AND SPEECH INSTRUCTIONS:
-  The characters MUST clearly speak the following transcript using cute toddler voices:
+  The characters MUST clearly speak the following transcript using cute toddler voices.
+  CRITICAL: Each character MUST ONLY speak their own lines as attributed in the transcript below. 
+  Only the character currently speaking should have mouth movements and be the focus of the camera.
+  
+  TRANSCRIPT:
   ${dialogueText}
   
-  Action: Expression-filled toddler discussion with mouth movements synced to the dialogue. No real humans.
+  Action: Expression-filled toddler discussion with mouth movements synced to the dialogue. Back-and-forth debate. 
+  Ensure the video is 10 SECONDS LONG to cover all dialogue. No real humans.
   Music: ${musicStyle}.`;
 
   const images = script.participants.map(p => p.image).filter(Boolean) as string[];
