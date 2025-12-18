@@ -159,7 +159,7 @@ export const generateBatchImages = async (prompt: string, count: number): Promis
   for (let i = 0; i < count; i++) {
     const img = await generateImageWithGemini(prompt);
     if (img) results.push(img);
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, 200));
   }
   return results;
 };
@@ -440,7 +440,7 @@ export const generateBabyDebateScript = async (topic: string, participants: Baby
   const prompt = `Generate a funny, VERY SHORT toddler debate script about: ${topic}. 
   CRITICAL: Keep dialogue to MAXIMUM 2 lines per character. Total script length under 40 words.
   Characters: ${participants.map(p => `${p.name} (Tone: ${p.tone})`).join(', ')}.
-  Include a scene description and descriptive visual archetypes.`;
+  Include a scene description and EXTREMELY DISTINCT high-contrast visual archetypes for each participant (e.g., unique clothing colors, distinct accessories like a flat cap or a specific patterned sweater, unique hair colors).`;
   
   const schema: Schema = { 
     type: Type.OBJECT, 
@@ -477,11 +477,17 @@ export const generateBabyDebateScript = async (topic: string, participants: Baby
 export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: string, musicStyle: string, showCaptions: boolean, ratio: string): Promise<string> => {
   const dialogueText = script.scriptLines.map(l => `${l.speaker}: "${l.text}"`).join(' ');
   const characterDescriptions = script.safeCharacterDescriptions 
-    ? script.safeCharacterDescriptions.map(d => d.description).join(' and ') 
+    ? script.safeCharacterDescriptions.map(d => `${d.name}: ${d.description}`).join('; ') 
     : script.participants.map(p => p.name).join(' and ');
 
   const prompt = `High-end 3D toddler animation. Visual Style: ${style}. ${script.visualContext}. 
-  Characters: ${characterDescriptions}.
+  SCENE CAST:
+  ${characterDescriptions}.
+  
+  VISUAL CONTINUITY PROTOCOL:
+  1. Each name is a STATIC IDENTITY. 
+  2. Character A must NOT take the appearance, accessories, or position of Character B. 
+  3. Outfits and accessories (hats, sweaters, glasses) are LOCKED to the specific character name and must not morph or swap between frames.
   
   AUDIO AND SPEECH INSTRUCTIONS:
   The characters MUST clearly speak the following transcript using cute toddler voices.
@@ -490,6 +496,8 @@ export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: 
   
   TRANSCRIPT:
   ${dialogueText}
+  
+  ${showCaptions ? 'BURNED-IN SUBTITLES: You MUST overlay clear, synchronized hard-coded text subtitles at the bottom center of the video frame. These subtitles must be visible for every single word spoken by the characters.' : 'No text overlays or subtitles.'}
   
   Action: Expression-filled toddler discussion with mouth movements synced to the dialogue. Back-and-forth debate. 
   Ensure the video is 10 SECONDS LONG to cover all dialogue. No real humans.

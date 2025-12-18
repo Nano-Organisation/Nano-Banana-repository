@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, RefreshCw, Play, Download, AlertCircle, MessageSquare, Wand2, UserPlus, X, Baby, Sliders, Camera, Music, Type, Monitor, Smartphone, Volume2, Stars, Palette, CheckCircle2, Lock, FileText } from 'lucide-react';
+import { Users, RefreshCw, Play, Download, AlertCircle, MessageSquare, Wand2, UserPlus, X, Baby, Sliders, Camera, Music, Type, Monitor, Smartphone, Volume2, Stars, Palette, CheckCircle2, Lock, FileText, Save, Edit2, Unlock } from 'lucide-react';
 import { generateBabyDebateScript, generateTalkingBabyVideo } from '../../services/geminiService';
 import { LoadingState, BabyDebateScript, BabyDebateParticipant } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
@@ -36,6 +35,8 @@ const BabyDebates: React.FC = () => {
   const [showCaptions, setShowCaptions] = useState(true);
   
   const [scriptData, setScriptData] = useState<BabyDebateScript | null>(null);
+  const [editableLines, setEditableLines] = useState<{ speaker: string, text: string }[]>([]);
+  const [isScriptLocked, setIsScriptLocked] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<LoadingState>('idle');
   const [stage, setStage] = useState<'idle' | 'scripting' | 'rendering' | 'done'>('idle');
@@ -70,24 +71,28 @@ const BabyDebates: React.FC = () => {
   const addParticipant = (e?: React.FormEvent) => {
     if (e) {
       e.preventDefault();
+      e.stopPropagation();
     }
     
-    if (newParticipantName.trim() && participants.length < 5) {
-      setParticipants(prev => [...prev, { name: newParticipantName.trim(), tone: SPEAKER_TONES[0] }]);
+    if (isScriptLocked) return;
+
+    setParticipants(prev => {
+      if (prev.length >= 5) return prev;
+      
+      const nameToAdd = newParticipantName.trim() || `Baby ${prev.length + 1}`;
       setNewParticipantName('');
-    }
+      return [...prev, { name: nameToAdd, tone: SPEAKER_TONES[0] }];
+    });
   };
 
   const removeParticipant = (index: number) => {
-    setParticipants(participants.filter((_, i) => i !== index));
+    if (isScriptLocked) return;
+    setParticipants(prev => prev.filter((_, i) => i !== index));
   };
 
   const updateParticipantTone = (index: number, tone: string) => {
-    const next = [...participants];
-    if (next[index]) {
-       next[index].tone = tone;
-       setParticipants(next);
-    }
+    if (isScriptLocked) return;
+    setParticipants(prev => prev.map((p, i) => i === index ? { ...p, tone } : p));
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,12 +102,10 @@ const BabyDebates: React.FC = () => {
         await runFileSecurityChecks(file, 'image');
         const reader = new FileReader();
         reader.onload = () => {
-           const next = [...participants];
-           if (next[uploadIndex]) {
-              next[uploadIndex].image = reader.result as string;
-              setParticipants(next);
-              setAspectRatio('16:9');
-           }
+           setParticipants(prev => prev.map((p, i) => 
+              i === uploadIndex ? { ...p, image: reader.result as string } : p
+           ));
+           setAspectRatio('16:9');
         };
         reader.readAsDataURL(file);
       } catch (err: any) { alert(err.message); }
@@ -117,6 +120,7 @@ const BabyDebates: React.FC = () => {
     setErrorMessage('');
     setScriptData(null);
     setVideoUrl(null);
+    setIsScriptLocked(false);
 
     try {
       const script = await generateBabyDebateScript(topic, participants);
@@ -124,6 +128,7 @@ const BabyDebates: React.FC = () => {
          throw new Error("The AI failed to generate a valid script. Please try a different topic.");
       }
       setScriptData(script);
+      setEditableLines(script.scriptLines.map(l => ({ ...l })));
       setStatus('success');
       setStage('idle');
     } catch (e: any) {
@@ -132,8 +137,28 @@ const BabyDebates: React.FC = () => {
     }
   };
 
-  const handleRenderVideo = async () => {
+  const handleUpdateLine = (index: number, text: string) => {
+    if (isScriptLocked) return;
+    const next = [...editableLines];
+    next[index].text = text;
+    setEditableLines(next);
+  };
+
+  const handleSaveScript = () => {
     if (!scriptData) return;
+    setScriptData({
+      ...scriptData,
+      scriptLines: editableLines.map(l => ({ ...l }))
+    });
+    setIsScriptLocked(true);
+  };
+
+  const handleUnlockScript = () => {
+    setIsScriptLocked(false);
+  };
+
+  const handleRenderVideo = async () => {
+    if (!scriptData || !isScriptLocked) return;
     
     const aiStudio = getAIStudio();
     if (aiStudio && !(await aiStudio.hasSelectedApiKey())) {
@@ -174,11 +199,11 @@ const BabyDebates: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in font-sans pb-12">
       {/* Compact Header */}
-      <div className="flex flex-col md:flex-row items-center justify-between border-b border-slate-800 pb-4 gap-4">
+      <div className="flex flex-col md:flex-row items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
         <div className="flex items-center gap-3">
           <Baby className="w-10 h-10 text-sky-500" />
           <div>
-             <h2 className="text-3xl font-black text-white tracking-tighter uppercase">AI_Baby_Debates</h2>
+             <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">AI_Baby_Debates</h2>
              <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em]">Dialogue Simulation Module</p>
           </div>
         </div>
@@ -195,31 +220,32 @@ const BabyDebates: React.FC = () => {
         <div className="lg:col-span-4 space-y-4 flex flex-col">
           
           {/* Topic Section */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xl">
             <h3 className="text-[10px] font-bold text-slate-500 flex items-center gap-2 uppercase tracking-widest mb-3">
                <MessageSquare className="w-3.5 h-3.5 text-sky-500" /> 1. The Argument
             </h3>
             <textarea 
                value={topic}
+               readOnly={isScriptLocked}
                onChange={(e) => setTopic(e.target.value)}
-               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-sm focus:outline-none focus:ring-1 focus:ring-sky-500 h-20 resize-none transition-all"
+               className={`w-full border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-1 focus:ring-sky-500 h-20 resize-none transition-all ${isScriptLocked ? 'bg-slate-100 dark:bg-slate-800 opacity-60' : 'bg-slate-50 dark:bg-slate-950'}`}
                placeholder="What are the babies fighting over?"
             />
           </div>
 
           {/* Casting Section */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex-1">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xl flex-1">
              <div className="flex justify-between items-center mb-4">
                 <h3 className="text-[10px] font-bold text-slate-500 flex items-center gap-2 uppercase tracking-widest">
                    <Users className="w-3.5 h-3.5 text-sky-500" /> 2. The Panel
                 </h3>
-                {participants.length < 5 && (
+                {!isScriptLocked && participants.length < 5 && (
                    <form onSubmit={addParticipant} className="flex gap-1">
                       <input 
                         value={newParticipantName}
                         onChange={(e) => setNewParticipantName(e.target.value)}
                         placeholder="Add name..."
-                        className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[10px] text-white focus:outline-none focus:border-sky-500 w-24"
+                        className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-[10px] text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 w-24"
                       />
                       <button 
                         type="submit"
@@ -233,36 +259,40 @@ const BabyDebates: React.FC = () => {
 
              <div className="space-y-2">
                 {participants.map((p, i) => p && (
-                   <div key={i} className="bg-slate-950/50 border border-slate-800 rounded-xl p-2.5 flex items-center gap-3 transition-colors hover:border-slate-700">
+                   <div key={i} className={`border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 flex items-center gap-3 transition-colors ${isScriptLocked ? 'bg-slate-100 dark:bg-slate-800/50' : 'bg-slate-50 dark:bg-slate-950/50 hover:border-slate-300 dark:hover:border-slate-700'}`}>
                       <div className="flex-1 min-w-0">
-                         <div className="font-bold text-white text-xs truncate">{p.name}</div>
+                         <div className="font-bold text-slate-900 dark:text-white text-xs truncate">{p.name}</div>
                          <select 
                            value={p.tone}
+                           disabled={isScriptLocked}
                            onChange={(e) => updateParticipantTone(i, e.target.value)}
-                           className="w-full bg-transparent border-none p-0 text-[10px] text-slate-500 focus:outline-none cursor-pointer hover:text-sky-400"
+                           className="w-full bg-transparent border-none p-0 text-[10px] text-slate-500 focus:outline-none cursor-pointer hover:text-sky-400 disabled:cursor-not-allowed"
                          >
-                           {SPEAKER_TONES.map(t => <option key={t} value={t} className="bg-slate-900">{t}</option>)}
+                           {SPEAKER_TONES.map(t => <option key={t} value={t} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t}</option>)}
                          </select>
                       </div>
                       
                       <div className="flex items-center gap-1">
                          <button 
-                           onClick={() => { setUploadIndex(i); fileRef.current?.click(); }}
-                           className={`p-1.5 rounded-lg transition-all ${p.image ? 'text-green-500 bg-green-500/10' : 'text-slate-600 bg-slate-800 hover:text-sky-500'}`}
+                           onClick={() => { if (!isScriptLocked) { setUploadIndex(i); fileRef.current?.click(); } }}
+                           disabled={isScriptLocked}
+                           className={`p-1.5 rounded-lg transition-all ${p.image ? 'text-green-500 bg-green-500/10' : 'text-slate-400 dark:text-slate-600 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:text-sky-500 disabled:opacity-30'}`}
                            title="Upload Likeness (Optional)"
                          >
                             {p.image ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Camera className="w-3.5 h-3.5" />}
                          </button>
-                         <button onClick={() => removeParticipant(i)} className="p-1.5 bg-slate-800 rounded-lg text-slate-600 hover:text-red-500 transition-colors">
-                            <X className="w-3.5 h-3.5" />
-                         </button>
+                         {!isScriptLocked && (
+                            <button onClick={() => removeParticipant(i)} className="p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 hover:text-red-500 transition-colors rounded-lg">
+                               <X className="w-3.5 h-3.5" />
+                            </button>
+                         )}
                       </div>
                    </div>
                 ))}
              </div>
              <input type="file" ref={fileRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
-             <div className="mt-4 p-3 bg-blue-900/10 border border-blue-500/20 rounded-xl">
-                <p className="text-[9px] text-blue-400 font-bold uppercase leading-tight">
+             <div className="mt-4 p-3 bg-blue-500/5 dark:bg-blue-900/10 border border-blue-500/20 rounded-xl">
+                <p className="text-[9px] text-blue-600 dark:text-blue-400 font-bold uppercase leading-tight">
                    Pro Tip: Avoid real names to bypass likeness safety filters. Try role descriptions (e.g., "The Giant Tech CEO") for a 100% success rate.
                 </p>
              </div>
@@ -271,10 +301,10 @@ const BabyDebates: React.FC = () => {
           <button
             onClick={handleGenerateScript}
             disabled={!topic.trim() || participants.length === 0 || status === 'loading'}
-            className="w-full bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all border border-slate-700 mt-2"
+            className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-900 dark:text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all border border-slate-200 dark:border-slate-700 mt-2"
           >
             {status === 'loading' && stage === 'scripting' ? <RefreshCw className="animate-spin w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
-            WRITE SCRIPT
+            RE-GENERATE SCRIPT
           </button>
         </div>
 
@@ -284,67 +314,76 @@ const BabyDebates: React.FC = () => {
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
               
               {/* VIDEO PLAYER AREA */}
-              <div className={`bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center justify-center relative ${aspectRatio === '9:16' ? 'aspect-[9/16] max-w-[320px] mx-auto' : 'aspect-video'}`}>
-                {status === 'loading' && stage === 'rendering' ? (
-                   <div className="text-center p-6 space-y-4">
-                      <div className="relative mx-auto w-10 h-10">
-                         <div className="absolute inset-0 border-2 border-sky-500/20 border-t-sky-500 rounded-full animate-spin"></div>
-                         <div className="absolute inset-0 flex items-center justify-center">
-                            <Baby className="w-3 h-3 text-sky-500 animate-pulse" />
-                         </div>
-                      </div>
-                      <p className="text-sky-400 font-bold uppercase tracking-widest text-[8px]">Synthesizing Caricatures...</p>
-                      <p className="text-slate-600 text-[8px] animate-pulse">Running safety-compliant video pipeline</p>
-                   </div>
-                ) : errorMessage ? (
-                   <div className="text-center p-6 space-y-3">
-                      <AlertCircle className="w-8 h-8 text-red-500 mx-auto" />
-                      <p className="text-slate-500 text-[10px] leading-relaxed px-4">{errorMessage}</p>
-                      <button onClick={() => setStatus('idle')} className="text-sky-500 font-bold text-[10px] uppercase underline">Reset Configuration</button>
-                   </div>
-                ) : videoUrl ? (
-                   <div className="w-full h-full relative group">
-                      <video src={videoUrl} className="w-full h-full object-cover" controls autoPlay loop playsInline />
-                      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <a href={videoUrl} download="ai-debate.mp4" className="bg-black/60 hover:bg-sky-600 text-white p-2 rounded-full backdrop-blur-md block shadow-xl"><Download className="w-4 h-4" /></a>
-                      </div>
-                   </div>
-                ) : (
-                   <div className="text-center opacity-10 p-8">
-                      <Play className="w-12 h-12 mx-auto mb-2" />
-                      <p className="text-[10px] font-black uppercase tracking-widest">Simulator Result</p>
-                   </div>
-                )}
+              <div className="flex flex-col gap-4">
+                <div className={`bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center justify-center relative ${aspectRatio === '9:16' ? 'aspect-[9/16] max-w-[320px] mx-auto' : 'aspect-video'}`}>
+                  {status === 'loading' && stage === 'rendering' ? (
+                    <div className="text-center p-6 space-y-4">
+                        <div className="relative mx-auto w-10 h-10">
+                          <div className="absolute inset-0 border-2 border-sky-500/20 border-t-sky-500 rounded-full animate-spin"></div>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                              <Baby className="w-3 h-3 text-sky-500 animate-pulse" />
+                          </div>
+                        </div>
+                        <p className="text-sky-600 dark:text-sky-400 font-bold uppercase tracking-widest text-[8px]">Synthesizing Caricatures...</p>
+                        <p className="text-slate-500 dark:text-slate-600 text-[8px] animate-pulse">Running safety-compliant video pipeline</p>
+                    </div>
+                  ) : errorMessage ? (
+                    <div className="text-center p-6 space-y-3">
+                        <AlertCircle className="w-8 h-8 text-red-500 mx-auto" />
+                        <p className="text-slate-600 dark:text-slate-500 text-[10px] leading-relaxed px-4">{errorMessage}</p>
+                        <button onClick={() => setStatus('idle')} className="text-sky-500 font-bold text-[10px] uppercase underline">Reset Configuration</button>
+                    </div>
+                  ) : videoUrl ? (
+                    <div className="w-full h-full relative group">
+                        <video src={videoUrl} className="w-full h-full object-cover" controls autoPlay loop playsInline />
+                        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <a href={videoUrl} download="ai-debate.mp4" className="bg-black/60 hover:bg-sky-600 text-white p-2 rounded-full backdrop-blur-md block shadow-xl"><Download className="w-4 h-4" /></a>
+                        </div>
+                    </div>
+                  ) : (
+                    <div className="text-center opacity-10 p-8 text-slate-900 dark:text-white">
+                        <Play className="w-12 h-12 mx-auto mb-2" />
+                        <p className="text-[10px] font-black uppercase tracking-widest">Simulator Result</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Recommendation Note */}
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 text-center">
+                   <p className="text-[10px] md:text-xs text-amber-600 dark:text-amber-500 font-medium leading-relaxed italic">
+                      To create your debate successfully, use descriptive roles or archetypes (e.g., "The Gigantic Tech CEO" or "The Eccentric Space Billionaire") instead of specific real-world names.
+                   </p>
+                </div>
               </div>
 
               {/* DIALOGUE & SETTINGS */}
               <div className="flex flex-col gap-4">
                  
                  {/* Production Settings */}
-                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                    <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-3"><Sliders className="w-3 h-3"/> Studio Config</h3>
+                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xl">
+                    <h3 className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-3"><Sliders className="w-3 h-3"/> Studio Config</h3>
                     
                     <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                        <div className="flex flex-col gap-1">
                           <span className="text-[9px] text-slate-500 flex items-center gap-1 font-bold uppercase"><Music className="w-2.5 h-2.5"/> Audio Track</span>
-                          <select value={selectedMusic} onChange={e => setSelectedMusic(e.target.value)} className="bg-slate-950 border-none rounded text-white px-2 py-1 outline-none text-[10px] border border-slate-800">
+                          <select value={selectedMusic} onChange={e => setSelectedMusic(e.target.value)} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded text-slate-900 dark:text-white px-2 py-1 outline-none text-[10px]">
                              {MUSIC_STYLES.map(m => <option key={m}>{m}</option>)}
                           </select>
                        </div>
 
                        <div className="flex flex-col gap-1">
                           <span className="text-[9px] text-slate-500 flex items-center gap-1 font-bold uppercase"><Monitor className="w-2.5 h-2.5"/> Aspect</span>
-                          <div className="flex bg-slate-950 rounded p-0.5 border border-slate-800">
+                          <div className="flex bg-slate-50 dark:bg-slate-950 rounded p-0.5 border border-slate-200 dark:border-slate-800">
                              <button 
                                 onClick={() => setAspectRatio('16:9')} 
-                                className={`flex-1 py-0.5 rounded text-[9px] font-bold ${aspectRatio === '16:9' ? 'bg-sky-600 text-white' : 'text-slate-500'}`}
+                                className={`flex-1 py-0.5 rounded text-[9px] font-bold ${aspectRatio === '16:9' ? 'bg-sky-600 text-white' : 'text-slate-400 dark:text-slate-500'}`}
                              >
                                 16:9
                              </button>
                              <button 
                                 onClick={() => setAspectRatio('9:16')} 
                                 disabled={hasAnyImages}
-                                className={`flex-1 py-0.5 rounded text-[9px] font-bold ${aspectRatio === '9:16' ? 'bg-sky-600 text-white' : 'text-slate-500 disabled:opacity-30'}`}
+                                className={`flex-1 py-0.5 rounded text-[9px] font-bold ${aspectRatio === '9:16' ? 'bg-sky-600 text-white' : 'text-slate-400 dark:text-slate-500 disabled:opacity-30'}`}
                                 title={hasAnyImages ? "9:16 not available with Likeness" : ""}
                              >
                                 9:16
@@ -354,16 +393,16 @@ const BabyDebates: React.FC = () => {
 
                        <div className="flex flex-col gap-1">
                           <span className="text-[9px] text-slate-500 flex items-center gap-1 font-bold uppercase"><Palette className="w-2.5 h-2.5"/> Visual Filter</span>
-                          <select value={selectedStyle} onChange={e => setSelectedStyle(e.target.value)} className="bg-slate-950 border-none rounded text-white px-2 py-1 outline-none text-[10px] border border-slate-800">
+                          <select value={selectedStyle} onChange={e => setSelectedStyle(e.target.value)} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded text-slate-900 dark:text-white px-2 py-1 outline-none text-[10px]">
                              {VISUAL_STYLES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                           </select>
                        </div>
 
                        <div className="flex flex-col gap-1">
                           <span className="text-[9px] text-slate-500 flex items-center gap-1 font-bold uppercase"><Type className="w-2.5 h-2.5"/> Subtitles</span>
-                          <button onClick={() => setShowCaptions(!showCaptions)} className={`w-full h-5 rounded relative transition-all border border-slate-800 ${showCaptions ? 'bg-sky-900/30' : 'bg-slate-950'}`}>
-                             <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded transition-all ${showCaptions ? 'translate-x-[calc(100%-8px)] bg-sky-500' : 'translate-x-0 bg-slate-700'}`}></div>
-                             <span className="text-[8px] font-bold uppercase absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <button onClick={() => setShowCaptions(!showCaptions)} className={`w-full h-5 rounded relative transition-all border border-slate-200 dark:border-slate-800 ${showCaptions ? 'bg-sky-100 dark:bg-sky-900/30' : 'bg-slate-50 dark:bg-slate-950'}`}>
+                             <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded transition-all ${showCaptions ? 'translate-x-[calc(100%-8px)] bg-sky-500' : 'translate-x-0 bg-slate-300 dark:bg-slate-700'}`}></div>
+                             <span className={`text-[8px] font-bold uppercase absolute inset-0 flex items-center justify-center pointer-events-none ${showCaptions ? 'text-sky-700 dark:text-sky-300' : 'text-slate-400 dark:text-slate-600'}`}>
                                 {showCaptions ? 'Enabled' : 'Disabled'}
                              </span>
                           </button>
@@ -371,20 +410,51 @@ const BabyDebates: React.FC = () => {
                     </div>
                  </div>
 
-                 {/* Dialogue Feed */}
-                 <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex-1 overflow-hidden flex flex-col shadow-inner">
-                    <h4 className="text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2 mb-3 flex items-center gap-1"><Volume2 className="w-3 h-3"/> Transcript_Output</h4>
-                    {scriptData && scriptData.scriptLines ? (
-                       <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-3 max-h-[160px]">
-                          {scriptData.scriptLines.map((line, idx) => (
-                             <div key={idx} className="space-y-0.5 border-l-2 border-sky-900/50 pl-2">
-                                <span className="text-[8px] font-black text-sky-500 uppercase block">{line.speaker}</span>
-                                <p className="text-[10px] text-slate-400 leading-tight">"{line.text}"</p>
+                 {/* Dialogue Feed / Script Editor */}
+                 <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex-1 overflow-hidden flex flex-col shadow-inner min-h-[250px]">
+                    <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2 mb-3">
+                       <h4 className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1"><Volume2 className="w-3 h-3"/> Transcript_Output</h4>
+                       {scriptData && (
+                          <div className="flex gap-2">
+                             {isScriptLocked ? (
+                                <button 
+                                   onClick={handleUnlockScript}
+                                   className="text-[9px] font-black text-amber-500 hover:text-amber-400 uppercase flex items-center gap-1 transition-colors"
+                                >
+                                   <Unlock className="w-2.5 h-2.5" /> Edit Script
+                                </button>
+                             ) : (
+                                <button 
+                                   onClick={handleSaveScript}
+                                   className="text-[9px] font-black text-green-500 hover:text-green-400 uppercase flex items-center gap-1 transition-colors"
+                                >
+                                   <Save className="w-2.5 h-2.5" /> Lock & Save
+                                </button>
+                             )}
+                          </div>
+                       )}
+                    </div>
+                    {scriptData ? (
+                       <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-4 max-h-[160px]">
+                          {editableLines.map((line, idx) => (
+                             <div key={idx} className="space-y-1 group">
+                                <div className="flex items-center justify-between">
+                                   <span className="text-[8px] font-black text-sky-500 uppercase block">{line.speaker}</span>
+                                   {!isScriptLocked && <Edit2 className="w-2 h-2 text-slate-300 dark:text-slate-700 opacity-0 group-hover:opacity-100" />}
+                                </div>
+                                <textarea 
+                                   value={line.text}
+                                   readOnly={isScriptLocked}
+                                   onChange={(e) => handleUpdateLine(idx, e.target.value)}
+                                   rows={2}
+                                   className={`w-full border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-[10px] text-slate-700 dark:text-slate-300 leading-tight focus:outline-none focus:border-sky-500 resize-none font-sans transition-colors ${isScriptLocked ? 'bg-slate-100 dark:bg-slate-800 opacity-80' : 'bg-white dark:bg-slate-900'}`}
+                                   placeholder="Edit dialogue..."
+                                />
                              </div>
                           ))}
                        </div>
                     ) : (
-                       <div className="flex-1 flex flex-col items-center justify-center opacity-20">
+                       <div className="flex-1 flex flex-col items-center justify-center opacity-20 text-slate-900 dark:text-white">
                           <FileText className="w-8 h-8 mb-2" />
                           <p className="text-[8px] font-bold">Awaiting Script Generation</p>
                        </div>
@@ -394,15 +464,22 @@ const BabyDebates: React.FC = () => {
            </div>
 
            {/* Production Action */}
-           {scriptData && !videoUrl && (
-              <button 
-                onClick={handleRenderVideo} 
-                disabled={status === 'loading'}
-                className="w-full bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-black py-4 rounded-3xl shadow-[0_0_30px_rgba(14,165,233,0.2)] flex items-center justify-center gap-3 animate-fade-in-up hover:scale-[1.01] transition-transform active:scale-[0.99]"
-              >
-                 {status === 'loading' ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
-                 FINALIZE & PRODUCE VIDEO
-              </button>
+           {scriptData && (
+              <div className="space-y-3">
+                 {!isScriptLocked && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl flex items-center gap-2 text-amber-600 dark:text-amber-500 text-[10px] font-bold uppercase">
+                       <AlertCircle className="w-3.5 h-3.5" /> Lock script above to produce video
+                    </div>
+                 )}
+                 <button 
+                   onClick={handleRenderVideo} 
+                   disabled={status === 'loading' || !isScriptLocked}
+                   className={`w-full text-white font-black py-4 rounded-3xl shadow-[0_0_30px_rgba(14,165,233,0.2)] flex items-center justify-center gap-3 animate-fade-in-up hover:scale-[1.01] transition-transform active:scale-[0.99] disabled:opacity-50 disabled:grayscale ${videoUrl ? 'bg-gradient-to-r from-emerald-500 to-sky-600' : 'bg-gradient-to-r from-sky-500 to-indigo-600'}`}
+                 >
+                    {status === 'loading' ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
+                    {videoUrl ? 'RE-GENERATE VIDEO' : 'FINALIZE & PRODUCE VIDEO'}
+                 </button>
+              </div>
            )}
 
         </div>
