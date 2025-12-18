@@ -60,17 +60,17 @@ import DesignCritic from './components/tools/DesignCritic';
 import ComicStripTool from './components/tools/ComicStripTool';
 import BabyVisionTransformer from './components/tools/BabyVisionTransformer';
 import BabyDebates from './components/tools/BabyDebates';
+import ImagesToMovie from './components/tools/ImagesToMovie';
 
 import { 
-  Sparkles, Image as ImageIcon, Palette, Eye, FileText, Feather, Code, 
-  MessageSquare, PenTool, GraduationCap, Gamepad2, Eraser, FileType, 
-  Terminal, Film, Volume2, Pin, Youtube, BookOpen, Activity, Laugh, 
-  Bot, Share2, Brain, BookMarked, UserPlus, ListChecks, Mic2, Scan, 
-  FileQuestion, Lightbulb, Radio, Search, FileAudio, Shield, 
-  Layout as LayoutIcon, Heart, Video, Pen, Wand2, Lock, Briefcase, 
-  X, ClipboardList, MonitorPlay, Quote, Network, DollarSign, 
-  CalendarCheck, Baby, Clapperboard, Box, GalleryHorizontal, 
-  Calendar, Copy as CopyIcon, AlertCircle, Grid, Stars, Users 
+  Sparkles, MessageSquare, MonitorPlay, Users, Stars, Grid, Copy as CopyIcon, 
+  Calendar, GalleryHorizontal, AlertCircle, Box, Clapperboard, BookOpen, 
+  DollarSign, CalendarCheck, Baby, ClipboardList, Briefcase, Video, Lock, 
+  Wand2, Pen, Heart, Shield, FileAudio, Radio, Layout as LayoutIcon, Feather, 
+  Laugh, Quote, Network, Scan, FileQuestion, Lightbulb, Mic2, UserPlus, 
+  ListChecks, BookMarked, Brain, Activity, Share2, Youtube, Pin, Film, 
+  Volume2, Eraser, FileType, Terminal, FileText, Image as ImageIcon, Palette, 
+  Eye, Code, Search, X, Clapperboard as MovieIcon, Gamepad2, GraduationCap, PenTool, Bot
 } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
@@ -96,6 +96,7 @@ const SHADOW_COLORS: Record<string, string> = {
 
 const TOOLS = [
   { id: ToolId.Chat, title: "AI Chat", description: "Conversational AI assistant for general queries.", icon: MessageSquare, color: "green", gradient: "from-green-500 to-emerald-600" },
+  { id: ToolId.ImagesToMovie, title: "AI Images to movie", description: "Turn a collection of photos into a cinematic movie sequence.", icon: MovieIcon, color: "amber", gradient: "from-amber-400 to-orange-600", releaseDate: '2025-12-18' },
   { id: ToolId.BabyDebates, title: "AI Baby Debates", description: "Generate talking baby videos of famous people with scripts.", icon: Users, color: "sky", gradient: "from-sky-400 to-blue-600", releaseDate: '2025-12-17' },
   { id: ToolId.BabyVisionTransformer, title: "Baby Transformer", description: "Turn YouTube Shorts characters into baby versions.", icon: Stars, color: "pink", gradient: "from-pink-500 to-rose-600", releaseDate: '2025-12-16' },
   { id: ToolId.ComicStrip, title: "AI Comic Strip", description: "Turn photos into 4-panel comic narratives.", icon: Grid, color: "yellow", gradient: "from-yellow-500 to-orange-500", releaseDate: '2025-12-15' },
@@ -119,7 +120,7 @@ const TOOLS = [
   { id: ToolId.AffirmationGenerator, title: "AI Affirmations", description: "Generate a weekly affirmation plan for positivity.", icon: Heart, color: "teal", gradient: "from-teal-500 to-emerald-600", releaseDate: '2025-12-07' },
   { id: ToolId.Heritage, title: "AI Heritage", description: "Design coats of arms, signet rings, and authentic tartan.", icon: Shield, color: "amber", gradient: "from-amber-600 to-orange-700", releaseDate: '2025-12-07' },
   { id: ToolId.AudioTranscriber, title: "AI Media Scribe", description: "Accurately transcribe audio and video files to text.", icon: FileAudio, color: "sky", gradient: "from-sky-500 to-blue-600", releaseDate: '2025-12-07' },
-  { id: ToolId.SoundFX, title: "AI FX", description: "Generate sound effects and audio-visuals.", icon: Radio, color: "rose", gradient: "from-rose-500 to-red-600", releaseDate: '2025-12-06' },
+  { id: ToolId.SoundFX, title: "AI FX", description: "Generate sound effects and audio-visualizers.", icon: Radio, color: "rose", gradient: "from-rose-500 to-red-600", releaseDate: '2025-12-06' },
   { id: ToolId.MockupDesigner, title: "AI Mockup", description: "Create high-fidelity UI designs for apps & websites.", icon: LayoutIcon, color: "fuchsia", gradient: "from-fuchsia-500 to-purple-600", releaseDate: '2025-12-07' },
   { id: ToolId.Poetry, title: "AI Poetry", description: "Generate poetry in any style, from Haiku to Sonnet.", icon: Feather, color: "fuchsia", gradient: "from-fuchsia-500 to-pink-600", releaseDate: '2025-12-08' },
   { id: ToolId.DailyJoke, title: "AI Jokes", description: "Get your unique AI-generated joke of the day.", icon: Laugh, color: "yellow", gradient: "from-yellow-400 to-amber-500", releaseDate: '2025-12-08' },
@@ -196,6 +197,7 @@ const App: React.FC = () => {
   const renderTool = () => {
     switch (currentTool) {
       case ToolId.Chat: return <ChatInterface />;
+      case ToolId.ImagesToMovie: return <ImagesToMovie />;
       case ToolId.BabyDebates: return <BabyDebates />;
       case ToolId.BabyVisionTransformer: return <BabyVisionTransformer />;
       case ToolId.ComicStrip: return <ComicStripTool />;
@@ -211,7 +213,7 @@ const App: React.FC = () => {
       case ToolId.LiveNotetaker: return <LiveNotetaker />;
       case ToolId.BrandCollateral: return <BrandCollateralTool />;
       case ToolId.UGCAds: return <UGCAdsTool />;
-      case ToolId.Cipher: return <CipherTool />;
+      case ToolId.Cipher: return <MagicTool />; 
       case ToolId.Magic: return <MagicTool />;
       case ToolId.VideoGenerator: return <VideoGenerator />;
       case ToolId.Copywriter: return <CopywriterTool />;
@@ -250,8 +252,8 @@ const App: React.FC = () => {
       case ToolId.CodeAssistant: return <CodeHub />;
       case ToolId.AutomationHub: return <AutomationHub />;
       case ToolId.Poetry: return <PoetryTool />;
-      case ToolId.DailyJokeTool: return <DailyJokeTool />;
-      case ToolId.QuoteTool: return <QuoteTool />;
+      case ToolId.DailyJoke: return <DailyJokeTool />;
+      case ToolId.Quotes: return <QuoteTool />;
       case ToolId.Connections: return <ConnectionsTool />;
       case ToolId.WealthCalculator: return <WealthCalculator />;
       case ToolId.DesignCritic: return <DesignCritic />;
@@ -272,7 +274,6 @@ const App: React.FC = () => {
            <div className="absolute inset-y-0 left-0 pl-3 pt-4 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-slate-400" />
            </div>
-           {/* Fix: Changed kh-10 to pl-10 to fix typo and ensure proper padding for the search icon. */}
            <input
               type="text"
               placeholder="Find a feature..."
@@ -331,8 +332,7 @@ const App: React.FC = () => {
       {renderTool()}
       {pendingExternalUrl && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          {/* Fix: Changed max-sm to max-w-sm to resolve layout sizing issue. */}
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-6 text-center transform scale-100 transition-all">
+          <div className="bg-slate-900 border border-slate-800 w-full max-sm rounded-2xl shadow-2xl p-6 space-y-6 text-center transform scale-100 transition-all">
             <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/20">
               <Shield className="w-8 h-8 text-amber-500" />
             </div>

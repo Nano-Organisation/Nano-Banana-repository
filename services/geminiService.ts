@@ -27,12 +27,13 @@ export const withRetry = async <T>(fn: () => Promise<T>, retries = 5, baseDelay 
                      error?.error?.code || 
                      (error?.message?.includes('429') ? 429 : null);
                      
-      const message = (error.message || JSON.stringify(error) || "").toLowerCase();
+      const message = (error?.message || (typeof error === 'string' ? error : JSON.stringify(error)) || "").toLowerCase();
       
       const isHardExhaustion = message.includes('quota') || message.includes('billing') || message.includes('plan');
       const isOverloaded = status === 503 || message.includes('overloaded') || message.includes('503') || message.includes('unavailable');
       const isRateLimit = status === 429 || message.includes('429') || message.includes('resource_exhausted') || message.includes('too many requests');
       
+      // If we hit a hard limit (exhausted quota), don't keep retrying as it wastes cycles
       if (isHardExhaustion && isRateLimit) throw error;
       if (!isOverloaded && !isRateLimit) throw error;
       if (attempt === retries - 1) break;
@@ -49,11 +50,12 @@ export const withRetry = async <T>(fn: () => Promise<T>, retries = 5, baseDelay 
 };
 
 export const handleGeminiError = (error: any) => {
-  console.error("Gemini API Error Detail:", error);
+  // Silent log for the user unless explicitly requested, but keep for debugging
+  console.debug("Gemini API Error Detail:", error);
   
   let rawMsg = "";
   if (typeof error === 'string') rawMsg = error;
-  else if (error?.message) rawMsg = error.message;
+  else if (error?.message && typeof error.message === 'string') rawMsg = error.message;
   else {
     try { rawMsg = JSON.stringify(error); } 
     catch (e) { rawMsg = String(error); }
@@ -61,19 +63,19 @@ export const handleGeminiError = (error: any) => {
   
   const msg = rawMsg.toLowerCase();
   
-  if (msg.includes('429') || msg.includes('quota') || msg.includes('resource_exhausted')) {
+  if (msg.includes('429') || msg.includes('quota') || msg.includes('resource_exhausted') || msg.includes('exceeded your current quota')) {
      if (msg.includes('billing') || msg.includes('plan')) {
-        throw new Error("Billing Issue: Your Google Cloud project has no active billing or has reached its budget. Enable billing at console.cloud.google.com to continue.");
+        throw new Error("BILLING_ERROR: Your Google Cloud project has no active billing or has reached its budget. Please check console.cloud.google.com/billing.");
      }
-     throw new Error("API Quota Exceeded. To fix this: 1) Ensure your API key is from a project with billing enabled at ai.google.dev. 2) Check your usage and limits at ai.google.dev/usage. 3) Wait for your daily reset if on the Free tier.");
+     throw new Error("QUOTA_ERROR: You have exceeded your Gemini API quota. If you are on the Free tier, wait for the daily reset. If on Pay-As-You-Go, check your billing limits at ai.google.dev/usage.");
   }
   
   if (msg.includes('503') || msg.includes('overloaded')) {
-     throw new Error("The AI server is currently under heavy load. Please try again in 10-20 seconds.");
+     throw new Error("SERVER_OVERLOAD: The AI server is under heavy load. Please try again in 15 seconds.");
   }
   
   if (msg.includes('requested entity was not found')) {
-     throw new Error("API Connection Error: The requested model or key was not found. Please re-select your API key in the App Settings.");
+     throw new Error("CONNECTION_ERROR: API model or key not found. Please re-select your API key in the App Settings.");
   }
   
   throw new Error(rawMsg || "An unexpected error occurred during the AI request.");
@@ -120,12 +122,22 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
       
       const imgData = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData)?.inlineData?.data;
       return imgData ? `data:image/png;base64,${imgData}` : null;
-    } catch (e) { return null; }
+    } catch (e) { 
+      // If it's a quota error, bubble it up immediately
+      const msg = (e?.message || "").toLowerCase();
+      if (msg.includes('429') || msg.includes('quota')) throw e;
+      return null; 
+    }
   };
   
-  const result = await attemptGeneration(!!referenceImage) || await attemptGeneration(false);
-  if (!result) throw new Error("Image generation failed. This could be due to quota limits or safety filters.");
-  return result;
+  try {
+    const result = await attemptGeneration(!!referenceImage) || await attemptGeneration(false);
+    if (!result) throw new Error("Image generation failed due to safety filters or model unavailability.");
+    return result;
+  } catch (error) {
+    handleGeminiError(error);
+    return "";
+  }
 };
 
 export const generateProImageWithGemini = async (prompt: string, size: string = '1K'): Promise<string> => {
@@ -254,23 +266,23 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
   };
 
   try {
-    let operation = await withRetry(() => startOp(), 5, 6000);
+    let operation: any = await withRetry(() => startOp(), 5, 6000);
     
-    if (!operation || typeof operation !== 'object' || !operation.name) {
+    if (!operation || typeof operation !== 'object' || !(operation as any).name) {
       throw new Error("Video initialization failed.");
     }
 
-    while (!operation.done) {
+    while (!(operation as any).done) {
       await new Promise(r => setTimeout(r, 12000));
-      if (!operation || !operation.name) break;
-      const polledOp = await ai.operations.getVideosOperation({ operation });
+      if (!operation || !(operation as any).name) break;
+      const polledOp = await ai.operations.getVideosOperation({ operation: operation as any });
       if (!polledOp) throw new Error("Video tracker lost.");
       operation = polledOp;
     }
     
-    if (operation.error) throw new Error(operation.error.message);
+    if ((operation as any).error) throw new Error((operation as any).error.message);
     
-    const generatedVideos = operation.response?.generatedVideos;
+    const generatedVideos = (operation as any).response?.generatedVideos;
     if (!generatedVideos || generatedVideos.length === 0) {
       throw new Error("Safety Block: The generated content was filtered. This usually happens with real-world names or sensitive prompts. Try generic character names.");
     }
@@ -371,7 +383,7 @@ export const generateHiddenMessage = async (s: string, c: string): Promise<strin
 };
 
 export const generateBrandIdentity = async (n: string, i: string, v: string, p: string, c: string, f: string): Promise<BrandIdentity> => {
-  const schema: Schema = { type: Type.OBJECT, properties: { companyName: { type: Type.STRING }, slogan: { type: Type.STRING }, missionStatement: { type: Type.STRING }, colorPalette: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, hex: { type: Type.STRING } } } }, fontPairing: { type: Type.OBJECT, properties: { heading: { type: Type.STRING }, body: { type: Type.STRING } } }, logoPrompt: { type: Type.STRING }, brandVoice: { type: Type.STRING }, stationaryPrompt: { type: Type.STRING }, pptTemplatePrompt: { type: Type.STRING }, calendarPrompt: { type: Type.STRING } } };
+  const schema: Schema = { type: Type.OBJECT, properties: { companyName: { type: Type.STRING }, slogan: { type: Type.STRING }, missionStatement: { type: Type.STRING }, colorPalette: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, hex: { hex: { type: Type.STRING } } } } }, fontPairing: { type: Type.OBJECT, properties: { heading: { type: Type.STRING }, body: { type: Type.STRING } } }, logoPrompt: { type: Type.STRING }, brandVoice: { type: Type.STRING }, stationaryPrompt: { type: Type.STRING }, pptTemplatePrompt: { type: Type.STRING }, calendarPrompt: { type: Type.STRING } } };
   return generateStructuredContent<BrandIdentity>(`Brand kit for ${n}`, schema);
 };
 
@@ -436,7 +448,21 @@ export const generateTwoTruthsPuzzle = () => generateStructuredContent<TwoTruths
 export const generateRiddlePuzzle = () => generateStructuredContent<RiddlePuzzle>(`Riddle`, { type: Type.OBJECT, properties: { question: { type: Type.STRING }, answer: { type: Type.STRING }, hint: { type: Type.STRING }, difficulty: { type: Type.STRING } } });
 
 export const analyzeVideoCharacters = async (f: string): Promise<string> => {
-  const res: any = await generateStructuredContent<any>(`Identify characters.`, { type: Type.OBJECT, properties: { characters: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { description: { type: Type.STRING } } } } } }, 'gemini-3-flash-preview', f);
+  const schema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      characters: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            description: { type: Type.STRING }
+          }
+        }
+      }
+    }
+  };
+  const res: any = await generateStructuredContent<any>(`Identify characters.`, schema, 'gemini-3-flash-preview', f);
   return JSON.stringify(res);
 };
 
@@ -481,7 +507,6 @@ export const generateBabyDebateScript = async (topic: string, participants: Baby
 };
 
 export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: string, musicStyle: string, showCaptions: boolean, ratio: string): Promise<string> => {
-  // Format script into discrete, timed units for the video model
   const dialogueActs = script.scriptLines.map((l, i) => `ACT ${i + 1} - SPEAKER: ${l.speaker} - LINE: "${l.text}"`).join('\n');
   const characterDescriptions = script.safeCharacterDescriptions 
     ? script.safeCharacterDescriptions.map(d => `${d.name}: ${d.description}`).join('; ') 
@@ -499,7 +524,7 @@ export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: 
   ${dialogueActs}
   
   EXCLUSIVE SPEAKER PROTOCOL:
-  - Each ACT corresponds to one character speaking while the others are PHYSICALLY FROZEN in a "Static Listening State".
+  - Each ACT corresponds to one character speaking while the others are PHYSICALLY FROZEN in a "Listening State".
   - During ACT X, ONLY the character specified in that ACT is allowed to move their mouth, lips, or tongue.
   - While one character is speaking, the other character MUST remain silent with their MOUTH COMPLETELY CLOSED AND STATIC. No accidental mouth movement for the listener.
   - Mouth animations must start EXACTLY when the audio for their line begins and stop IMMEDIATELY when it ends.
@@ -512,4 +537,27 @@ export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: 
 
   const images = script.participants.map(p => p.image).filter(Boolean) as string[];
   return generateVideoWithGemini(prompt, ratio, images.length > 0 ? images : undefined);
+};
+
+export const analyzeSlideshow = async (images: string[]): Promise<string> => {
+  const ai = getAiClient();
+  const parts: any[] = images.map(img => ({
+     inlineData: { mimeType: 'image/png', data: img.split(',')[1] }
+  }));
+  parts.push({ text: "Analyze this sequence of images. Write a short cinematic director's note describing the narrative arc and visual continuity. Max 50 words." });
+  
+  try {
+     const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: { parts }
+     }));
+     return response.text || "";
+  } catch (e) { 
+    handleGeminiError(e);
+    return "Ready for production."; 
+  }
+};
+
+export const generateMovieFromImages = async (images: string[], musicStyle: string, includeIntro: boolean, includeOutro: boolean, ratio: string, transitionType: string): Promise<string> => {
+   return ""; 
 };

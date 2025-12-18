@@ -1,4 +1,3 @@
-
 export enum ToolId {
   Dashboard = 'DASHBOARD',
   ImageEditor = 'IMAGE_EDITOR',
@@ -62,7 +61,8 @@ export enum ToolId {
   DesignCritic = 'DESIGN_CRITIC',
   ComicStrip = 'COMIC_STRIP',
   BabyVisionTransformer = 'BABY_VISION_TRANSFORMER',
-  BabyDebates = 'BABY_DEBATES'
+  BabyDebates = 'BABY_DEBATES',
+  ImagesToMovie = 'IMAGES_TO_MOVIE'
 }
 
 export interface ToolConfig {
@@ -207,6 +207,12 @@ export interface QuizQuestion {
   options: string[];
   correctAnswer: string;
   explanation: string;
+}
+
+export interface QuizData {
+  topic: string;
+  difficulty: string;
+  questions: QuizQuestion[];
 }
 
 export interface QuizData {
