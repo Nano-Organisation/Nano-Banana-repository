@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Schema, Chat, Part, Modality, GenerateContentResponse } from "@google/genai";
 import {
   StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis,
@@ -5,7 +6,7 @@ import {
   BrandIdentity, UGCScript, WealthAnalysis, CommercialAnalysis, BabyName,
   LearnerBrief, AI360Response, CarouselData, DreamAnalysis, PetProfile,
   EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, BabyDebateScript,
-  BabyDebateParticipant
+  BabyDebateParticipant, RhymeData
 } from '../types';
 
 export const getApiKey = () => process.env.API_KEY;
@@ -115,7 +116,6 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
         config: { imageConfig: { aspectRatio: aspectRatio as any } }
       }), 3, 4000);
       
-      /* Fix: Search candidates for the inlineData part containing the image data. */
       const imgData = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData)?.inlineData?.data;
       return imgData ? `data:image/png;base64,${imgData}` : null;
     } catch (e) { 
@@ -146,7 +146,6 @@ export const generateProImageWithGemini = async (prompt: string, size: string = 
       contents: { parts: [{ text: finalPrompt }] },
       config: { imageConfig: { imageSize: size as any } }
     }));
-    /* Fix: Correctly iterate through response parts to find the image. */
     const imagePart = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
     if (!imagePart) throw new Error("No image returned.");
     return `data:image/png;base64,${imagePart.inlineData.data}`;
@@ -162,7 +161,6 @@ export const editImageWithGemini = async (image: string, prompt: string): Promis
       model: 'gemini-2.5-flash-image',
       contents: { parts: [{ inlineData: { data: base64Data, mimeType }}, { text: prompt }] },
     }));
-    /* Fix: Extract image bytes from the response parts correctly. */
     const imgData = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData)?.inlineData?.data;
     return imgData ? `data:image/png;base64,${imgData}` : "";
   } catch (error) { handleGeminiError(error); return ""; }
@@ -198,7 +196,6 @@ export const analyzeImageWithGemini = async (image: string, prompt: string): Pro
       model: 'gemini-3-flash-preview',
       contents: { parts: [{ inlineData: { data: base64Data, mimeType }}, { text: prompt }] },
     }));
-    /* Fix: Use .text property to get results. */
     return response.text || "";
   } catch (error) { handleGeminiError(error); return ""; }
 };
@@ -208,12 +205,10 @@ export const generateImagePrompt = async (image: string, platform: string): Prom
 };
 
 export const createChatSession = (systemInstruction?: string): Chat => {
-  /* Fix: Fresh client for every session. */
   return getAiClient().chats.create({ model: 'gemini-3-flash-preview', config: { systemInstruction } });
 };
 
 export const createThinkingChatSession = (): Chat => {
-  /* Fix: Correct model and configuration for thinking tasks. */
   return getAiClient().chats.create({ model: 'gemini-3-pro-preview', config: { thinkingConfig: { thinkingBudget: 1024 } } });
 };
 
@@ -226,7 +221,6 @@ export const generateSpeechWithGemini = async (text: string, voice: string, spee
       contents: { parts: [{ text }] },
       config: { responseModalities: [Modality.AUDIO], speechConfig }
     }));
-    /* Fix: Extract raw PCM data and add a 44-byte WAV header to make it playable in browser audio elements. */
     const base64Pcm = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Pcm) return "";
 
@@ -322,7 +316,6 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
 
     const link = generatedVideos[0]?.video?.uri;
     if (!link) throw new Error("No video link returned.");
-    /* Fix: Mandatory API key append for direct download links. */
     return `${link}&key=${getApiKey()}`;
   } catch (error) { handleGeminiError(error); return ""; }
 };
@@ -350,16 +343,39 @@ export const generateStoryScript = async (topic: string, style: string, charDesc
   const prompt = `Story about: ${topic}. Style: ${style}. Character: ${charDesc || 'new'}.
   
   CRITICAL CHARACTER CONSISTENCY PROTOCOL:
-  Instead of prose, define each character as a "Mechanical Identity Spec".
-  SPEC FORMAT:
-  1. Shape Blueprint: (e.g., "Perfect circle head", "T-junction stick limbs")
-  2. Hex Color Locks: (e.g., "Skin: #8B4513", "Hair: #000000")
-  3. Invariant Properties: (e.g., "Limb thickness: Constant 2px line", "Hair texture: Solid matte fill, zero grain")
+  Describe each character as a "Visual Identity Block" using strictly limited shape and color terms compatible with mid-century minimalism.
+  Example: "Leo: Large Charcoal circular afro hair, simple Terracotta trapezoid body, dot eyes, Ochre skin tone."
   
-  Do NOT use ambiguous descriptions. Use technical geometric constraints.`;
+  Do NOT use ambiguous prose for physical features. Use atomic geometric labels.`;
 
   const schema: Schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, style: { type: Type.STRING }, characterName: { type: Type.STRING }, characterDescription: { type: Type.STRING }, author: { type: Type.STRING }, dedication: { type: Type.STRING }, authorBio: { type: Type.STRING }, backCoverBlurb: { type: Type.STRING }, pages: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { pageNumber: { type: Type.INTEGER }, text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } } } } };
   return generateStructuredContent<StorybookData>(prompt, schema);
+};
+
+export const generateNurseryRhymeStoryboard = async (rhyme: string): Promise<RhymeData> => {
+  const prompt = `Create a 4-panel visual storyboard for the nursery rhyme: "${rhyme}".
+  For each panel, provide the specific lyrics and a detailed image generation prompt.
+  Maintain a consistent children's book illustration style throughout.`;
+
+  const schema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      title: { type: Type.STRING },
+      panels: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            lyrics: { type: Type.STRING },
+            imagePrompt: { type: Type.STRING }
+          },
+          required: ['lyrics', 'imagePrompt']
+        }
+      }
+    },
+    required: ['title', 'panels']
+  };
+  return generateStructuredContent<RhymeData>(prompt, schema);
 };
 
 export const generateComicScriptFromImages = async (images: string[], topic: string): Promise<StorybookData> => {
@@ -427,7 +443,6 @@ export const generateHiddenMessage = async (s: string, c: string): Promise<strin
 };
 
 export const generateBrandIdentity = async (n: string, i: string, v: string, p: string, c: string, f: string): Promise<BrandIdentity> => {
-  /* Fix: Fixed nested hex definition in color palette properties. */
   const schema: Schema = { type: Type.OBJECT, properties: { companyName: { type: Type.STRING }, slogan: { type: Type.STRING }, missionStatement: { type: Type.STRING }, colorPalette: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, hex: { type: Type.STRING } } } }, fontPairing: { type: Type.OBJECT, properties: { heading: { type: Type.STRING }, body: { type: Type.STRING } } }, logoPrompt: { type: Type.STRING }, brandVoice: { type: Type.STRING }, stationaryPrompt: { type: Type.STRING }, pptTemplatePrompt: { type: Type.STRING }, calendarPrompt: { type: Type.STRING } } };
   return generateStructuredContent<BrandIdentity>(`Brand kit for ${n}`, schema);
 };

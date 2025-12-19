@@ -1,3 +1,4 @@
+
 export enum ToolId {
   Dashboard = 'DASHBOARD',
   ImageEditor = 'IMAGE_EDITOR',
@@ -63,7 +64,8 @@ export enum ToolId {
   BabyVisionTransformer = 'BABY_VISION_TRANSFORMER',
   BabyDebates = 'BABY_DEBATES',
   ImagesToMovie = 'IMAGES_TO_MOVIE',
-  StyleEngine = 'STYLE_ENGINE'
+  StyleEngine = 'STYLE_ENGINE',
+  NurseryRhymes = 'NURSERY_RHYMES'
 }
 
 export interface ToolConfig {
@@ -127,6 +129,15 @@ export interface StorybookData {
   authorBio: string;
   backCoverBlurb: string;
   pages: StoryPage[];
+}
+
+export interface RhymeData {
+  title: string;
+  panels: {
+    lyrics: string;
+    imagePrompt: string;
+    imageUrl?: string;
+  }[];
 }
 
 export interface SavedCharacter {

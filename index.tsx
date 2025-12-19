@@ -1,8 +1,7 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-/* Fix: Import from './app' (lowercase) to match the root file casing specified for compilation and resolve casing conflicts. */
-import App from './app';
+/* Fix: Import from './App' (PascalCase) to match the root file casing specified for compilation and resolve casing conflicts. */
+import App from './App';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
