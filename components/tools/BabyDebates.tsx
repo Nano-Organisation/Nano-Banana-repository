@@ -36,6 +36,7 @@ const BabyDebates: React.FC = () => {
   
   const [selectedStyle, setSelectedStyle] = useState(VISUAL_STYLES[0].id);
   const [selectedMusic, setSelectedMusic] = useState(MUSIC_STYLES[0]);
+  const [includeMusic, setIncludeMusic] = useState(true);
   const [aspectRatio, setAspectRatio] = useState('16:9');
   const [showCaptions, setShowCaptions] = useState(true);
   
@@ -180,7 +181,8 @@ const BabyDebates: React.FC = () => {
     try {
       const selectedStyleObj = VISUAL_STYLES.find(s => s.id === selectedStyle);
       const styleLabel = selectedStyleObj ? `${selectedStyleObj.label}: ${selectedStyleObj.desc}` : '3D';
-      const url = await generateTalkingBabyVideo(scriptData, styleLabel, selectedMusic, showCaptions, aspectRatio);
+      const musicLabel = includeMusic ? selectedMusic : 'SILENT. No music. Zero background musical sound accompanying the video.';
+      const url = await generateTalkingBabyVideo(scriptData, styleLabel, musicLabel, showCaptions, aspectRatio);
       
       if (!url) throw new Error("Video generation failed. No link returned.");
 
@@ -210,7 +212,7 @@ const BabyDebates: React.FC = () => {
         <div className="flex items-center gap-3">
           <Baby className="w-10 h-10 text-sky-500" />
           <div>
-             <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">AI_Baby_Debates</h2>
+             <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">AI Baby Debates</h2>
              <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em]">Dialogue Simulation Module</p>
           </div>
         </div>
@@ -373,9 +375,24 @@ const BabyDebates: React.FC = () => {
                     <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                        <div className="flex flex-col gap-1">
                           <span className="text-[9px] text-slate-500 dark:text-slate-400 flex items-center gap-1 font-bold uppercase"><Music className="w-2.5 h-2.5"/> AUDIO TRACK</span>
-                          <select value={selectedMusic} onChange={e => setSelectedMusic(e.target.value)} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded text-slate-900 dark:text-white px-2 py-1 outline-none text-[10px]">
+                          <select 
+                            disabled={!includeMusic}
+                            value={selectedMusic} 
+                            onChange={e => setSelectedMusic(e.target.value)} 
+                            className={`bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded text-slate-900 dark:text-white px-2 py-1 outline-none text-[10px] ${!includeMusic ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
+                          >
                              {MUSIC_STYLES.map(m => <option key={m}>{m}</option>)}
                           </select>
+                          <div className="flex items-center gap-1.5 mt-1">
+                             <input 
+                                type="checkbox" 
+                                id="no-music-check" 
+                                checked={!includeMusic} 
+                                onChange={(e) => setIncludeMusic(!e.target.checked)}
+                                className="w-3 h-3 accent-sky-500 rounded border-slate-300 dark:border-slate-700"
+                             />
+                             <label htmlFor="no-music-check" className="text-[8px] font-bold text-slate-500 dark:text-slate-400 uppercase cursor-pointer select-none">No Background Music</label>
+                          </div>
                        </div>
 
                        <div className="flex flex-col gap-1">

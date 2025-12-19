@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Film, Download, RefreshCw, Lock, Smartphone, Monitor, Upload, Video, AlertTriangle } from 'lucide-react';
 import { generateVideoWithGemini } from '../../services/geminiService';
@@ -82,6 +81,12 @@ const VideoGenerator: React.FC = () => {
       setStatus('success');
     } catch (err: any) {
       console.error(err);
+      const msg = err.message || "";
+      // Fix: Reset key state and prompt for a new key if the request fails with "Requested entity was not found."
+      if (msg.includes("Requested entity was not found")) {
+          setHasKey(false);
+          handleSelectKey();
+      }
       setErrorMessage(err.message || "Video generation failed.");
       setStatus('error');
     }
@@ -94,7 +99,7 @@ const VideoGenerator: React.FC = () => {
           <Lock className="w-10 h-10 text-red-500" />
         </div>
         <div className="space-y-4">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Unlock Nano Video</h2>
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Unlock AI Video</h2>
           <p className="text-slate-600 dark:text-slate-400">
             Professional video generation is powered by the advanced <strong>Veo</strong> model. 
             To create videos, you must connect a paid Google Gemini API key.
@@ -115,7 +120,7 @@ const VideoGenerator: React.FC = () => {
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
           <Video className="w-8 h-8 text-red-500" />
-          Nano Video
+          AI Video
         </h2>
         <div className="flex flex-col items-center gap-1">
            <p className="text-slate-600 dark:text-slate-400">Pro-grade video generation from text or image.</p>

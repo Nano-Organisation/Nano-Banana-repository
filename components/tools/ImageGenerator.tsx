@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Palette, Download, RefreshCw, Lock, Star, Share2, Wand2, Monitor, Smartphone, Square, Layers, Sparkles, AlertTriangle } from 'lucide-react';
 import { generateImageWithGemini, generateProImageWithGemini } from '../../services/geminiService';
@@ -92,6 +91,12 @@ const ImageGenerator: React.FC = () => {
       setStatus('success');
     } catch (err: any) {
       console.error(err);
+      const msg = err.message || "";
+      // Fix: Reset key state and prompt for a new key if the request fails with "Requested entity was not found."
+      if (msg.includes("Requested entity was not found")) {
+          setHasKey(false);
+          handleSelectKey();
+      }
       setErrorMessage(err.message || "Generation failed");
       setStatus('error');
     }
@@ -201,7 +206,7 @@ const ImageGenerator: React.FC = () => {
                 <select 
                    value={size}
                    onChange={(e) => setSize(e.target.value)}
-                   className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs rounded px-2 py-1 outline-none"
+                   className="bg-white dark:bg-slate-800 border border-slate-700 text-slate-900 dark:text-white text-xs rounded px-2 py-1 outline-none"
                 >
                    <option value="1K">1K</option>
                    <option value="2K">2K</option>
