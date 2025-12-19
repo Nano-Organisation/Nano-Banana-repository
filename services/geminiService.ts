@@ -573,7 +573,7 @@ export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: 
   - While one character is speaking, the other character MUST remain silent with their MOUTH COMPLETELY CLOSED AND STATIC. No accidental mouth movement for the listener.
   - Mouth animations must start EXACTLY when the audio for their line begins and stop IMMEDIATELY when it ends.
   
-  ${showCaptions ? 'BURNED-IN SUBTITLES: You MUST overlay clear, synchronized hard-coded text subtitles at the bottom center of the video frame. These subtitles must match the spoken words exactly and remain visible for the duration of the line.' : 'No text overlays.'}
+  ${showCaptions ? 'VERBATIM CAPTION PROTOCOL: You MUST overlay clear, synchronized hard-coded text subtitles at the bottom center of the video frame. These subtitles MUST be a word-for-word verbatim match of the "TRANSCRIPT TO ANIMATE" provided above. Zero hallucinations. Zero paraphrasing. Subtitles must remain visible for the exact duration of the spoken line.' : 'No text overlays.'}
   
   Action: Expression-filled toddler discussion. Back-and-forth debate. 
   Music: ${musicStyle}. 

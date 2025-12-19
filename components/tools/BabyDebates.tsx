@@ -205,6 +205,13 @@ const BabyDebates: React.FC = () => {
 
   const hasAnyImages = participants.some(p => p && p.image);
 
+  // Friendly timestamp for file naming
+  const getFriendlyTimestamp = () => {
+    const date = new Date();
+    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') + '_' + 
+           date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/:/g, '-');
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in font-sans pb-12">
       {/* Compact Header */}
@@ -346,7 +353,7 @@ const BabyDebates: React.FC = () => {
                     <div className="w-full h-full relative group">
                         <video src={videoUrl} className="w-full h-full object-cover" controls autoPlay loop playsInline />
                         <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <a href={videoUrl} download="ai-debate.mp4" className="bg-black/60 hover:bg-sky-600 text-white p-2 rounded-full backdrop-blur-md block shadow-xl"><Download className="w-4 h-4" /></a>
+                          <a href={videoUrl} download={`ai-debate-${getFriendlyTimestamp()}.mp4`} className="bg-black/60 hover:bg-sky-600 text-white p-2 rounded-full backdrop-blur-md block shadow-xl"><Download className="w-4 h-4" /></a>
                         </div>
                     </div>
                   ) : (
@@ -500,7 +507,7 @@ const BabyDebates: React.FC = () => {
                    disabled={status === 'loading' || !isScriptLocked}
                    className={`w-full text-white font-black py-4 rounded-3xl shadow-[0_0_30px_rgba(14,165,233,0.2)] flex items-center justify-center gap-3 animate-fade-in-up hover:scale-[1.01] transition-transform active:scale-[0.99] disabled:opacity-50 disabled:grayscale ${videoUrl ? 'bg-gradient-to-r from-emerald-500 to-sky-600' : 'bg-gradient-to-r from-sky-500 to-indigo-600'}`}
                  >
-                    {status === 'loading' ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
+                    {status === 'loading' ? <RefreshCw className="animate-spin w-5 h-5" /> : <Wand2 className="w-5 h-5" />}
                     {videoUrl ? 'RE-GENERATE VIDEO' : 'FINALIZE & PRODUCE VIDEO'}
                  </button>
               </div>
