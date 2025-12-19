@@ -347,7 +347,17 @@ const generateStructuredContent = async <T>(prompt: string, schema: Schema, mode
 };
 
 export const generateStoryScript = async (topic: string, style: string, charDesc?: string): Promise<StorybookData> => {
-  const prompt = `Story about: ${topic}. Style: ${style}. Character: ${charDesc || 'new'}.`;
+  const prompt = `Story about: ${topic}. Style: ${style}. Character: ${charDesc || 'new'}.
+  
+  CRITICAL CHARACTER CONSISTENCY PROTOCOL:
+  Instead of prose, define each character as a "Mechanical Identity Spec".
+  SPEC FORMAT:
+  1. Shape Blueprint: (e.g., "Perfect circle head", "T-junction stick limbs")
+  2. Hex Color Locks: (e.g., "Skin: #8B4513", "Hair: #000000")
+  3. Invariant Properties: (e.g., "Limb thickness: Constant 2px line", "Hair texture: Solid matte fill, zero grain")
+  
+  Do NOT use ambiguous descriptions. Use technical geometric constraints.`;
+
   const schema: Schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, style: { type: Type.STRING }, characterName: { type: Type.STRING }, characterDescription: { type: Type.STRING }, author: { type: Type.STRING }, dedication: { type: Type.STRING }, authorBio: { type: Type.STRING }, backCoverBlurb: { type: Type.STRING }, pages: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { pageNumber: { type: Type.INTEGER }, text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } } } } };
   return generateStructuredContent<StorybookData>(prompt, schema);
 };
@@ -433,6 +443,8 @@ export const generateUGCScript = async (p: string, a: string, pa: string): Promi
 export const generatePoem = (t: string, s: string) => generateTextWithGemini(`Poem about ${t} in ${s} style.`);
 export const generateDailyJoke = (d: number) => generateTextWithGemini(`Joke for day ${d}.`);
 export const generateQuote = (c: string) => generateTextWithGemini(`Quote about ${c}.`);
+export const generateQuoteByTag = (t: string) => generateTextWithGemini(`Quote about ${t}.`);
+export const generateQuoteByTagByTag = (t: string) => generateTextWithGemini(`Quote about ${t}.`);
 export const generateConnectionFact = (p: string) => generateTextWithGemini(`Connection fact about ${p}.`);
 
 export const analyzeWealthPath = async (n: string): Promise<WealthAnalysis> => {

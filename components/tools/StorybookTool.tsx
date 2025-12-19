@@ -217,7 +217,7 @@ const StorybookTool: React.FC = () => {
 
       // Generate First Page
       try {
-         const firstPagePrompt = `Visual Style: ${script.style}. Scene: ${script.pages[0].imagePrompt}. Characters: ${script.characterDescription}. Anatomy: Perfectly correct human anatomy, exactly two legs, no hybrid body parts.`;
+         const firstPagePrompt = `Visual Style: ${script.style}. NON-NEGOTIABLE CHARACTER INVARIANTS: ${script.characterDescription}. Scene: ${script.pages[0].imagePrompt}. Anatomy Protocol: Ensure perfectly consistent limb thickness and solid matte hair fills regardless of background elements.`;
          const imageUrl = await drawPage(0, firstPagePrompt);
          characterReferenceImage = imageUrl;
 
@@ -239,9 +239,11 @@ const StorybookTool: React.FC = () => {
           try {
              const pagePrompt = `
                 Visual Style: ${script.style}.
+                NON-NEGOTIABLE CHARACTER INVARIANTS: ${script.characterDescription}.
                 Scene: ${script.pages[i].imagePrompt}.
-                Maintain strict visual consistency for ALL people and entities described here: ${script.characterDescription}.
-                Anatomy Protocol: Ensure anatomically correct human bodies, exactly two legs and two arms per person, no floating limbs or hybrid baby-adult features.
+                IMMUTABILITY PROTOCOL: Do NOT allow environmental context (e.g., trees, texture) to mutate the character's physical spec. 
+                Hair MUST remain a solid matte shape with zero added texture. 
+                Limbs MUST remain thin 2px lines without varying in weight.
              `.replace(/\s+/g, ' ').trim();
 
              const imageUrl = await drawPage(i, pagePrompt, characterReferenceImage);
@@ -793,7 +795,7 @@ const StorybookTool: React.FC = () => {
 
       {showSaveCharDialog && (
          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-4">
-            <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-sm space-y-4 shadow-2xl">
+            <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-sm space-y-4 shadow-2xl">
                <div className="text-center"><h3 className="text-xl font-bold text-white mb-1">Save Character</h3><p className="text-slate-400 text-sm">Give this character a name.</p></div>
                <input type="text" autoFocus value={newCharName} onChange={(e) => setNewCharName(e.target.value)} placeholder="e.g. Captain Sparky" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-500" onKeyDown={(e) => e.key === 'Enter' && handleSaveCharacter()} />
                <div className="flex gap-3">
