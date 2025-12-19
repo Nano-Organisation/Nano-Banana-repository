@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Type as TypeIcon, Upload, RefreshCw, Play, Pause, Edit3, Save, Download, Palette, Wand2, Smartphone, Monitor, Smile, Trash2, CheckCircle2, Volume2, AlertCircle, Film } from 'lucide-react';
 /* Fix: Using strictly correct Type from @google/genai as per guidelines. */
@@ -361,8 +362,14 @@ const CaptionCreator: React.FC = () => {
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
-            // Exact requested naming convention: AI Caption Creator - [timestamp]
-            a.download = `AI Caption Creator - ${Date.now()}.${extension}`;
+            
+            // Format timestamp for naming
+            const date = new Date();
+            const friendlyTimestamp = date.toISOString().replace(/T/, ' ').replace(/\..+/, '').replace(/:/g, '-');
+            
+            // 1. Updated naming convention
+            a.download = `AI Caption Creator - ${friendlyTimestamp}.${extension}`;
+            
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
