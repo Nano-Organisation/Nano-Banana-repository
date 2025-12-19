@@ -407,6 +407,7 @@ const App: React.FC = () => {
             </div>
             <div className="flex gap-3">
               <button onClick={() => setPendingExternalUrl(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl transition-colors border border-slate-700">Cancel</button>
+              {/* Fix: Added missing onClick handler for the Proceed button to fix external navigation. */}
               <button onClick={confirmExternalNavigation} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-amber-900/20">Proceed</button>
             </div>
           </div>

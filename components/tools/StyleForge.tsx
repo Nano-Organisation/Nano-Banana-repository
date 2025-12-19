@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-/* Fix: Added missing AlertTriangle import to resolve the "Cannot find name 'AlertTriangle'" error. */
-import { Palette, Plus, Save, Play, ChevronRight, ChevronLeft, Trash2, Edit3, Image as ImageIcon, Upload, X, RefreshCw, Layers, CheckCircle2, FlaskConical, AlertTriangle, AlertCircle, Info, Download, Search, Zap, Wand2, ShieldCheck, Sparkles } from 'lucide-react';
+import { Palette, Plus, Save, Play, ChevronRight, ChevronLeft, Trash2, Edit3, Image as ImageIcon, Upload, X, RefreshCw, Layers, CheckCircle2, FlaskConical, AlertTriangle, Info, Download, Search, Wand2, ShieldCheck } from 'lucide-react';
 import { generateImageWithGemini, generateTextWithGemini } from '../../services/geminiService';
 import { UserDefinedStyle, LoadingState } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
@@ -21,14 +20,12 @@ const StyleForge: React.FC = () => {
   const [styles, setStyles] = useState<UserDefinedStyle[]>([]);
   const [status, setStatus] = useState<LoadingState>('idle');
   
-  // Comparison State
   const [similarMatches, setSimilarMatches] = useState<any[]>([]);
   const [uniquenessSuggestions, setUniquenessSuggestions] = useState<string[]>([]);
   const [comparisonLoading, setComparisonLoading] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [activeStyleForComparison, setActiveStyleForComparison] = useState<UserDefinedStyle | null>(null);
 
-  // Creation Wizard State
   const [step, setStep] = useState(1);
   const [newStyle, setNewStyle] = useState<Partial<UserDefinedStyle>>({
     version: 1,
@@ -36,7 +33,6 @@ const StyleForge: React.FC = () => {
     referenceImages: []
   });
   
-  // Generation State
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
   const [subject, setSubject] = useState('');
   const [extraDetails, setExtraDetails] = useState('');
@@ -57,7 +53,58 @@ const StyleForge: React.FC = () => {
     }
   };
 
-  const handleNextStep = () => setStep(s => s + 1);
+  /**
+   * Internal Validation Module
+   * Enforces mandatory presence, English-only chars, and basic nonsense detection.
+   */
+  const validateInput = (text: string | undefined, allowNA = false) => {
+    if (!text || !text.trim()) return false;
+    const t = text.trim();
+    
+    // Explicit check for "n/a"
+    if (allowNA && t.toLowerCase() === 'n/a') return true;
+    
+    // Length check for "rubbish" strings
+    if (t.length < 3) return false;
+    
+    // English-only character set (Strictly alphanumeric + basic punctuation)
+    if (!/^[a-zA-Z0-9\s.,!?'"()\-;:/]+$/.test(t)) return false;
+    
+    // Heuristic nonsense detection:
+    // 1. Repeating characters (e.g. "aaaaa")
+    if (/(.)\1{4,}/.test(t)) return false;
+    
+    // 2. Lack of spaces in long strings (e.g. "verylongstringwithoutanymeaningfulspaces")
+    if (t.length > 25 && !t.includes(' ')) return false;
+
+    return true;
+  };
+
+  const isCurrentStepValid = () => {
+    if (step === 1) {
+      return validateInput(newStyle.name) && validateInput(newStyle.concept);
+    }
+    if (step === 2) {
+      return (
+        validateInput(newStyle.rules?.rendering) &&
+        validateInput(newStyle.rules?.colors) &&
+        validateInput(newStyle.rules?.composition) &&
+        validateInput(newStyle.rules?.world)
+      );
+    }
+    if (step === 3) {
+      return validateInput(newStyle.rules?.negative, true);
+    }
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (isCurrentStepValid()) {
+      setStep(s => s + 1);
+    }
+    // Quietly ignore invalid/rubbish input
+  };
+
   const handlePrevStep = () => setStep(s => s - 1);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,6 +127,9 @@ const StyleForge: React.FC = () => {
   };
 
   const finalizeStyle = async () => {
+    // Final logic validation check
+    if (!isCurrentStepValid()) return;
+
     setStatus('loading');
     try {
       const summaryPrompt = `Combine these style rules into a single, cohesive, reusable visual recipe paragraph for an AI image generator. 
@@ -241,7 +291,7 @@ const StyleForge: React.FC = () => {
                     >
                        <div className="aspect-video bg-slate-100 dark:bg-slate-950 overflow-hidden relative">
                           {style.thumbnail ? (
-                             <img src={style.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                             <img src={style.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={style.name} />
                           ) : (
                              <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-700"><ImageIcon className="w-12 h-12" /></div>
                           )}
@@ -277,14 +327,13 @@ const StyleForge: React.FC = () => {
 
       {view === 'create' && (
         <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col min-h-[600px]">
-           {/* Wizard Progress */}
            <div className="h-1.5 bg-slate-100 dark:bg-slate-800 flex">
               {[1,2,3,4].map(i => (
                  <div key={i} className={`flex-1 transition-all duration-500 ${step >= i ? 'bg-indigo-500' : 'bg-transparent'}`}></div>
               ))}
            </div>
 
-           <div className="p-10 flex-1 flex flex-col">
+           <div className="p-10 flex-1 flex flex-col overflow-y-auto custom-scrollbar">
               {step === 1 && (
                  <div className="space-y-8 animate-fade-in">
                     <div className="space-y-1">
@@ -293,7 +342,16 @@ const StyleForge: React.FC = () => {
                     </div>
                     <div className="space-y-4">
                        <div className="space-y-1">
-                          <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Distinct Style Name</label>
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Distinct Style Name</label>
+                            <div className="group relative">
+                              <Info className="w-3.5 h-3.5 text-slate-400 cursor-help" />
+                              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-slate-800 text-white text-[10px] rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 normal-case font-bold leading-relaxed border border-slate-700">
+                                Example Distinct Style Name can be Wede-AI-03 – Analog Storybook Minimalism.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800"></div>
+                              </div>
+                            </div>
+                          </div>
                           <input 
                              value={newStyle.name || ''}
                              onChange={e => setNewStyle({...newStyle, name: e.target.value})}
@@ -302,7 +360,16 @@ const StyleForge: React.FC = () => {
                           />
                        </div>
                        <div className="space-y-1">
-                          <label className="text-xs font-black text-slate-500 uppercase tracking-widest">One-Sentence Concept</label>
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest">One-Sentence Concept</label>
+                            <div className="group relative">
+                              <Info className="w-3.5 h-3.5 text-slate-400 cursor-help" />
+                              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-slate-800 text-white text-[10px] rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 normal-case font-bold leading-relaxed border border-slate-700">
+                                An example can be Clean, minimal storybook art inspired by mid‑century printmaking and infographics, using flat shapes, clear silhouettes, and restrained earthy colors.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800"></div>
+                              </div>
+                            </div>
+                          </div>
                           <textarea 
                              value={newStyle.concept || ''}
                              onChange={e => setNewStyle({...newStyle, concept: e.target.value})}
@@ -315,46 +382,82 @@ const StyleForge: React.FC = () => {
               )}
 
               {step === 2 && (
-                 <div className="space-y-6 animate-fade-in h-full flex flex-col">
+                 <div className="space-y-6 animate-fade-in flex flex-col">
                     <div className="space-y-1">
                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Visual Grammar</h3>
                        <p className="text-sm text-slate-500">How should the AI render this world?</p>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                       <div className="space-y-1">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Rendering & Lines</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 flex-1 overflow-visible">
+                       <div className="space-y-1 relative">
+                          <div className="flex items-center gap-2">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Rendering & Lines</label>
+                            <div className="group relative">
+                              <Info className="w-3 h-3 text-slate-400 cursor-help" />
+                              <div className="absolute left-0 top-full mt-2 w-72 p-3 bg-slate-800 text-white text-[10px] rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-[60] normal-case font-bold leading-relaxed border border-slate-700">
+                                No visible sketch lines; contours are clean and intentional.<br /><br />Shapes are built from flat color blocks with slightly misregistered edges to mimic old offset printing.
+                                <div className="absolute bottom-full left-4 border-8 border-transparent border-b-slate-800"></div>
+                              </div>
+                            </div>
+                          </div>
                           <textarea 
                              value={newStyle.rules?.rendering || ''}
                              onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, rendering: e.target.value}})}
-                             placeholder="e.g. Thick charcoal outlines, heavy grain texture, messy sketch feel..."
-                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24"
+                             placeholder="e.g. Thick charcoal outlines..."
+                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24 focus:ring-1 focus:ring-indigo-500 outline-none"
                           />
                        </div>
-                       <div className="space-y-1">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Colour & Lighting</label>
+                       <div className="space-y-1 relative">
+                          <div className="flex items-center gap-2">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Colour & Lighting</label>
+                            <div className="group relative">
+                              <Info className="w-3 h-3 text-slate-400 cursor-help" />
+                              <div className="absolute right-0 top-full mt-2 w-72 p-3 bg-slate-800 text-white text-[10px] rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-[60] normal-case font-bold leading-relaxed border border-slate-700">
+                                Very limited color palette: 3–5 earthy colors (ochres, muted greens, browns, dusty reds) plus an off‑white paper background.​<br /><br />No gradients; depth is created with flat tones and value contrast only.<br /><br />Lighting is implied rather than rendered, with small, simple drops of shadow and no photoreal highlights.
+                                <div className="absolute bottom-full right-4 border-8 border-transparent border-b-slate-800"></div>
+                              </div>
+                            </div>
+                          </div>
                           <textarea 
                              value={newStyle.rules?.colors || ''}
                              onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, colors: e.target.value}})}
-                             placeholder="e.g. Desaturated sepia tones, harsh high-key lighting, bioluminescent accents..."
-                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24"
+                             placeholder="e.g. Desaturated sepia tones..."
+                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24 focus:ring-1 focus:ring-indigo-500 outline-none"
                           />
                        </div>
-                       <div className="space-y-1">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Composition & Lens</label>
+                       <div className="space-y-1 relative">
+                          <div className="flex items-center gap-2">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Composition & Lens</label>
+                            <div className="group relative">
+                              <Info className="w-3 h-3 text-slate-400 cursor-help" />
+                              <div className="absolute left-0 bottom-full mb-2 w-72 p-3 bg-slate-800 text-white text-[10px] rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-[60] normal-case font-bold leading-relaxed border border-slate-700">
+                                Compositions are calm and balanced, often frontal or isometric, emphasizing clear silhouettes.​<br /><br />Negative space is used generously to keep pages airy and uncluttered.<br /><br />Elements are arranged in simple geometric groupings reminiscent of mid‑century posters and infographics.
+                                <div className="absolute top-full left-4 border-8 border-transparent border-t-slate-800"></div>
+                              </div>
+                            </div>
+                          </div>
                           <textarea 
                              value={newStyle.rules?.composition || ''}
                              onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, composition: e.target.value}})}
-                             placeholder="e.g. Extreme wide angle, low perspective, symmetrical framing..."
-                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24"
+                             placeholder="e.g. Extreme wide angle..."
+                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24 focus:ring-1 focus:ring-indigo-500 outline-none"
                           />
                        </div>
-                       <div className="space-y-1">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">World & Character DNA</label>
+                       <div className="space-y-1 relative">
+                          <div className="flex items-center gap-2">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">World & Character DNA</label>
+                            <div className="group relative">
+                              <Info className="w-3 h-3 text-slate-400 cursor-help" />
+                              <div className="absolute right-0 bottom-full mb-2 w-72 p-3 bg-slate-800 text-white text-[10px] rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-[60] normal-case font-bold leading-relaxed border border-slate-700">
+                                Characters are simple geometric constructions (circles, rectangles, triangles) with big, readable silhouettes and tiny facial features.​<br /><br />Props and environments are reduced to essential shapes and symbols rather than detailed depictions.<br /><br />Overall finish is matte with subtle paper grain to reinforce the analog, printed feel.
+                                <div className="absolute top-full right-4 border-8 border-transparent border-t-slate-800"></div>
+                              </div>
+                            </div>
+                          </div>
                           <textarea 
                              value={newStyle.rules?.world || ''}
                              onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, world: e.target.value}})}
-                             placeholder="e.g. Victorian era, clockwork limbs, exaggerated tall proportions..."
-                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24"
+                             placeholder="e.g. Victorian era..."
+                             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm h-24 focus:ring-1 focus:ring-indigo-500 outline-none"
                           />
                        </div>
                     </div>
@@ -365,17 +468,17 @@ const StyleForge: React.FC = () => {
                  <div className="space-y-8 animate-fade-in">
                     <div className="space-y-1 text-center">
                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Negative Space</h3>
-                       <p className="text-sm text-slate-500">What elements are strictly forbidden in this style?</p>
+                       <p className="text-sm text-slate-500">What elements are strictly forbidden in this style? (Type 'n/a' if none)</p>
                     </div>
                     <textarea 
                        value={newStyle.rules?.negative || ''}
                        onChange={e => setNewStyle({...newStyle, rules: {...newStyle.rules!, negative: e.target.value}})}
-                       placeholder="e.g. No glossy 3D, no anime features, no neon colours, no sharp edges..."
-                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-slate-900 dark:text-white text-md h-48 resize-none"
+                       placeholder="e.g. No glossy 3D, no anime features..."
+                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-slate-900 dark:text-white text-md h-48 resize-none focus:ring-2 focus:ring-indigo-500 outline-none"
                     />
                     <div className="bg-red-500/5 p-4 rounded-xl border border-red-500/10 flex items-start gap-3">
                        <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                       <p className="text-xs text-red-600/80 leading-relaxed font-bold uppercase">These rules act as a persistent safety guard for your style, preventing drift over time.</p>
+                       <p className="text-xs text-red-600/80 leading-relaxed font-bold uppercase">All fields are mandatory. Only the Negative Space field accepts 'n/a'.</p>
                     </div>
                  </div>
               )}
@@ -390,7 +493,7 @@ const StyleForge: React.FC = () => {
                     <div className="grid grid-cols-4 md:grid-cols-6 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar p-1">
                        {newStyle.referenceImages?.map((img, idx) => (
                           <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 group">
-                             <img src={img} className="w-full h-full object-cover" />
+                             <img src={img} className="w-full h-full object-cover" alt="ref" />
                              <button 
                                 onClick={() => setNewStyle(prev => ({ ...prev, referenceImages: prev.referenceImages?.filter((_, i) => i !== idx) }))}
                                 className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
@@ -433,7 +536,7 @@ const StyleForge: React.FC = () => {
                  {step < 4 ? (
                     <button 
                        onClick={handleNextStep}
-                       disabled={step === 1 && !newStyle.name}
+                       disabled={status === 'loading'}
                        className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 px-10 py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center gap-2"
                     >Next <ChevronRight className="w-4 h-4"/></button>
                  ) : (
@@ -454,7 +557,6 @@ const StyleForge: React.FC = () => {
       {view === 'comparison' && activeStyleForComparison && (
         <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-12">
            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 shadow-2xl space-y-10">
-              
               <div className="text-center space-y-4">
                  <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto border border-indigo-500/20">
                     <Search className="w-10 h-10 text-indigo-500" />
@@ -488,7 +590,7 @@ const StyleForge: React.FC = () => {
                              {similarMatches.map(match => (
                                 <div key={match.id} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-sm">
                                    <div className="aspect-video relative overflow-hidden">
-                                      <img src={match.image} className="w-full h-full object-cover" />
+                                      <img src={match.image} className="w-full h-full object-cover" alt={match.name} />
                                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                                       <span className="absolute bottom-4 left-4 text-white font-black uppercase tracking-tight text-lg">{match.name}</span>
                                    </div>
@@ -511,7 +613,6 @@ const StyleForge: React.FC = () => {
                        </div>
                     )}
 
-                    {/* SUGGESTIONS AREA */}
                     <div className="pt-10 border-t border-slate-100 dark:border-slate-800 space-y-6">
                        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                           <div className="space-y-1 text-center md:text-left">
@@ -582,7 +683,7 @@ const StyleForge: React.FC = () => {
                        <input 
                           value={extraDetails}
                           onChange={e => setExtraDetails(e.target.value)}
-                          placeholder="e.g. cinematic lighting, 8k, walking across the ocean floor"
+                          placeholder="e.g. cinematic lighting, 8k..."
                           className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-900 dark:text-white text-sm"
                        />
                     </div>
@@ -615,7 +716,7 @@ const StyleForge: React.FC = () => {
                     </div>
                  ) : genResult ? (
                     <>
-                       <img src={genResult} className="w-full h-full object-cover" />
+                       <img src={genResult} className="w-full h-full object-cover" alt="result" />
                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
                           <a href={genResult} download="forged-art.png" className="bg-white text-slate-900 px-8 py-3 rounded-full font-black flex items-center gap-2 hover:scale-105 transition-transform shadow-xl">
                              <Download className="w-5 h-5" /> DOWNLOAD

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Film, Upload, RefreshCw, X, Download, Lock, Monitor, Smartphone, Square, Clapperboard, Music, Sliders, Play, Sparkles, Plus, Star, AlertCircle, Layers, Shuffle, Image as ImageIcon } from 'lucide-react';
 import { generateBackgroundMusic, analyzeSlideshow } from '../../services/geminiService';
@@ -141,7 +142,7 @@ const ImagesToMovie: React.FC = () => {
       canvas.height = isLandscape ? 720 : 1280;
 
       // Load all images into memory
-      /* Fix: Replaced 'new Image()' with 'document.createElement("img")' to prevent Illegal constructor errors. */
+      /* Fix: Replaced 'new Image()' with 'document.createElement("img")' to prevent Illegal constructor errors during image loading. */
       const loadedImages = await Promise.all(images.map(src => new Promise<HTMLImageElement>((resolve, reject) => {
          const img = document.createElement('img');
          img.onload = () => resolve(img);
