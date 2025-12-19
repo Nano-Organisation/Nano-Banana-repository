@@ -301,7 +301,7 @@ const CaptionCreator: React.FC = () => {
                        <video 
                          ref={videoRef}
                          src={fileSrc}
-                         className="w-full h-full object-cover"
+                         className="w-full h-full object-contain"
                          onTimeUpdate={handleTimeUpdate}
                          onLoadedMetadata={handleVideoMetadata}
                          onEnded={() => setIsPlaying(false)}
