@@ -67,8 +67,9 @@ const StyleForge: React.FC = () => {
     // Length check for "rubbish" strings
     if (t.length < 3) return false;
     
-    // English-only character set (Strictly alphanumeric + basic punctuation)
-    if (!/^[a-zA-Z0-9\s.,!?'"()\-;:/]+$/.test(t)) return false;
+    // English-only character set (Strictly alphanumeric + standard typography/punctuation)
+    // Fix: Added – (en dash), — (em dash), and smart quotes to the permitted character set.
+    if (!/^[a-zA-Z0-9\s.,!?'"()\-;:/–—‘’“”]+$/.test(t)) return false;
     
     // Heuristic nonsense detection:
     // 1. Repeating characters (e.g. "aaaaa")
@@ -467,7 +468,16 @@ const StyleForge: React.FC = () => {
               {step === 3 && (
                  <div className="space-y-8 animate-fade-in">
                     <div className="space-y-1 text-center">
-                       <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Negative Space</h3>
+                       <div className="flex items-center justify-center gap-2">
+                          <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Negative Space/Negative rules (what to avoid)</h3>
+                          <div className="group relative">
+                            <Info className="w-4 h-4 text-slate-400 cursor-help" />
+                            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-80 p-3 bg-slate-800 text-white text-[10px] rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 normal-case font-bold leading-relaxed border border-slate-700">
+                                Avoid high-detail rendering and intricate textures; details should stay minimal and graphic.​<br /><br />Avoid realistic surface textures (metal, glass, skin pores) and photoreal lighting or complex perspective.<br /><br />No gradients, airbrush effects, or heavy 3D depth cues like volumetric light or motion blur.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800"></div>
+                            </div>
+                          </div>
+                       </div>
                        <p className="text-sm text-slate-500">What elements are strictly forbidden in this style? (Type 'n/a' if none)</p>
                     </div>
                     <textarea 

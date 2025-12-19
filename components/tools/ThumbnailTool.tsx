@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Youtube, Download, RefreshCw, Zap, TrendingUp, Gamepad, Smile, Layout, Film, Monitor, Smartphone, Square, Image as ImageIcon, Lock, AlertTriangle } from 'lucide-react';
 import { generateViralThumbnails, generateVideoWithGemini } from '../../services/geminiService';
@@ -51,6 +50,8 @@ const ThumbnailTool: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   
   const [status, setStatus] = useState<LoadingState>('idle');
+  /* Fix: Moved errorMessage state to the top of the component to avoid "used before declaration" and shadowing issues. */
+  const [errorMessage, setErrorMessage] = useState('');
   const [hasKey, setHasKey] = useState<boolean>(false);
 
   useEffect(() => {
@@ -73,7 +74,8 @@ const ThumbnailTool: React.FC = () => {
     const aiStudio = getAIStudio();
     if (aiStudio) {
       await aiStudio.openSelectKey();
-      await checkKey();
+      /* Fix: Assume selection success immediately after triggering the dialog to mitigate race condition. */
+      setHasKey(true);
     }
   };
 
@@ -81,21 +83,23 @@ const ThumbnailTool: React.FC = () => {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
-    setStatus('loading');
     
-    // Clear previous results based on mode
-    if (mode === 'image') setVideoUrl(null);
-    else setThumbnails([]);
-
-    // Check key for video mode
+    // Fix: Trigger key selection if missing for Pro mode but proceed immediately as per guidelines.
     if (mode === 'video') {
        const aiStudio = getAIStudio();
        if (aiStudio && !(await aiStudio.hasSelectedApiKey())) {
-          setStatus('error');
-          setHasKey(false);
-          return;
+          handleSelectKey();
+          // Proceed with generation assuming success
        }
     }
+
+    setStatus('loading');
+    /* Fix: Using the top-level errorMessage state. */
+    setErrorMessage(''); 
+
+    // Clear previous results based on mode
+    if (mode === 'image') setVideoUrl(null);
+    else setThumbnails([]);
     
     try {
       // enhance prompt with style instructions
@@ -106,12 +110,22 @@ const ThumbnailTool: React.FC = () => {
          setThumbnails(results);
       } else {
          const url = await generateVideoWithGemini(finalPrompt, aspectRatio);
-         setVideoUrl(url);
+         const response = await fetch(url);
+         if (!response.ok) throw new Error("Failed to load generated video stream.");
+         const blob = await response.blob();
+         setVideoUrl(URL.createObjectURL(blob));
       }
       
       setStatus('success');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      const msg = err.message || "";
+      // Fix: Reset key state and prompt for a new key if the request fails with "Requested entity was not found."
+      if (msg.includes("Requested entity was not found")) {
+          setHasKey(false);
+          handleSelectKey();
+      }
+      setErrorMessage(msg || "Generation failed");
       setStatus('error');
     }
   };
@@ -267,7 +281,7 @@ const ThumbnailTool: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                    <h3 className="text-white font-bold">Generation Failed</h3>
-                   <p className="text-slate-400 text-sm">Please try again. If using Motion Clip, ensure you have a valid paid API key connected.</p>
+                   <p className="text-slate-400 text-sm">{errorMessage}</p>
                 </div>
                 {mode === 'video' && (
                    <button 

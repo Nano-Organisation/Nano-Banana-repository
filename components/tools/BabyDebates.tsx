@@ -70,7 +70,8 @@ const BabyDebates: React.FC = () => {
     const aiStudio = getAIStudio();
     if (aiStudio) {
       await aiStudio.openSelectKey();
-      await checkKey();
+      /* Fix: Assume selection success immediately after triggering the dialog to mitigate race condition. */
+      setHasKey(true);
     }
   };
 
@@ -107,7 +108,7 @@ const BabyDebates: React.FC = () => {
       try {
         await runFileSecurityChecks(file, 'image');
         const reader = new FileReader();
-        reader.onload = () => {
+        reader.onloadend = () => {
            setParticipants(prev => prev.map((p, i) => 
               i === uploadIndex ? { ...p, image: reader.result as string } : p
            ));
@@ -167,11 +168,10 @@ const BabyDebates: React.FC = () => {
   const handleRenderVideo = async () => {
     if (!scriptData || !isScriptLocked) return;
     
+    // Fix: Trigger key selection if missing for Veo but proceed immediately as per guidelines.
     const aiStudio = getAIStudio();
     if (aiStudio && !(await aiStudio.hasSelectedApiKey())) {
-       await handleSelectKey();
-       if (!(await aiStudio.hasSelectedApiKey())) return;
-       setHasKey(true);
+       handleSelectKey();
     }
 
     setStatus('loading');
@@ -198,7 +198,13 @@ const BabyDebates: React.FC = () => {
       setStatus('success');
     } catch (e: any) {
       console.error(e);
-      setErrorMessage(e.message || "The video generation was blocked by post-generation safety filters. This often happens with real-world names or sensitive prompts. Try descriptive, generic character names for better results.");
+      const msg = e.message || "";
+      // Fix: Reset key state and prompt for a new key if the request fails with "Requested entity was not found."
+      if (msg.includes("Requested entity was not found")) {
+          setHasKey(false);
+          handleSelectKey();
+      }
+      setErrorMessage(msg || "The video generation was blocked by post-generation safety filters. This often happens with real-world names or sensitive prompts. Try descriptive, generic character names for better results.");
       setStatus('error');
     }
   };

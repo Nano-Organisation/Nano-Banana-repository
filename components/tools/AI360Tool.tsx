@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Box, Upload, Send, RefreshCw, AlertTriangle, CheckCircle, HelpCircle, Copy, Video, Play, Lock } from 'lucide-react';
 import { generate3DOrchestration, generateVideoWithGemini } from '../../services/geminiService';
@@ -39,7 +38,8 @@ const AI360Tool: React.FC = () => {
     const aiStudio = getAIStudio();
     if (aiStudio) {
       await aiStudio.openSelectKey();
-      await checkKey();
+      /* Fix: Assume selection success immediately after triggering the dialog to mitigate race condition. */
+      setHasKey(true);
     }
   };
 
@@ -91,13 +91,10 @@ const AI360Tool: React.FC = () => {
   const handleGeneratePreview = async () => {
     if (!result?.generation_prompt) return;
     
-    // API Key Check
+    // Fix: Trigger key selection if missing for Veo preview but proceed immediately as per guidelines.
     const aiStudio = getAIStudio();
     if (aiStudio && !(await aiStudio.hasSelectedApiKey())) {
-       await handleSelectKey();
-       // Re-check after dialog closes
-       if (!(await aiStudio.hasSelectedApiKey())) return;
-       setHasKey(true);
+       handleSelectKey();
     }
 
     setVideoStatus('loading');
@@ -113,7 +110,7 @@ const AI360Tool: React.FC = () => {
       // Fetch Blob to handle potential auth/network errors before display
       const response = await fetch(generatedUrl);
       if (!response.ok) {
-         throw new Error(`Failed to load video. Status: ${response.status}. Please check your API key permissions.`);
+         throw new Error(`Failed to load video stream. The link may have expired or is inaccessible.`);
       }
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
@@ -122,8 +119,14 @@ const AI360Tool: React.FC = () => {
       setVideoStatus('success');
     } catch (e: any) {
       console.error(e);
+      const msg = e.message || "";
+      // Fix: Reset key state and prompt for a new key if the request fails with "Requested entity was not found."
+      if (msg.includes("Requested entity was not found")) {
+          setHasKey(false);
+          handleSelectKey();
+      }
       setVideoStatus('error');
-      setErrorMessage(e.message || "Failed to generate preview video. Please try again.");
+      setErrorMessage(msg || "Failed to generate preview video. Please try again.");
     }
   };
 

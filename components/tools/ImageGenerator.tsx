@@ -62,12 +62,23 @@ const ImageGenerator: React.FC = () => {
     const aiStudio = getAIStudio();
     if (aiStudio) {
       await aiStudio.openSelectKey();
-      await checkKey();
+      /* Fix: Guideline requires assuming key selection was successful to mitigate race conditions. */
+      setHasKey(true);
     }
   };
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
+
+    // Fix: Trigger key selection if missing for Pro mode but proceed immediately as per guidelines.
+    if (isPro) {
+      const aiStudio = getAIStudio();
+      if (aiStudio && !(await aiStudio.hasSelectedApiKey())) {
+         handleSelectKey();
+         // Proceed with generation assuming success
+      }
+    }
+
     setStatus('loading');
     setErrorMessage('');
     setResultImage(null);
@@ -75,13 +86,6 @@ const ImageGenerator: React.FC = () => {
 
     try {
       if (isPro) {
-        if (!(await getAIStudio()?.hasSelectedApiKey())) {
-           setStatus('error');
-           setErrorMessage("Please select a paid API key to use AI Create Pro.");
-           handleSelectKey();
-           setStatus('idle');
-           return;
-        }
         const img = await generateProImageWithGemini(`${prompt} --ar ${aspectRatio}`, size);
         setResultImage(img);
       } else {

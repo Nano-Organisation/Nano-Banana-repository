@@ -47,7 +47,8 @@ const StudioTool: React.FC = () => {
     const aiStudio = getAIStudio();
     if (aiStudio) {
       await aiStudio.openSelectKey();
-      await checkKey();
+      /* Fix: Assume selection success immediately after triggering the dialog to mitigate race condition. */
+      setHasKey(true);
     }
   };
 
@@ -57,8 +58,8 @@ const StudioTool: React.FC = () => {
     // API Check
     const aiStudio = getAIStudio();
     if (aiStudio && !(await aiStudio.hasSelectedApiKey())) {
+       // Fix: Guideline requires assuming success and proceeding after triggering selection.
        handleSelectKey();
-       return;
     }
 
     setStatus('loading');
@@ -70,7 +71,7 @@ const StudioTool: React.FC = () => {
       
       const prompt = type === 'intro' 
         ? `Create a YouTube Intro Video for channel "${channelName}". Style: ${selectedStyle?.desc}. Visuals: Kinetic typography animating the name "${channelName}" ${tagline ? `with tagline "${tagline}"` : ''}. Background: Dynamic, high energy motion graphics matching the ${style} aesthetic. Audio: Upbeat energetic intro music. Length: 5 seconds.`
-        : `Create a YouTube Outro / End Screen video for channel "${channelName}". Style: ${selectedStyle?.desc}. Layout: Leave space for "Next Video" and "Subscribe" buttons. Text: "Thanks for watching!". Background: Looping, subtle motion graphics. Audio: Chill lo-fi outro music. Length: 10 seconds.`;
+        : `Create a YouTube Outro / End Screen video for channel "${channelName}". Style: ${selectedStyle?.desc}. Layout: Leave space for "Next Video" and "Subscribe" buttons. Text: "Thanks for watching!". Background: Looping, subtle motion graphics. Audio: Chill lo-fi outer music. Length: 10 seconds.`;
 
       const url = await generateVideoWithGemini(prompt, '16:9');
       
@@ -84,7 +85,13 @@ const StudioTool: React.FC = () => {
       setStatus('success');
     } catch (err: any) {
       console.error(err);
-      setErrorMessage(err.message || "Studio generation failed.");
+      const msg = err.message || "";
+      // Fix: Reset key state and prompt for a new key if the request fails with "Requested entity was not found."
+      if (msg.includes("Requested entity was not found")) {
+          setHasKey(false);
+          handleSelectKey();
+      }
+      setErrorMessage(msg || "Studio generation failed.");
       setStatus('error');
     }
   };

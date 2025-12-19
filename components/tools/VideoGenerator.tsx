@@ -35,7 +35,8 @@ const VideoGenerator: React.FC = () => {
     const aiStudio = getAIStudio();
     if (aiStudio) {
       await aiStudio.openSelectKey();
-      await checkKey();
+      /* Fix: Assume selection success immediately after triggering the dialog to mitigate race condition. */
+      setHasKey(true);
     }
   };
 
@@ -59,8 +60,8 @@ const VideoGenerator: React.FC = () => {
     
     const aiStudio = getAIStudio();
     if (aiStudio && !(await aiStudio.hasSelectedApiKey())) {
+       // Fix: Guideline requires assuming success and proceeding after triggering selection.
        handleSelectKey();
-       return;
     }
 
     setStatus('loading');
@@ -87,7 +88,7 @@ const VideoGenerator: React.FC = () => {
           setHasKey(false);
           handleSelectKey();
       }
-      setErrorMessage(err.message || "Video generation failed.");
+      setErrorMessage(msg || "Video generation failed.");
       setStatus('error');
     }
   };

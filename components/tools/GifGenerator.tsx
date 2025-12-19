@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Film, Download, RefreshCw, Lock, Smartphone, Monitor, Image as ImageIcon, Square, Upload, AlertTriangle } from 'lucide-react';
 import { generateVideoWithGemini } from '../../services/geminiService';
@@ -36,7 +35,8 @@ const GifGenerator: React.FC = () => {
     const aiStudio = getAIStudio();
     if (aiStudio) {
       await aiStudio.openSelectKey();
-      await checkKey();
+      /* Fix: Assume selection success immediately after triggering the dialog to mitigate race condition. */
+      setHasKey(true);
     }
   };
 
@@ -60,10 +60,8 @@ const GifGenerator: React.FC = () => {
     
     const aiStudio = getAIStudio();
     if (aiStudio && !(await aiStudio.hasSelectedApiKey())) {
-       setStatus('error');
-       setErrorMessage("API Key required");
-       setHasKey(false);
-       return;
+       // Fix: Guideline requires assuming success and proceeding after triggering selection.
+       handleSelectKey();
     }
 
     setStatus('loading');
@@ -84,7 +82,13 @@ const GifGenerator: React.FC = () => {
       setStatus('success');
     } catch (err: any) {
       console.error(err);
-      setErrorMessage(err.message || "Generation failed");
+      const msg = err.message || "";
+      // Fix: Reset key state and prompt for a new key if the request fails with "Requested entity was not found."
+      if (msg.includes("Requested entity was not found")) {
+          setHasKey(false);
+          handleSelectKey();
+      }
+      setErrorMessage(msg || "Generation failed");
       setStatus('error');
     }
   };
