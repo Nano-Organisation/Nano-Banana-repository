@@ -80,12 +80,13 @@ const CaptionCreator: React.FC = () => {
       gain.gain.linearRampToValueAtTime(0.1, now + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
     } else if (type === 'pop') {
+      // Improved pop sound for 🔥 to be more audible
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(600, now);
-      osc.frequency.exponentialRampToValueAtTime(100, now + 0.05);
+      osc.frequency.setValueAtTime(800, now);
+      osc.frequency.exponentialRampToValueAtTime(150, now + 0.08);
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.2, now + 0.005);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
     } else if (type === 'bell') {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(880, now);
@@ -100,24 +101,33 @@ const CaptionCreator: React.FC = () => {
     osc.stop(now + 1);
   };
 
-  // Listen for caption changes to play sounds
+  // Improved Logic for triggering sounds
   const activeCaption = captions.find(c => currentTime >= c.start && currentTime <= c.end);
   const prevActiveId = useRef<string | null>(null);
+  const triggeredForId = useRef<string | null>(null);
 
   useEffect(() => {
+    // If we've switched to a new caption, reset the trigger
     if (activeCaption && activeCaption.id !== prevActiveId.current) {
       prevActiveId.current = activeCaption.id;
-      // Trigger sound ONLY when playing to avoid noise during scrubbing/static state
-      if (isSoundEnabled && isPlaying) {
-        for (const [sound, emojis] of Object.entries(EMOJI_SOUND_TRIGGERS)) {
-          if (emojis.some(e => activeCaption.text.includes(e))) {
-            playSynthesizedSound(sound);
-            break;
-          }
+      triggeredForId.current = null;
+    }
+
+    // Trigger sound ONLY when playing and if it hasn't been fired for this block yet
+    if (activeCaption && isSoundEnabled && isPlaying && triggeredForId.current !== activeCaption.id) {
+      for (const [sound, emojis] of Object.entries(EMOJI_SOUND_TRIGGERS)) {
+        if (emojis.some(e => activeCaption.text.includes(e))) {
+          playSynthesizedSound(sound);
+          triggeredForId.current = activeCaption.id; // Block repeat triggers for this specific block until reset
+          break;
         }
       }
     }
-    if (!activeCaption) prevActiveId.current = null;
+    
+    if (!activeCaption) {
+      prevActiveId.current = null;
+      triggeredForId.current = null;
+    }
   }, [activeCaption, isSoundEnabled, isPlaying]);
 
   // Effective State for UI logic
@@ -375,7 +385,6 @@ const CaptionCreator: React.FC = () => {
             const date = new Date();
             const friendlyTimestamp = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') + '_' + date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/:/g, '-');
             
-            // 1. Updated naming convention: AI Caption Creator - [friendly timestamp]
             a.download = `AI Caption Creator - ${friendlyTimestamp}.${extension}`;
             
             document.body.appendChild(a);
