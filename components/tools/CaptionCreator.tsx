@@ -20,7 +20,11 @@ const EMOJI_SOUND_TRIGGERS: Record<string, string[]> = {
   vroom: ['🚗', '🏎️', '🏍️', '🏎', '🚙', '🚕', '🚓', '🚑', '🚒', '🚜'],
   chime: ['⭐', '✨', '🌟', '💫', '🪄', '💎', '🎉'],
   pop: ['🎈', '🫧', '🍾', '💥', '🔥', '🧨', '!', '?'],
-  bell: ['🔔', '🛎️', '⏰', '💡', '💬', '📢']
+  bell: ['🔔', '🛎️', '⏰', '💡', '💬', '📢'],
+  bark: ['🐶', '🐕', '🐩', '🐾', '🐺'],
+  meow: ['🐱', '🐈', '😸', '😻'],
+  roar: ['🦁', '🐯', '🐅', '🐆', '🦖', '🐻'],
+  chirp: ['🐦', '🐤', '🐣', '🐥', '🦉', '🦜']
 };
 
 const CaptionCreator: React.FC = () => {
@@ -80,7 +84,6 @@ const CaptionCreator: React.FC = () => {
       gain.gain.linearRampToValueAtTime(0.1, now + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
     } else if (type === 'pop') {
-      // Improved pop sound for 🔥 to be more audible
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(800, now);
       osc.frequency.exponentialRampToValueAtTime(150, now + 0.08);
@@ -93,6 +96,35 @@ const CaptionCreator: React.FC = () => {
       gain.gain.setValueAtTime(0, now);
       gain.gain.linearRampToValueAtTime(0.1, now + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+    } else if (type === 'bark') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.2, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    } else if (type === 'meow') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(500, now);
+      osc.frequency.exponentialRampToValueAtTime(800, now + 0.15);
+      osc.frequency.exponentialRampToValueAtTime(600, now + 0.3);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.1, now + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    } else if (type === 'roar') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(120, now);
+      osc.frequency.exponentialRampToValueAtTime(60, now + 0.5);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.25, now + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+    } else if (type === 'chirp') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(2500, now);
+      osc.frequency.exponentialRampToValueAtTime(3500, now + 0.05);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.1, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
     }
 
     osc.connect(gain);
@@ -610,7 +642,7 @@ const CaptionCreator: React.FC = () => {
                           <Volume2 className="w-16 h-16 text-blue-500 animate-pulse" />
                           <p className="text-xs font-bold text-white uppercase tracking-widest">Audio Only Mode</p>
                           <audio 
-                            ref={audioRef} 
+                            ref={ref => { (audioRef.current as any) = ref; }} 
                             src={fileSrc} 
                             onTimeUpdate={handleTimeUpdate} 
                             onLoadedMetadata={handleAudioMetadata} 

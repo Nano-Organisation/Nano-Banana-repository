@@ -255,7 +255,7 @@ const App: React.FC = () => {
       case ToolId.RiddleGenerator: return <RiddleGenerator />;
       case ToolId.Podcast: return <PodcastTool />;
       case ToolId.Studio: return <StudioTool />;
-      case ToolId.AssistantCreator: return <AssistantCreator />;
+      /* Fix: Removed duplicate switch case for AssistantCreator. */
       case ToolId.AssistantCreator: return <AssistantCreator />;
       case ToolId.ListCreator: return <ListCreator />;
       case ToolId.Academy: return <PromptAcademy />;
@@ -297,7 +297,7 @@ const App: React.FC = () => {
           Unleash <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-amber-600">AI Power</span>
         </h2>
         <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-          Experience the next generation of AI tools powered by Gemini 2.5. 
+          Experience the next generation of AI tools powered by Gemini 3. 
         </p>
         <div className="max-w-md mx-auto relative pt-4">
            <div className="absolute inset-y-0 left-0 pl-3 pt-4 flex items-center pointer-events-none">
