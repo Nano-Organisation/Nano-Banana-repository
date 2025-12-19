@@ -1,16 +1,33 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Palette, Plus, Save, Play, ChevronRight, ChevronLeft, Trash2, Edit3, Image as ImageIcon, Upload, X, RefreshCw, Layers, CheckCircle2, FlaskConical, AlertCircle, Info, Download } from 'lucide-react';
+/* Fix: Added missing AlertTriangle import to resolve the "Cannot find name 'AlertTriangle'" error. */
+import { Palette, Plus, Save, Play, ChevronRight, ChevronLeft, Trash2, Edit3, Image as ImageIcon, Upload, X, RefreshCw, Layers, CheckCircle2, FlaskConical, AlertTriangle, AlertCircle, Info, Download, Search, Zap, Wand2, ShieldCheck, Sparkles } from 'lucide-react';
 import { generateImageWithGemini, generateTextWithGemini } from '../../services/geminiService';
 import { UserDefinedStyle, LoadingState } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
 import { dbService, STORES } from '../../utils/db';
 
+const KNOWN_STYLES = [
+  { id: 'impressionism', name: 'Impressionism', block: 'Soft brushstrokes, focus on light, everyday subjects, visible dabs of paint, vibrant colors.', image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?q=80&w=300&auto=format&fit=crop' },
+  { id: 'synthwave', name: 'Synthwave / Outrun', block: 'Neon pink and blue colors, retro-futuristic 80s aesthetic, glowing grids, sunset gradients, chrome textures.', image: 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=300&auto=format&fit=crop' },
+  { id: 'minimalism', name: 'Minimalism', block: 'Simple geometric shapes, massive negative space, limited color palette, clean lines, no unnecessary detail.', image: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=300&auto=format&fit=crop' },
+  { id: 'bauhaus', name: 'Bauhaus', block: 'Primary colors, geometric abstraction, industrial design influence, balance of form and function.', image: 'https://images.unsplash.com/photo-1505330622279-bf7d7fc918f4?q=80&w=300&auto=format&fit=crop' },
+  { id: 'gothic', name: 'Gothic / Victorian Noir', block: 'Dark atmosphere, moody shadows, ornate Victorian details, cold color palette, spooky architectural elements.', image: 'https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=300&auto=format&fit=crop' },
+  { id: 'popart', name: 'Pop Art', block: 'Bold primary colors, Ben-Day dots, thick black outlines, repetitive patterns, commercial illustration aesthetic.', image: 'https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=300&auto=format&fit=crop' },
+  { id: 'cyberpunk', name: 'Cyberpunk', block: 'High-tech low-life, rainy cityscapes, neon signs, cybernetic enhancements, cluttered detail, high contrast.', image: 'https://images.unsplash.com/photo-1605810230434-7631ac76ec81?q=80&w=300&auto=format&fit=crop' }
+];
+
 const StyleForge: React.FC = () => {
-  const [view, setView] = useState<'list' | 'create' | 'generate'>('list');
+  const [view, setView] = useState<'list' | 'create' | 'generate' | 'comparison'>('list');
   const [styles, setStyles] = useState<UserDefinedStyle[]>([]);
   const [status, setStatus] = useState<LoadingState>('idle');
   
+  // Comparison State
+  const [similarMatches, setSimilarMatches] = useState<any[]>([]);
+  const [uniquenessSuggestions, setUniquenessSuggestions] = useState<string[]>([]);
+  const [comparisonLoading, setComparisonLoading] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [activeStyleForComparison, setActiveStyleForComparison] = useState<UserDefinedStyle | null>(null);
+
   // Creation Wizard State
   const [step, setStep] = useState(1);
   const [newStyle, setNewStyle] = useState<Partial<UserDefinedStyle>>({
@@ -88,21 +105,74 @@ const StyleForge: React.FC = () => {
         createdAt: new Date().toISOString()
       };
 
-      // Generate a thumbnail if we have rules
       const thumb = await generateImageWithGemini(`A sample visual showcasing the style: ${block}. Abstract shape.`, '1:1');
       completeStyle.thumbnail = thumb;
 
       await dbService.put(STORES.STYLES, completeStyle);
       await loadStyles();
       
-      setStatus('success');
-      setView('list');
+      setActiveStyleForComparison(completeStyle);
+      runComparison(completeStyle);
+      setView('comparison');
+      setStatus('idle');
       setStep(1);
       setNewStyle({ version: 1, rules: { rendering: '', colors: '', composition: '', world: '', negative: '' }, referenceImages: [] });
     } catch (e) {
       console.error(e);
       setStatus('error');
     }
+  };
+
+  const runComparison = async (style: UserDefinedStyle) => {
+    setComparisonLoading(true);
+    setSimilarMatches([]);
+    setUniquenessSuggestions([]);
+    try {
+      const prompt = `Identify if the following custom AI style description matches or is conceptually very similar to any of these known styles.
+      USER STYLE: "${style.styleBlock}"
+      
+      KNOWN STYLES:
+      ${KNOWN_STYLES.map(s => `- ID: ${s.id}, DESC: ${s.block}`).join('\n')}
+      
+      Instructions: 
+      1. ONLY return style IDs that have a strong conceptual overlap (similarity > 70%).
+      2. If NO styles match, return an empty array.
+      3. Do NOT hallucinate style names. Use the IDs provided.
+      
+      Return as a JSON array of strings: ["id1", "id2"]`;
+
+      const resText = await generateTextWithGemini(prompt);
+      try {
+        const ids = JSON.parse(resText.replace(/```json/g, '').replace(/```/g, '').trim());
+        const matches = KNOWN_STYLES.filter(ks => ids.includes(ks.id));
+        setSimilarMatches(matches);
+      } catch (err) {
+        setSimilarMatches([]);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setComparisonLoading(false);
+  };
+
+  const getUniquenessSuggestions = async () => {
+    if (!activeStyleForComparison) return;
+    setSuggestionsLoading(true);
+    try {
+      const prompt = `Style Name: "${activeStyleForComparison.name}"
+      Description: "${activeStyleForComparison.styleBlock}"
+      
+      Task: Provide 3 high-impact, sophisticated suggestions to change this style to make it more unique, distinct, and "never-before-seen" in AI art. Focus on mixing unexpected textures, niche lighting conditions, or unusual materials.
+      
+      Return as a JSON array of strings: ["Suggestion 1", "Suggestion 2", "Suggestion 3"]`;
+
+      const resText = await generateTextWithGemini(prompt);
+      const res = JSON.parse(resText.replace(/```json/g, '').replace(/```/g, '').trim());
+      setUniquenessSuggestions(res);
+    } catch (e) {
+      console.error(e);
+    }
+    setSuggestionsLoading(false);
   };
 
   const deleteStyle = async (id: string, e: React.MouseEvent) => {
@@ -304,7 +374,7 @@ const StyleForge: React.FC = () => {
                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-slate-900 dark:text-white text-md h-48 resize-none"
                     />
                     <div className="bg-red-500/5 p-4 rounded-xl border border-red-500/10 flex items-start gap-3">
-                       <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                       <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                        <p className="text-xs text-red-600/80 leading-relaxed font-bold uppercase">These rules act as a persistent safety guard for your style, preventing drift over time.</p>
                     </div>
                  </div>
@@ -377,6 +447,110 @@ const StyleForge: React.FC = () => {
                     </button>
                  )}
               </div>
+           </div>
+        </div>
+      )}
+
+      {view === 'comparison' && activeStyleForComparison && (
+        <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-12">
+           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 shadow-2xl space-y-10">
+              
+              <div className="text-center space-y-4">
+                 <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto border border-indigo-500/20">
+                    <Search className="w-10 h-10 text-indigo-500" />
+                 </div>
+                 <div className="space-y-1">
+                    <h3 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">Similarity Audit</h3>
+                    <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[10px]">Scanning global art history for overlap_</p>
+                 </div>
+              </div>
+
+              {comparisonLoading ? (
+                 <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                    <RefreshCw className="w-12 h-12 text-indigo-500 animate-spin" />
+                    <p className="text-indigo-400 font-black uppercase text-xs animate-pulse">Running Neural comparison...</p>
+                 </div>
+              ) : (
+                 <div className="space-y-10">
+                    {similarMatches.length > 0 ? (
+                       <div className="space-y-6">
+                          <div className="bg-amber-500/10 border border-amber-500/30 p-6 rounded-3xl flex items-start gap-4">
+                             <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0 mt-1" />
+                             <div>
+                                <h4 className="text-lg font-bold text-amber-600 dark:text-amber-400 uppercase tracking-tight">Overlap Detected</h4>
+                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
+                                   Your forged style has strong visual commonalities with the following existing movements. To be truly unique, consider more specific refinements.
+                                </p>
+                             </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             {similarMatches.map(match => (
+                                <div key={match.id} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-sm">
+                                   <div className="aspect-video relative overflow-hidden">
+                                      <img src={match.image} className="w-full h-full object-cover" />
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                                      <span className="absolute bottom-4 left-4 text-white font-black uppercase tracking-tight text-lg">{match.name}</span>
+                                   </div>
+                                   <div className="p-5">
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 italic">"{match.block}"</p>
+                                   </div>
+                                </div>
+                             ))}
+                          </div>
+                       </div>
+                    ) : (
+                       <div className="bg-green-500/10 border border-green-500/30 p-10 rounded-[2.5rem] text-center space-y-4">
+                          <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto border border-green-500/20">
+                             <ShieldCheck className="w-10 h-10 text-green-500" />
+                          </div>
+                          <div className="space-y-1">
+                             <h4 className="text-2xl font-black text-green-600 dark:text-green-400 uppercase tracking-tighter">Unique DNA Confirmed</h4>
+                             <p className="text-sm text-slate-600 dark:text-slate-400">We found no known existing styles that match your specific visual recipe. You've forged something truly distinct.</p>
+                          </div>
+                       </div>
+                    )}
+
+                    {/* SUGGESTIONS AREA */}
+                    <div className="pt-10 border-t border-slate-100 dark:border-slate-800 space-y-6">
+                       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                          <div className="space-y-1 text-center md:text-left">
+                             <h4 className="text-lg font-bold text-slate-900 dark:text-white uppercase tracking-tight">Style Evolution</h4>
+                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">AI Refinement Assistant</p>
+                          </div>
+                          <button 
+                             onClick={getUniquenessSuggestions}
+                             disabled={suggestionsLoading}
+                             className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black px-8 py-3 rounded-full flex items-center gap-2 hover:scale-105 transition-transform shadow-xl disabled:opacity-50"
+                          >
+                             {suggestionsLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
+                             GENERATE UNIQUENESS PROPOSALS
+                          </button>
+                       </div>
+
+                       {uniquenessSuggestions.length > 0 && (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade-in-up">
+                             {uniquenessSuggestions.map((s, i) => (
+                                <div key={i} className="bg-indigo-500/5 border border-indigo-500/20 p-5 rounded-3xl relative group hover:bg-indigo-500/10 transition-colors">
+                                   <div className="absolute -top-3 -left-3 w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-black text-xs shadow-lg">{i+1}</div>
+                                   <p className="text-xs text-slate-700 dark:text-indigo-100 leading-relaxed font-bold uppercase pt-2">{s}</p>
+                                </div>
+                             ))}
+                          </div>
+                       )}
+                    </div>
+
+                    <div className="flex justify-center pt-10">
+                       <button 
+                          onClick={() => setView('list')}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-12 py-4 rounded-3xl shadow-2xl transition-all active:scale-95 flex items-center gap-3 uppercase tracking-widest text-sm"
+                       >
+                          <CheckCircle2 className="w-5 h-5" />
+                          Finalize and Store Style
+                       </button>
+                    </div>
+                 </div>
+              )}
            </div>
         </div>
       )}
