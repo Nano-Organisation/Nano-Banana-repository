@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Type as TypeIcon, Upload, RefreshCw, Play, Pause, Edit3, Save, Download, Palette, Wand2, Smartphone, Monitor, Smile, Trash2, CheckCircle2, Volume2, AlertCircle, Film } from 'lucide-react';
 /* Fix: Using strictly correct Type from @google/genai as per guidelines. */
@@ -20,7 +19,7 @@ const EMOJI_STYLES = ['Vibrant', 'Minimalist', 'Symbolic', 'None'];
 const EMOJI_SOUND_TRIGGERS: Record<string, string[]> = {
   vroom: ['🚗', '🏎️', '🏍️', '🏎', '🚙', '🚕', '🚓', '🚑', '🚒', '🚜'],
   chime: ['⭐', '✨', '🌟', '💫', '🪄', '💎', '🎉'],
-  pop: ['🎈', '🫧', '🍾', '💥', '🔥', '🧨'],
+  pop: ['🎈', '🫧', '🍾', '💥', '🔥', '🧨', '!', '?'],
   bell: ['🔔', '🛎️', '⏰', '💡', '💬', '📢']
 };
 
@@ -68,10 +67,10 @@ const CaptionCreator: React.FC = () => {
     
     if (type === 'vroom') {
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(40, now);
-      osc.frequency.exponentialRampToValueAtTime(120, now + 0.3);
+      osc.frequency.setValueAtTime(80, now);
+      osc.frequency.exponentialRampToValueAtTime(240, now + 0.3);
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.1, now + 0.05);
+      gain.gain.linearRampToValueAtTime(0.15, now + 0.05);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
     } else if (type === 'chime') {
       osc.type = 'sine';
@@ -108,7 +107,8 @@ const CaptionCreator: React.FC = () => {
   useEffect(() => {
     if (activeCaption && activeCaption.id !== prevActiveId.current) {
       prevActiveId.current = activeCaption.id;
-      if (isSoundEnabled) {
+      // Trigger sound ONLY when playing to avoid noise during scrubbing/static state
+      if (isSoundEnabled && isPlaying) {
         for (const [sound, emojis] of Object.entries(EMOJI_SOUND_TRIGGERS)) {
           if (emojis.some(e => activeCaption.text.includes(e))) {
             playSynthesizedSound(sound);
@@ -118,7 +118,7 @@ const CaptionCreator: React.FC = () => {
       }
     }
     if (!activeCaption) prevActiveId.current = null;
-  }, [activeCaption, isSoundEnabled]);
+  }, [activeCaption, isSoundEnabled, isPlaying]);
 
   // Effective State for UI logic
   const isEmojiDisabled = displayMode === 'text_only' || displayMode === 'highlight';
@@ -262,8 +262,16 @@ const CaptionCreator: React.FC = () => {
   const togglePlay = () => {
     const el = fileType === 'video' ? videoRef.current : audioRef.current;
     if (el) {
-      if (isPlaying) el.pause();
-      else el.play();
+      if (isPlaying) {
+        el.pause();
+      } else {
+        // RESUME AudioContext on user interaction to unlock contextual sounds
+        const ctx = getAudioCtx();
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
+        el.play();
+      }
       setIsPlaying(!isPlaying);
     }
   };
@@ -363,11 +371,11 @@ const CaptionCreator: React.FC = () => {
             a.style.display = 'none';
             a.href = url;
             
-            // Format timestamp for naming
+            // Format timestamp for naming - FRIENDLY FORMAT
             const date = new Date();
-            const friendlyTimestamp = date.toISOString().replace(/T/, ' ').replace(/\..+/, '').replace(/:/g, '-');
+            const friendlyTimestamp = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') + '_' + date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/:/g, '-');
             
-            // 1. Updated naming convention
+            // 1. Updated naming convention: AI Caption Creator - [friendly timestamp]
             a.download = `AI Caption Creator - ${friendlyTimestamp}.${extension}`;
             
             document.body.appendChild(a);

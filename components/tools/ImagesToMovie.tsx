@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Film, Upload, RefreshCw, X, Download, Lock, Monitor, Smartphone, Square, Clapperboard, Music, Sliders, Play, Sparkles, Plus, Star, AlertCircle, Layers, Shuffle } from 'lucide-react';
+import { Film, Upload, RefreshCw, X, Download, Lock, Monitor, Smartphone, Square, Clapperboard, Music, Sliders, Play, Sparkles, Plus, Star, AlertCircle, Layers, Shuffle, Image as ImageIcon } from 'lucide-react';
 import { generateBackgroundMusic, analyzeSlideshow } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
@@ -467,7 +467,7 @@ const ImagesToMovie: React.FC = () => {
                    <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
                    <div className="space-y-1">
                       <h3 className="font-bold text-slate-900 dark:text-white uppercase text-xs">Production Halted</h3>
-                      <p className="text-slate-500 text-[10px] leading-relaxed max-w-sm">{errorMessage}</p>
+                      <p className="text-slate-500 text-[10px] leading-relaxed max-sm">{errorMessage}</p>
                    </div>
                    <button onClick={() => setStatus('idle')} className="text-amber-500 font-black text-[10px] uppercase underline tracking-widest">Restart Pipeline</button>
                 </div>

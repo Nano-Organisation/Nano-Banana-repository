@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Music, RefreshCw, Sparkles, ChevronLeft, ChevronRight, Download, ImageIcon, PlayCircle, Star, Volume2, VolumeX } from 'lucide-react';
+import { Music, RefreshCw, Sparkles, ChevronLeft, ChevronRight, Download, Image as ImageIcon, PlayCircle, Star, Volume2, VolumeX } from 'lucide-react';
 import { generateImageWithGemini } from '../../services/geminiService';
 import { LoadingState, RhymeData } from '../../types';
 import { addWatermarkToImage } from '../../utils/watermark';
