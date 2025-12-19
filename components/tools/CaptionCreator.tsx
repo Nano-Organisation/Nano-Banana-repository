@@ -1,7 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Type, Upload, RefreshCw, Play, Pause, Edit3, Save, Download, Palette, Wand2, Smartphone, Monitor, Smile, Trash2, CheckCircle2, Volume2, AlertCircle } from 'lucide-react';
-import { GoogleGenAI, Type as SchemaType } from "@google/genai";
+import { Type as TypeIcon, Upload, RefreshCw, Play, Pause, Edit3, Save, Download, Palette, Wand2, Smartphone, Monitor, Smile, Trash2, CheckCircle2, Volume2, AlertCircle } from 'lucide-react';
+/* Fix: Using strictly correct Type from @google/genai as per guidelines. */
+import { GoogleGenAI, Type } from "@google/genai";
 import { LoadingState, CaptionBlock } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
 
@@ -30,6 +30,10 @@ const CaptionCreator: React.FC = () => {
   const [emojiStyle, setEmojiStyle] = useState(EMOJI_STYLES[0]);
   const [displayMode, setDisplayMode] = useState<'text_only' | 'text_emoji' | 'rebus' | 'emoji_only' | 'highlight'>('text_emoji');
   const [accentColor, setAccentColor] = useState('#fbbf24'); // Yellow-400
+
+  // Effective State for UI and AI logic
+  const isEmojiDisabled = displayMode === 'text_only' || displayMode === 'highlight';
+  const effectiveEmojiStyle = isEmojiDisabled ? 'None' : emojiStyle;
 
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -87,7 +91,6 @@ const CaptionCreator: React.FC = () => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     try {
-        // Step 1: Get the actual media data
         const mediaResponse = await fetch(fileSrc);
         const blob = await mediaResponse.blob();
         const base64Data = await new Promise<string>((resolve) => {
@@ -96,7 +99,6 @@ const CaptionCreator: React.FC = () => {
             reader.readAsDataURL(blob);
         });
 
-        // Step 2: Build detailed instructions based on user settings
         let promptText = `Task: Transcribe the provided audio from the media file into high-impact timed captions for social media.
         
         Chunk Requirements: 
@@ -118,8 +120,8 @@ const CaptionCreator: React.FC = () => {
             promptText += `\n- MODE: TEXT ONLY. Provide accurate text transcription with no emojis.`;
         }
 
-        if (emojiStyle !== 'None') {
-            promptText += `\n- Visual Style for Emojis/Icons: ${emojiStyle}.`;
+        if (effectiveEmojiStyle !== 'None') {
+            promptText += `\n- Visual Style for Emojis/Icons: ${effectiveEmojiStyle}.`;
         }
 
         promptText += `\n\nReturn ONLY a JSON array of objects: { "start": number, "end": number, "text": "string" }.`;
@@ -142,13 +144,13 @@ const CaptionCreator: React.FC = () => {
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
-                    type: SchemaType.ARRAY,
+                    type: Type.ARRAY,
                     items: {
-                        type: SchemaType.OBJECT,
+                        type: Type.OBJECT,
                         properties: {
-                            start: { type: SchemaType.NUMBER },
-                            end: { type: SchemaType.NUMBER },
-                            text: { type: SchemaType.STRING }
+                            start: { type: Type.NUMBER },
+                            end: { type: Type.NUMBER },
+                            text: { type: Type.STRING }
                         },
                         required: ['start', 'end', 'text']
                     }
@@ -194,7 +196,7 @@ const CaptionCreator: React.FC = () => {
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
-          <Type className="w-8 h-8 text-blue-500" />
+          <TypeIcon className="w-8 h-8 text-blue-500" />
           AI Caption Creator
         </h2>
         <p className="text-slate-600 dark:text-slate-400">Generate high-impact viral captions with timed animations.</p>
@@ -210,30 +212,8 @@ const CaptionCreator: React.FC = () => {
               <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                  <Palette className="w-4 h-4" /> Global Style
               </h3>
-              
-              <div className="grid grid-cols-2 gap-3">
-                 <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Font Family</label>
-                    <select 
-                      value={selectedFont} 
-                      onChange={e => setSelectedFont(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-white"
-                    >
-                       {FONTS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-                    </select>
-                 </div>
-                 <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Emoji Theme</label>
-                    <select 
-                      value={emojiStyle} 
-                      onChange={e => setEmojiStyle(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-white"
-                    >
-                       {EMOJI_STYLES.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                 </div>
-              </div>
 
+              {/* Display Mode Moved to Top */}
               <div className="space-y-1">
                  <label className="text-[10px] font-bold text-slate-400 uppercase">Display Mode</label>
                  <div className="grid grid-cols-3 gap-2">
@@ -252,6 +232,34 @@ const CaptionCreator: React.FC = () => {
                           {mode.label}
                        </button>
                     ))}
+                 </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Font Family</label>
+                    <select 
+                      value={selectedFont} 
+                      onChange={e => setSelectedFont(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-white"
+                    >
+                       {FONTS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+                    </select>
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Emoji Theme</label>
+                    <select 
+                      value={effectiveEmojiStyle} 
+                      disabled={isEmojiDisabled}
+                      onChange={e => setEmojiStyle(e.target.value)}
+                      className={`w-full border rounded-lg p-2 text-xs transition-all ${isEmojiDisabled ? 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 opacity-60' : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white cursor-pointer'}`}
+                    >
+                       {isEmojiDisabled ? (
+                         <option value="None">N/A (None)</option>
+                       ) : (
+                         EMOJI_STYLES.map(s => <option key={s} value={s}>{s}</option>)
+                       )}
+                    </select>
                  </div>
               </div>
             </div>
@@ -306,7 +314,6 @@ const CaptionCreator: React.FC = () => {
                          onLoadedMetadata={handleVideoMetadata}
                          onEnded={() => setIsPlaying(false)}
                          playsInline
-                         muted
                        />
                     ) : (
                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 p-8 text-center space-y-4">
@@ -322,7 +329,6 @@ const CaptionCreator: React.FC = () => {
                        </div>
                     )}
 
-                    {/* OVERLAY CAPTIONS */}
                     {activeCaption && (
                        <div className="absolute inset-x-4 bottom-32 flex flex-col items-center justify-center text-center pointer-events-none animate-fade-in">
                           <div 
@@ -350,7 +356,6 @@ const CaptionCreator: React.FC = () => {
                        </div>
                     )}
 
-                    {/* CONTROLS OVERLAY */}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                        <button onClick={togglePlay} className="p-6 bg-white/20 backdrop-blur-xl rounded-full text-white hover:scale-110 transition-transform">
                           {isPlaying ? <Pause className="w-10 h-10 fill-current" /> : <Play className="w-10 h-10 fill-current" />}
@@ -370,7 +375,6 @@ const CaptionCreator: React.FC = () => {
               )}
            </div>
 
-           {/* ACTION BAR */}
            <div className="flex gap-4">
               {!fileSrc ? (
                  <button 
@@ -407,7 +411,7 @@ const CaptionCreator: React.FC = () => {
                        }}
                        className="px-6 bg-slate-800 hover:bg-red-600 text-white rounded-2xl transition-colors"
                     >
-                       <Trash2 className="w-5 h-5" />
+                       <Trash2 className="w-3 h-3" />
                     </button>
                  </>
               )}

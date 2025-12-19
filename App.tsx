@@ -335,8 +335,10 @@ const App: React.FC = () => {
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center mb-4 shadow-lg`}>
                 <tool.icon className="w-6 h-6 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">{tool.title}</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">{tool.description}</p>
+              <div className="flex-1">
+                 <h3 className="text-xl font-bold text-white mb-2">{tool.title}</h3>
+                 <p className="text-slate-400 text-sm leading-relaxed">{tool.description}</p>
+              </div>
               <div className="mt-6 flex items-center text-xs font-semibold uppercase tracking-wider text-slate-500 group-hover:text-white transition-colors">
                 {(tool as any).externalUrl ? 'Open Site' : 'Launch Tool'} <span className="ml-2">→</span>
               </div>
