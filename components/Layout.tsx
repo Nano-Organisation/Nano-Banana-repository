@@ -1,4 +1,3 @@
-
 import React, { ReactNode, useState } from 'react';
 import { Sparkles, ArrowLeft, MessageSquarePlus, Settings, Bug } from 'lucide-react';
 import SettingsModal from './SettingsModal';

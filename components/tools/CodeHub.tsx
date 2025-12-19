@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Code, ShieldAlert, Terminal } from 'lucide-react';
 import TextTool from './TextTool';

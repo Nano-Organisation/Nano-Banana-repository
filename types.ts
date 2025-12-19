@@ -65,7 +65,8 @@ export enum ToolId {
   BabyDebates = 'BABY_DEBATES',
   ImagesToMovie = 'IMAGES_TO_MOVIE',
   StyleEngine = 'STYLE_ENGINE',
-  NurseryRhymes = 'NURSERY_RHYMES'
+  NurseryRhymes = 'NURSERY_RHYMES',
+  VideoCaptioner = 'VIDEO_CAPTIONER'
 }
 
 export interface ToolConfig {
@@ -368,4 +369,11 @@ export interface UserDefinedStyle {
   styleBlock: string;
   thumbnail?: string;
   createdAt: string;
+}
+
+export interface CaptionBlock {
+  id: string;
+  start: number;
+  end: number;
+  text: string;
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-/* Fix: Use lowercase 'app' to match the root file name 'app.tsx' and resolve casing conflicts in the TypeScript program. */
+// Fix: Use lowercase 'app' to match the root file inclusion and avoid casing conflicts.
 import App from './app';
 
 const rootElement = document.getElementById('root');

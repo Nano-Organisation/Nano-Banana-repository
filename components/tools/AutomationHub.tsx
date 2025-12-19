@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Bot, Puzzle, FileSpreadsheet } from 'lucide-react';
 import TextTool from './TextTool';

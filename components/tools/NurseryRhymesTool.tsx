@@ -5,6 +5,7 @@ import { LoadingState, RhymeData } from '../../types';
 import { addWatermarkToImage } from '../../utils/watermark';
 
 // Pre-defined library of rhymes for instant access
+// Replace musicUrl values with your actual mp3 file paths.
 const PREBAKED_RHYMES: Record<string, RhymeData & { musicUrl: string }> = {
   "Twinkle Twinkle Little Star": {
     title: "Twinkle Twinkle Little Star",
@@ -66,7 +67,7 @@ const PREBAKED_RHYMES: Record<string, RhymeData & { musicUrl: string }> = {
       { lyrics: "And on that farm he had a lamb, E-I-E-I-O! With a baa-baa here and a baa-baa there!", imagePrompt: "A fluffy white lamb skipping in a lush green pasture." },
       { lyrics: "And on that farm he had a pig, E-I-E-I-O! With an oink-oink here and an oink-oink there!", imagePrompt: "A cheerful pink piglet sitting happily in a clean mud puddle." },
       { lyrics: "And on that farm he had a chicken, E-I-E-I-O! With a cluck-cluck here and a cluck-cluck there!", imagePrompt: "A bright red hen pecking at golden seeds in the barnyard." },
-      { lyrics: "Old MacDonald had a farm, E-I-E-I-O!", imagePrompt: "A wide shot of the farm with all the animals, including cows, goats, lambs, pigs, and chickens celebrating." }
+      { lyrics: "Old MacDonald had a farm, E-I-E-I-O!", imagePrompt: "A wide shot of the farm with all the animals, including cows, goats, lambs, pigs, and chickens celebrate together." }
     ]
   },
   "Baa Baa Black Sheep": {
@@ -97,7 +98,6 @@ const NurseryRhymesTool: React.FC = () => {
   const [selectedRhyme, setSelectedRhyme] = useState(RHYMES[0]);
   const [rhymeData, setRhymeData] = useState<RhymeData | null>(null);
   const [status, setStatus] = useState<LoadingState>('idle');
-  const [progressMsg, setProgressMsg] = useState('');
   const [viewIndex, setViewIndex] = useState(0);
 
   // Music State
@@ -108,51 +108,42 @@ const NurseryRhymesTool: React.FC = () => {
   // Handle Mute/Volume
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume = 0.25; // Kid-friendly volume
+      audioRef.current.volume = 0.25; 
       audioRef.current.muted = isMuted;
     }
   }, [isMuted, musicUrl]);
 
-  const handleGenerate = async () => {
-    setStatus('loading');
-    setRhymeData(null);
-    setMusicUrl(null);
+  const handleOpenRhyme = async () => {
+    // FIXED STATE: Clear previous data but enter the SUCCESS state immediately with text
+    const data = PREBAKED_RHYMES[selectedRhyme];
+    
+    setMusicUrl(data.musicUrl);
     setViewIndex(0);
-    setProgressMsg('Opening Book...');
+    
+    // Initialize the book with lyrics immediately
+    const initialBook: RhymeData = {
+      title: data.title,
+      panels: data.panels.map(p => ({ lyrics: p.lyrics, imagePrompt: p.imagePrompt }))
+    };
+    setRhymeData(initialBook);
+    setStatus('success'); // Switch to book view immediately
 
-    try {
-      // Get the fixed state data for this rhyme
-      const data = PREBAKED_RHYMES[selectedRhyme];
-      
-      // Immediate Audio Access
-      setMusicUrl(data.musicUrl);
-      
-      // We set the text immediately as it's pre-baked
-      setRhymeData({
-        title: data.title,
-        panels: data.panels.map(p => ({ lyrics: p.lyrics, imagePrompt: p.imagePrompt }))
-      });
-
-      // Sequential Image Generation (Still necessary as we generate fresh unique art, 
-      // but the book structure is fixed and music is instant)
-      const panelsWithImages = [...data.panels];
-      for (let i = 0; i < panelsWithImages.length; i++) {
-        setProgressMsg(`Illustrating Panel ${i + 1}/${panelsWithImages.length}...`);
-        
+    // BACKGROUND TASK: Generate images one by one
+    const panelsWithImages = [...initialBook.panels];
+    for (let i = 0; i < panelsWithImages.length; i++) {
+      try {
         const stylePrompt = `Children's book illustration for "${data.title}". Scene: ${panelsWithImages[i].imagePrompt}. Style: Soft, vibrant, whimsical, digital painting, storybook aesthetic, high quality.`;
-        
         const imageUrl = await generateImageWithGemini(stylePrompt, '1:1');
         panelsWithImages[i] = { ...panelsWithImages[i], imageUrl };
 
-        setRhymeData({ ...data, panels: panelsWithImages });
+        // Update state as each image arrives so they appear "live"
+        setRhymeData(prev => prev ? { ...prev, panels: [...panelsWithImages] } : null);
         
-        if (i < panelsWithImages.length - 1) await new Promise(r => setTimeout(r, 1500));
+        // Anti-throttle buffer
+        if (i < panelsWithImages.length - 1) await new Promise(r => setTimeout(r, 800));
+      } catch (err) {
+        console.error(`Failed to generate image for panel ${i}`, err);
       }
-
-      setStatus('success');
-    } catch (e) {
-      console.error(e);
-      setStatus('error');
     }
   };
 
@@ -171,10 +162,10 @@ const NurseryRhymesTool: React.FC = () => {
           <Music className="w-8 h-8 text-pink-500" />
           AI Nursery Rhymes
         </h2>
-        <p className="text-slate-600 dark:text-slate-400">Bring classic childhood rhymes to life with custom AI illustrations and tunes.</p>
+        <p className="text-slate-600 dark:text-slate-400">Fixed-state storybooks with background music and AI illustrations.</p>
       </div>
 
-      {!rhymeData ? (
+      {status !== 'success' || !rhymeData ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-8 shadow-2xl space-y-8">
            <div className="space-y-4">
               <label className="text-xs font-black text-slate-500 uppercase tracking-widest block text-center">Select a Nursery Rhyme</label>
@@ -196,26 +187,16 @@ const NurseryRhymesTool: React.FC = () => {
            </div>
 
            <button
-              onClick={handleGenerate}
-              disabled={status === 'loading'}
-              className="w-full bg-pink-600 hover:bg-pink-700 disabled:opacity-50 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg shadow-pink-900/20"
+              onClick={handleOpenRhyme}
+              className="w-full bg-pink-600 hover:bg-pink-700 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg shadow-pink-900/20"
            >
-              {status === 'loading' ? (
-                <>
-                   <RefreshCw className="animate-spin w-5 h-5" />
-                   {progressMsg}
-                </>
-              ) : (
-                <>
-                   <Sparkles className="w-5 h-5 fill-current" />
-                   Open Rhyme
-                </>
-              )}
+              <Sparkles className="w-5 h-5 fill-current" />
+              Open Rhyme Instantly
            </button>
         </div>
       ) : (
         <div className="space-y-6 animate-fade-in-up">
-           {/* Header Area - Legible in both themes */}
+           {/* Header Area */}
            <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl">
               <div className="flex items-center gap-4">
                  <h3 className="text-lg font-bold text-slate-900 dark:text-white px-2">{rhymeData.title}</h3>
@@ -240,12 +221,13 @@ const NurseryRhymesTool: React.FC = () => {
 
               <button 
                 onClick={() => {
+                   setStatus('idle');
                    setRhymeData(null);
                    setMusicUrl(null);
                 }}
                 className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white px-4 py-2 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-sm font-bold"
               >
-                 New Rhyme
+                 Library
               </button>
            </div>
 

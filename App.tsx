@@ -1,2 +1,3 @@
-/* Redundant file to resolve casing conflict. Main entry point is now app.tsx. */
-export { default } from './app';
+// This file is a placeholder to avoid casing conflicts with app.tsx in case-insensitive environments.
+// The main application code now resides in app.tsx.
+export {};

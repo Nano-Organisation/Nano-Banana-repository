@@ -1,68 +1,69 @@
 import React, { useState, useEffect } from 'react';
-import { ToolId } from './types.ts';
-import Layout from './components/Layout.tsx';
-import LoginGate from './components/LoginGate.tsx';
-import ImageEditor from './components/tools/ImageEditor.tsx';
-import ImageGenerator from './components/tools/ImageGenerator.tsx';
-import VisualQA from './components/tools/VisualQA.tsx';
-import TextTool from './components/tools/TextTool.tsx';
-import ChatInterface from './components/tools/ChatInterface.tsx';
-import DesignTool from './components/tools/DesignTool.tsx';
-import GamesTool from './components/tools/GamesTool.tsx';
-import BackgroundRemover from './components/tools/BackgroundRemover.tsx';
-import DocTool from './components/tools/DocTool.tsx';
-import CodeHub from './components/tools/CodeHub.tsx';
-import GifGenerator from './components/tools/GifGenerator.tsx';
-import SoundGenerator from './components/tools/SoundGenerator.tsx';
-import PinterestTool from './components/tools/PinterestTool.tsx';
-import ThumbnailTool from './components/tools/ThumbnailTool.tsx';
-import StorybookTool from './components/tools/StorybookTool.tsx';
-import LiveTool from './components/tools/LiveTool.tsx';
-import MemeGenerator from './components/tools/MemeGenerator.tsx';
-import AutomationHub from './components/tools/AutomationHub.tsx';
-import SocialTool from './components/tools/SocialTool.tsx';
-import PromptTrainer from './components/tools/PromptTrainer.tsx';
-import PromptAcademy from './components/tools/PromptAcademy.tsx';
-import AssistantCreator from './components/tools/AssistantCreator.tsx';
-import ListCreator from './components/tools/ListCreator.tsx';
-import PodcastTool from './components/tools/PodcastTool.tsx';
-import ImageToPrompt from './components/tools/ImageToPrompt.tsx';
-import QuizGenerator from './components/tools/QuizGenerator.tsx';
-import RiddleGenerator from './components/tools/RiddleGenerator.tsx';
-import SoundFXTool from './components/tools/SoundFXTool.tsx';
-import AudioTranscriber from './components/tools/AudioTranscriber.tsx';
-import HeritageTool from './components/tools/HeritageTool.tsx';
-import MockupDesigner from './components/tools/MockupDesigner.tsx';
-import AffirmationGenerator from './components/tools/AffirmationGenerator.tsx';
-import VideoGenerator from './components/tools/VideoGenerator.tsx';
-import CopywriterTool from './components/tools/CopywriterTool.tsx';
-import MagicTool from './components/tools/MagicTool.tsx';
-import CipherTool from './components/tools/CipherTool.tsx';
-import BrandCollateralTool from './components/tools/BrandCollateralTool.tsx';
-import UGCAdsTool from './components/tools/UGCAdsTool.tsx';
-import LiveNotetaker from './components/tools/LiveNotetaker.tsx';
-import StudioTool from './components/tools/StudioTool.tsx';
-import PoetryTool from './components/tools/PoetryTool.tsx';
-import DailyJokeTool from './components/tools/DailyJokeTool.tsx';
-import QuoteTool from './components/tools/QuoteTool.tsx';
-import ConnectionsTool from './components/tools/ConnectionsTool.tsx';
-import WealthCalculator from './components/tools/WealthCalculator.tsx';
-import LearnerTool from './components/tools/LearnerTool.tsx';
-import CommercialReviewTool from './components/tools/CommercialReviewTool.tsx';
-import MeetingBooker from './components/tools/MeetingBooker.tsx';
-import BabyNameTool from './components/tools/BabyNameTool.tsx';
-import AetherEditTool from './components/tools/AetherEditTool.tsx';
-import AI360Tool from './components/tools/AI360Tool.tsx';
-import CarouselMaker from './components/tools/CarouselMaker.tsx';
-import CalendarCreator from './components/tools/CalendarCreator.tsx';
-import AIMimicryTool from './components/tools/AIMimicryTool.tsx';
-import DesignCritic from './components/tools/DesignCritic.tsx';
-import ComicStripTool from './components/tools/ComicStripTool.tsx';
-import BabyVisionTransformer from './components/tools/BabyVisionTransformer.tsx';
-import BabyDebates from './components/tools/BabyDebates.tsx';
-import ImagesToMovie from './components/tools/ImagesToMovie.tsx';
-import StyleForge from './components/tools/StyleForge.tsx';
-import NurseryRhymesTool from './components/tools/NurseryRhymesTool.tsx';
+import { ToolId } from './types';
+import Layout from './components/Layout';
+import LoginGate from './components/LoginGate';
+import ImageEditor from './components/tools/ImageEditor';
+import ImageGenerator from './components/tools/ImageGenerator';
+import VisualQA from './components/tools/VisualQA';
+import TextTool from './components/tools/TextTool';
+import ChatInterface from './components/tools/ChatInterface';
+import DesignTool from './components/tools/DesignTool';
+import GamesTool from './components/tools/GamesTool';
+import BackgroundRemover from './components/tools/BackgroundRemover';
+import DocTool from './components/tools/DocTool';
+import CodeHub from './components/tools/CodeHub';
+import GifGenerator from './components/tools/GifGenerator';
+import SoundGenerator from './components/tools/SoundGenerator';
+import PinterestTool from './components/tools/PinterestTool';
+import ThumbnailTool from './components/tools/ThumbnailTool';
+import StorybookTool from './components/tools/StorybookTool';
+import LiveTool from './components/tools/LiveTool';
+import MemeGenerator from './components/tools/MemeGenerator';
+import AutomationHub from './components/tools/AutomationHub';
+import SocialTool from './components/tools/SocialTool';
+import PromptTrainer from './components/tools/PromptTrainer';
+import PromptAcademy from './components/tools/PromptAcademy';
+import AssistantCreator from './components/tools/AssistantCreator';
+import ListCreator from './components/tools/ListCreator';
+import PodcastTool from './components/tools/PodcastTool';
+import ImageToPrompt from './components/tools/ImageToPrompt';
+import QuizGenerator from './components/tools/QuizGenerator';
+import RiddleGenerator from './components/tools/RiddleGenerator';
+import SoundFXTool from './components/tools/SoundFXTool';
+import AudioTranscriber from './components/tools/AudioTranscriber';
+import HeritageTool from './components/tools/HeritageTool';
+import MockupDesigner from './components/tools/MockupDesigner';
+import AffirmationGenerator from './components/tools/AffirmationGenerator';
+import VideoGenerator from './components/tools/VideoGenerator';
+import CopywriterTool from './components/tools/CopywriterTool';
+import MagicTool from './components/tools/MagicTool';
+import CipherTool from './components/tools/CipherTool';
+import BrandCollateralTool from './components/tools/BrandCollateralTool';
+import UGCAdsTool from './components/tools/UGCAdsTool';
+import LiveNotetaker from './components/tools/LiveNotetaker';
+import StudioTool from './components/tools/StudioTool';
+import PoetryTool from './components/tools/PoetryTool';
+import DailyJokeTool from './components/tools/DailyJokeTool';
+import QuoteTool from './components/tools/QuoteTool';
+import ConnectionsTool from './components/tools/ConnectionsTool';
+import WealthCalculator from './components/tools/WealthCalculator';
+import LearnerTool from './components/tools/LearnerTool';
+import CommercialReviewTool from './components/tools/CommercialReviewTool';
+import MeetingBooker from './components/tools/MeetingBooker';
+import BabyNameTool from './components/tools/BabyNameTool';
+import AetherEditTool from './components/tools/AetherEditTool';
+import AI360Tool from './components/tools/AI360Tool';
+import CarouselMaker from './components/tools/CarouselMaker';
+import CalendarCreator from './components/tools/CalendarCreator';
+import AIMimicryTool from './components/tools/AIMimicryTool';
+import DesignCritic from './components/tools/DesignCritic';
+import ComicStripTool from './components/tools/ComicStripTool';
+import BabyVisionTransformer from './components/tools/BabyVisionTransformer';
+import BabyDebates from './components/tools/BabyDebates';
+import ImagesToMovie from './components/tools/ImagesToMovie';
+import StyleForge from './components/tools/StyleForge';
+import NurseryRhymesTool from './components/tools/NurseryRhymesTool';
+import CaptionCreator from './components/tools/CaptionCreator';
 
 import { 
   Sparkles, MessageSquare, MonitorPlay, Users, Stars, Grid, Copy as CopyIcon, 
@@ -73,7 +74,7 @@ import {
   ListChecks, BookMarked, Brain, Activity, Share2, Youtube, Pin, Film, 
   Volume2, Eraser, FileType, Terminal, FileText, Image as ImageIcon, Palette, 
   Eye, Code, Search, X, Gamepad2, GraduationCap, PenTool, Bot, FlaskConical,
-  Key, Music
+  Key, Music, Type
 } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
@@ -99,6 +100,7 @@ const SHADOW_COLORS: Record<string, string> = {
 
 const TOOLS = [
   { id: ToolId.Chat, title: "AI Chat", description: "Conversational AI assistant for general queries.", icon: MessageSquare, color: "green", gradient: "from-green-500 to-emerald-600" },
+  { id: ToolId.VideoCaptioner, title: "AI Captions", description: "Auto-generate viral timed captions with emojis and animations.", icon: Type, color: "blue", gradient: "from-blue-500 to-indigo-600", releaseDate: '2025-12-21' },
   { id: ToolId.NurseryRhymes, title: "AI Nursery Rhymes", description: "Visualize classic nursery rhymes with beautiful AI art.", icon: Music, color: "pink", gradient: "from-pink-400 to-rose-500", releaseDate: '2025-12-20' },
   { id: ToolId.StyleEngine, title: "AI Style Forge", description: "Create, name, and reuse your own visual recipes for consistent art.", icon: FlaskConical, color: "indigo", gradient: "from-indigo-600 to-violet-700", releaseDate: '2025-12-19' },
   { id: ToolId.ImagesToMovie, title: "AI Images to movie", description: "Turn a collection of photos into a cinematic movie sequence.", icon: Clapperboard, color: "amber", gradient: "from-amber-400 to-orange-600", releaseDate: '2025-12-18' },
@@ -220,6 +222,7 @@ const App: React.FC = () => {
   const renderTool = () => {
     switch (currentTool) {
       case ToolId.Chat: return <ChatInterface />;
+      case ToolId.VideoCaptioner: return <CaptionCreator />;
       case ToolId.NurseryRhymes: return <NurseryRhymesTool />;
       case ToolId.StyleEngine: return <StyleForge />;
       case ToolId.ImagesToMovie: return <ImagesToMovie />;
@@ -402,7 +405,6 @@ const App: React.FC = () => {
             </div>
             <div className="flex gap-3">
               <button onClick={() => setPendingExternalUrl(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl transition-colors border border-slate-700">Cancel</button>
-              {/* Fix: Added missing onClick attribute for the proceed button */}
               <button onClick={confirmExternalNavigation} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-amber-900/20">Proceed</button>
             </div>
           </div>

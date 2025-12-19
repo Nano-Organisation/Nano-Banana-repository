@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Schema, Chat, Part, Modality, GenerateContentResponse } from "@google/genai";
 import {
   StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis,
@@ -437,8 +436,8 @@ export const generateAffirmationPlan = async (t: string, tone: string): Promise<
   return generateStructuredContent<AffirmationPlan>(`${tone} affirmations for ${t}`, schema);
 };
 
-export const generateHiddenMessage = async (s: string, c: string): Promise<string> => {
-  const response = await withRetry<GenerateContentResponse>(() => getAiClient().models.generateContent({ model: 'gemini-3-pro-preview', contents: `Hide "${s}" in a paragraph about "${c}" using {{word}} markers.` }));
+export const generateHiddenMessage = async (s: string, i: string): Promise<string> => {
+  const response = await withRetry<GenerateContentResponse>(() => getAiClient().models.generateContent({ model: 'gemini-3-pro-preview', contents: `Hide "${s}" in a paragraph about "${i}" using {{word}} markers.` }));
   return response.text || "";
 };
 
@@ -449,23 +448,6 @@ export const generateBrandIdentity = async (n: string, i: string, v: string, p: 
 
 export const regenerateBrandPalette = (curr: any) => generateStructuredContent<BrandIdentity>(`Palette for ${curr.companyName}`, { type: Type.OBJECT, properties: { colorPalette: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, hex: { type: Type.STRING } } } } } });
 export const regenerateBrandTypography = (curr: any) => generateStructuredContent<BrandIdentity>(`Fonts for ${curr.companyName}`, { type: Type.OBJECT, properties: { fontPairing: { type: Type.OBJECT, properties: { heading: { type: Type.STRING }, body: { type: Type.STRING } } } } });
-
-export const generateUGCScript = async (p: string, a: string, pa: string): Promise<UGCScript> => {
-  const schema: Schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, targetAudience: { type: Type.STRING }, totalDuration: { type: Type.STRING }, sections: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { section: { type: Type.STRING }, visual: { type: Type.STRING }, audio: { type: Type.STRING }, duration: { type: Type.STRING } } } } } };
-  return generateStructuredContent<UGCScript>(`UGC script for ${p}`, schema);
-};
-
-export const generatePoem = (t: string, s: string) => generateTextWithGemini(`Poem about ${t} in ${s} style.`);
-export const generateDailyJoke = (d: number) => generateTextWithGemini(`Joke for day ${d}.`);
-export const generateQuote = (c: string) => generateTextWithGemini(`Quote about ${c}.`);
-export const generateQuoteByTag = (t: string) => generateTextWithGemini(`Quote about ${t}.`);
-export const generateQuoteByTagByTag = (t: string) => generateTextWithGemini(`Quote about ${t}.`);
-export const generateConnectionFact = (p: string) => generateTextWithGemini(`Connection fact about ${p}.`);
-
-export const analyzeWealthPath = async (n: string): Promise<WealthAnalysis> => {
-  const schema: Schema = { type: Type.OBJECT, properties: { personName: { type: Type.STRING }, estimatedNetWorth: { type: Type.STRING }, originStart: { type: Type.STRING }, privilegeAnalysis: { type: Type.STRING }, keySuccessFactors: { type: Type.ARRAY, items: { type: Type.STRING } }, actionableSteps: { type: Type.ARRAY, items: { type: Type.STRING } }, realityCheck: { type: Type.STRING } } };
-  return generateStructuredContent<WealthAnalysis>(`Wealth path of ${n}`, schema);
-};
 
 export const generateLearnerBrief = async (t: string): Promise<LearnerBrief> => {
   const schema: Schema = { type: Type.OBJECT, properties: { summary: { type: Type.STRING }, podcastScript: { type: Type.STRING } } };
@@ -620,6 +602,88 @@ export const analyzeSlideshow = async (images: string[]): Promise<string> => {
   }
 };
 
-export const generateMovieFromImages = async (images: string[], musicStyle: string, includeIntro: boolean, includeOutro: boolean, ratio: string, transitionType: string): Promise<string> => {
-   return ""; 
+/**
+ * Fix: Added missing exported generateUGCScript function.
+ * Generate a UGC script based on product, audience and pain points.
+ */
+export const generateUGCScript = async (product: string, audience: string, painPoint: string): Promise<UGCScript> => {
+  const schema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      title: { type: Type.STRING },
+      targetAudience: { type: Type.STRING },
+      totalDuration: { type: Type.STRING },
+      sections: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            section: { type: Type.STRING },
+            visual: { type: Type.STRING },
+            audio: { type: Type.STRING },
+            duration: { type: Type.STRING }
+          },
+          required: ['section', 'visual', 'audio', 'duration']
+        }
+      }
+    },
+    required: ['title', 'targetAudience', 'totalDuration', 'sections']
+  };
+  return generateStructuredContent<UGCScript>(`UGC script for ${product} targeting ${audience} addressing ${painPoint}`, schema);
+};
+
+/**
+ * Fix: Added missing exported generatePoem function.
+ * Generate a poem about a specific topic in a given style.
+ */
+export const generatePoem = async (topic: string, style: string): Promise<string> => {
+  return generateTextWithGemini(`Write a poem about ${topic} in the style of ${style}.`);
+};
+
+/**
+ * Fix: Added missing exported generateDailyJoke function.
+ * Generate a joke for a specific day index.
+ */
+export const generateDailyJoke = async (dayIndex: number): Promise<string> => {
+  return generateTextWithGemini(`Write a unique, clean, funny joke of the day. Day index: ${dayIndex}. Return only the joke text without any conversational filler.`);
+};
+
+/**
+ * Fix: Added missing exported generateQuote function.
+ * Generate an inspiring quote in a specific category.
+ */
+export const generateQuote = async (category: string): Promise<string> => {
+  return generateTextWithGemini(`Provide a famous or inspiring quote about ${category}. Include the author's name at the end.`);
+};
+
+/**
+ * Fix: Added missing exported generateConnectionFact function.
+ * Generate a connection fact between a person and others.
+ */
+export const generateConnectionFact = async (person?: string): Promise<string> => {
+  const prompt = person 
+    ? `Tell me a surprising, true connection or fact between ${person} and another famous historical or modern figure.` 
+    : `Tell me a surprising, true connection or fact between two random famous historical or modern figures.`;
+  return generateTextWithGemini(prompt);
+};
+
+/**
+ * Fix: Added missing exported analyzeWealthPath function.
+ * Analyze a person's path to wealth.
+ */
+export const analyzeWealthPath = async (personName: string): Promise<WealthAnalysis> => {
+  const schema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      personName: { type: Type.STRING },
+      estimatedNetWorth: { type: Type.STRING },
+      originStart: { type: Type.STRING },
+      privilegeAnalysis: { type: Type.STRING },
+      keySuccessFactors: { type: Type.ARRAY, items: { type: Type.STRING } },
+      actionableSteps: { type: Type.ARRAY, items: { type: Type.STRING } },
+      realityCheck: { type: Type.STRING }
+    },
+    required: ['personName', 'estimatedNetWorth', 'originStart', 'privilegeAnalysis', 'keySuccessFactors', 'actionableSteps', 'realityCheck']
+  };
+  return generateStructuredContent<WealthAnalysis>(`Wealth analysis for ${personName}`, schema);
 };
