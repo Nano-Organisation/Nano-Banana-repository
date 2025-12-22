@@ -1,3 +1,5 @@
+
+/* Fix: Moved main application logic to lowercase app.tsx to resolve casing collision errors where both App.tsx and app.tsx are included in the compilation set. */
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types';
 import Layout from './components/Layout';
@@ -176,20 +178,37 @@ const FLAGSHIP_IDS = [
   ToolId.Chat
 ];
 
+/**
+ * Checks if a tool is "new" based on its release date metadata.
+ */
+const isToolNew = (releaseDate?: string) => {
+  if (!releaseDate) return false;
+  const release = new Date(releaseDate);
+  const now = new Date();
+  if (release > now) return true; // Future releases are marked as New/Upcoming
+  const diffTime = Math.abs(now.getTime() - release.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays <= 30; // 30 day threshold
+};
+
 const App: React.FC = () => {
   const [currentTool, setCurrentTool] = useState<ToolId>(ToolId.Dashboard);
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllTools, setShowAllTools] = useState(false);
+  const [pendingExternalUrl, setPendingExternalUrl] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); 
   const [hasSelectedKey, setHasSelectedKey] = useState<boolean | null>(null);
   const [showActivationGuide, setShowActivationGuide] = useState(false);
 
   useEffect(() => {
+    // 1. Initial License Check
     const hasAccess = localStorage.getItem('nano_access_granted');
     setIsAuthenticated(hasAccess === 'true');
     
+    // 2. API Key Check (BYOK Model)
     const checkKey = async () => {
+      // ADMIN BYPASS: If logged in with Master Key, skip BYOK gate
       const isAdmin = localStorage.getItem('is_admin_session') === 'true';
       if (isAdmin) {
          setHasSelectedKey(true);
@@ -210,6 +229,13 @@ const App: React.FC = () => {
     if ((window as any).aistudio) {
       await (window as any).aistudio.openSelectKey();
       setHasSelectedKey(true);
+    }
+  };
+
+  const confirmExternalNavigation = () => {
+    if (pendingExternalUrl) {
+      window.open(pendingExternalUrl, '_blank', 'noopener,noreferrer');
+      setPendingExternalUrl(null);
     }
   };
 
@@ -302,6 +328,7 @@ const App: React.FC = () => {
         </p>
       </div>
 
+      {/* Flagship Six Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {flagshipTools.map((tool) => (
           <button
@@ -312,6 +339,13 @@ const App: React.FC = () => {
             className="group relative bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 text-left transition-all hover:-translate-y-2 hover:border-amber-500/50 overflow-hidden shadow-xl"
             style={{ boxShadow: hoveredTool === tool.id ? `0 20px 40px -15px ${SHADOW_COLORS[tool.color] || 'rgba(0,0,0,0.5)'}` : 'none' }}
           >
+            {/* NEW Tag Reinforcement */}
+            {tool.releaseDate && isToolNew(tool.releaseDate) && (
+              <div className="absolute top-6 right-6 bg-amber-500 text-slate-900 text-[10px] font-black px-2.5 py-1 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.6)] animate-pulse uppercase tracking-tighter z-30 ring-2 ring-amber-500/20">
+                New
+              </div>
+            )}
+
             <div className={`absolute top-0 right-0 p-32 opacity-10 bg-gradient-to-br ${tool.gradient} blur-[80px] rounded-full -mr-16 -mt-16 group-hover:opacity-20 transition-opacity`}></div>
             <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center mb-6 shadow-2xl group-hover:scale-110 transition-transform`}>
               <tool.icon className="w-8 h-8 text-white" />
@@ -327,6 +361,7 @@ const App: React.FC = () => {
         ))}
       </div>
 
+      {/* Secondary Library Access */}
       <div className="pt-20 border-t border-slate-200 dark:border-slate-800">
         <div className="flex flex-col items-center gap-8">
            <button 
@@ -357,9 +392,16 @@ const App: React.FC = () => {
                    {filteredTools.map((tool) => (
                       <button
                         key={tool.id}
-                        onClick={() => setCurrentTool(tool.id)}
-                        className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 p-5 rounded-2xl text-left transition-all hover:bg-white dark:hover:bg-slate-900 group"
+                        onClick={() => (tool as any).externalUrl ? setPendingExternalUrl((tool as any).externalUrl) : setCurrentTool(tool.id)}
+                        className="relative bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 p-5 rounded-2xl text-left transition-all hover:bg-white dark:hover:bg-slate-900 group"
                       >
+                        {/* NEW Tag Reinforcement for Utility Tools */}
+                        {tool.releaseDate && isToolNew(tool.releaseDate) && (
+                          <div className="absolute top-2 right-2 bg-amber-500 text-slate-900 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse uppercase tracking-tighter z-20 ring-1 ring-amber-500/20">
+                            New
+                          </div>
+                        )}
+
                         <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center mb-4 opacity-80 group-hover:opacity-100`}>
                            <tool.icon className="w-5 h-5 text-white" />
                         </div>
@@ -379,9 +421,13 @@ const App: React.FC = () => {
      return <ActivationGuide onBack={() => setShowActivationGuide(false)} />;
   }
 
+  // Still checking Local Storage - show nothing to avoid flash
   if (isAuthenticated === null) return <div className="min-h-screen bg-slate-950" />;
+
+  // Auth Gate 1: Not logged in (License Check)
   if (isAuthenticated === false) return <LoginGate onLogin={() => setIsAuthenticated(true)} />;
 
+  // Auth Gate 2: API Key missing (BYOK Check)
   if (hasSelectedKey === false) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center space-y-8 animate-fade-in relative">
@@ -399,7 +445,7 @@ const App: React.FC = () => {
           <p className="text-slate-400 text-sm leading-relaxed font-medium uppercase tracking-widest">
             License Verified. Phase 2: Compute Connectivity.
           </p>
-          <p className="text-slate-500 text-xs leading-relaxed max-w-md mx-auto">
+          <p className="text-slate-500 text-xs leading-relaxed max-md mx-auto">
             To power the suite's high-compute tasks, connect your personal Google Gemini API key.
           </p>
         </div>
@@ -418,6 +464,19 @@ const App: React.FC = () => {
             <HelpCircle className="w-3.5 h-3.5" />
             Activation Instructions
           </button>
+
+          <div className="space-y-4 pt-4">
+             <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex items-start gap-3 text-left">
+                <CreditCard className="w-5 h-5 text-amber-500 shrink-0" />
+                <div className="space-y-1">
+                   <p className="text-[10px] font-black text-white uppercase">Billing Information</p>
+                   <p className="text-[10px] text-slate-500 leading-tight">Users must select an API key from a paid GCP project to enable Pro features.</p>
+                </div>
+             </div>
+             <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-500 hover:text-amber-400 font-bold uppercase tracking-widest underline underline-offset-8 transition-colors text-center block">
+               Setup Billing & Key Guide
+             </a>
+          </div>
         </div>
       </div>
     );
@@ -430,6 +489,23 @@ const App: React.FC = () => {
       onGoHome={() => setCurrentTool(ToolId.Dashboard)}
     >
       {renderTool()}
+      {pendingExternalUrl && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 w-full max-sm rounded-2xl shadow-2xl p-6 space-y-6 text-center transform scale-100 transition-all">
+            <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/20">
+              <Shield className="w-8 h-8 text-amber-500" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-white">External Link Warning</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">You are about to leave Digital Gentry AI. <br /> Proceed to <span className="text-amber-400 font-medium">{new URL(pendingExternalUrl).hostname}</span>?</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setPendingExternalUrl(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl transition-colors border border-slate-700">Cancel</button>
+              <button onClick={confirmExternalNavigation} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-amber-900/20">Proceed</button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

@@ -193,8 +193,6 @@ const StorybookTool: React.FC = () => {
          script.characterDescription = existingCharacterDescription;
       }
 
-      setBookData(script);
-
       // Generate Images Sequentially
       let characterReferenceImage: string | undefined = undefined;
 
@@ -221,12 +219,8 @@ const StorybookTool: React.FC = () => {
          const imageUrl = await drawPage(0, firstPagePrompt);
          characterReferenceImage = imageUrl;
 
-         setBookData(prev => {
-            if (!prev) return null;
-            const newPages = [...prev.pages];
-            newPages[0] = { ...newPages[0], imageUrl };
-            return { ...prev, pages: newPages };
-         });
+         // Update local script object instead of triggering UI switch via setBookData
+         script.pages[0] = { ...script.pages[0], imageUrl };
       } catch (e) {
          console.warn("Failed to generate first page image. Continuing book creation...", e);
       }
@@ -252,17 +246,15 @@ const StorybookTool: React.FC = () => {
                 characterReferenceImage = imageUrl;
              }
 
-             setBookData(prev => {
-                if (!prev) return null;
-                const newPages = [...prev.pages];
-                newPages[i] = { ...newPages[i], imageUrl };
-                return { ...prev, pages: newPages };
-             });
+             // Update local script object
+             script.pages[i] = { ...script.pages[i], imageUrl };
           } catch (e: any) {
              console.error(`Failed to gen image for page ${i + 1} after retries. Skipping image for this page.`, e);
           }
       }
 
+      // Finalize: Set the complete data to switch the view to the reader
+      setBookData(script);
       setStatus('success');
       
     } catch (e) {
