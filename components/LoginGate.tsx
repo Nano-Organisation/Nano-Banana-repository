@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Lock, ArrowRight, ShieldCheck, AlertCircle, ShoppingCart, Sparkles, CheckCircle, Zap, RefreshCw } from 'lucide-react';
+import { Lock, ArrowRight, ShieldCheck, AlertCircle, ShoppingCart, Sparkles, CheckCircle, Zap, RefreshCw, HelpCircle } from 'lucide-react';
+import ActivationGuide from './ActivationGuide';
 
 interface LoginGateProps {
   onLogin: () => void;
@@ -12,6 +13,7 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
   const [error, setError] = useState(false);
   const [shake, setShake] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +56,10 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
       setTimeout(() => setShake(false), 500);
     }
   };
+
+  if (showGuide) {
+    return <ActivationGuide onBack={() => setShowGuide(false)} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
@@ -123,13 +129,13 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
           p-8 lg:p-12 flex flex-col items-center justify-center space-y-8 transition-transform duration-100
           ${shake ? 'translate-x-[-4px]' : ''}
         `}>
-          <div className="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center border border-slate-700 shadow-inner group transition-all">
-            <Lock className="w-10 h-10 text-amber-500 group-hover:scale-110 transition-transform" />
+          <div className="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center border border-slate-700 shadow-inner group transition-all text-amber-500">
+            <Lock className="w-10 h-10 group-hover:scale-110 transition-transform" />
           </div>
 
           <div className="text-center space-y-2">
-            <h3 className="text-2xl font-black text-white uppercase tracking-tight">License Portal</h3>
-            <p className="text-slate-500 text-sm">Enter your unique access code below.</p>
+            <h3 className="text-2xl font-black text-white uppercase tracking-tight text-center">License Portal</h3>
+            <p className="text-slate-500 text-sm text-center">Enter your unique access code below.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
@@ -183,7 +189,15 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
             </button>
           </form>
 
-          <p className="text-[10px] text-slate-600 font-bold uppercase tracking-[0.3em] text-center">
+          <button 
+            onClick={() => setShowGuide(true)}
+            className="flex items-center gap-2 text-[10px] font-black text-slate-600 hover:text-amber-500 transition-colors uppercase tracking-[0.2em]"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            Activation Instructions
+          </button>
+
+          <p className="text-[10px] text-slate-700 font-bold uppercase tracking-[0.3em] text-center mt-4">
             Digital Gentry Secure Gateway v3.0<br/>
             E2E Encrypted Session
           </p>

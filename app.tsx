@@ -64,6 +64,7 @@ import ImagesToMovie from './components/tools/ImagesToMovie';
 import StyleForge from './components/tools/StyleForge';
 import NurseryRhymesTool from './components/tools/NurseryRhymesTool';
 import CaptionCreator from './components/tools/CaptionCreator';
+import ActivationGuide from './components/ActivationGuide';
 
 import { 
   Sparkles, MessageSquare, MonitorPlay, Users, Stars, Grid, Copy as CopyIcon, 
@@ -74,7 +75,7 @@ import {
   ListChecks, BookMarked, Brain, Activity, Share2, Youtube, Pin, Film, 
   Volume2, Eraser, FileType, Terminal, FileText, Image as ImageIcon, Palette, 
   Eye, Code, Search, X, Gamepad2, GraduationCap, PenTool, Bot, FlaskConical,
-  Key, Music, Type, CreditCard, ChevronDown, ChevronUp
+  Key, Music, Type, CreditCard, ChevronDown, ChevronUp, HelpCircle
 } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
@@ -182,6 +183,7 @@ const App: React.FC = () => {
   const [showAllTools, setShowAllTools] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); 
   const [hasSelectedKey, setHasSelectedKey] = useState<boolean | null>(null);
+  const [showActivationGuide, setShowActivationGuide] = useState(false);
 
   useEffect(() => {
     const hasAccess = localStorage.getItem('nano_access_granted');
@@ -373,16 +375,26 @@ const App: React.FC = () => {
     </div>
   );
 
+  if (showActivationGuide) {
+     return <ActivationGuide onBack={() => setShowActivationGuide(false)} />;
+  }
+
   if (isAuthenticated === null) return <div className="min-h-screen bg-slate-950" />;
   if (isAuthenticated === false) return <LoginGate onLogin={() => setIsAuthenticated(true)} />;
 
   if (hasSelectedKey === false) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center space-y-8 animate-fade-in">
-        <div className="bg-amber-500 p-8 rounded-[3rem] shadow-2xl shadow-amber-900/30 ring-8 ring-amber-500/10">
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center space-y-8 animate-fade-in relative">
+        {/* Subtle Background Ambience */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-amber-500/10 rounded-full blur-[120px]"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-500/10 rounded-full blur-[120px]"></div>
+        </div>
+
+        <div className="bg-amber-500 p-8 rounded-[3rem] shadow-2xl shadow-amber-900/30 ring-8 ring-amber-500/10 relative z-10">
           <Key className="w-16 h-16 text-slate-900" />
         </div>
-        <div className="max-w-lg space-y-4">
+        <div className="max-w-lg space-y-4 relative z-10">
           <h1 className="text-5xl font-black text-white uppercase tracking-tighter">AI PRO UNLOCK</h1>
           <p className="text-slate-400 text-sm leading-relaxed font-medium uppercase tracking-widest">
             License Verified. Phase 2: Compute Connectivity.
@@ -391,12 +403,20 @@ const App: React.FC = () => {
             To power the suite's high-compute tasks, connect your personal Google Gemini API key.
           </p>
         </div>
-        <div className="flex flex-col gap-5 w-full max-w-xs">
+        <div className="flex flex-col gap-5 w-full max-w-xs relative z-10">
           <button 
             onClick={handleOpenSelectKey}
             className="bg-white hover:bg-slate-100 text-slate-950 font-black px-10 py-5 rounded-2xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3 text-lg uppercase tracking-widest"
           >
             Connect API Key
+          </button>
+          
+          <button 
+            onClick={() => setShowActivationGuide(true)}
+            className="flex items-center justify-center gap-2 text-[10px] font-black text-slate-600 hover:text-amber-500 transition-colors uppercase tracking-[0.2em] mt-4"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            Activation Instructions
           </button>
         </div>
       </div>

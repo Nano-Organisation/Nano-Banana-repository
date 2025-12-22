@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-/* Fix: Updated import from './app.tsx' to './App.tsx' to match standard component casing and resolve project-wide file naming conflict. */
-import App from './App.tsx';
+/* Fix: Changed import to lowercase './app.tsx' to match the canonical filename in the project and resolve casing collision errors. */
+import App from './app.tsx';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
