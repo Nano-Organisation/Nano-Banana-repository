@@ -74,7 +74,7 @@ import {
   ListChecks, BookMarked, Brain, Activity, Share2, Youtube, Pin, Film, 
   Volume2, Eraser, FileType, Terminal, FileText, Image as ImageIcon, Palette, 
   Eye, Code, Search, X, Gamepad2, GraduationCap, PenTool, Bot, FlaskConical,
-  Key, Music, Type
+  Key, Music, Type, CreditCard, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
@@ -166,6 +166,15 @@ const TOOLS = [
   { id: ToolId.SecurityBox, title: "AI Security Box", description: "Access the external Security Hub.", icon: Shield, color: "slate", gradient: "from-slate-700 to-slate-900", externalUrl: "https://sec-hub.online" }
 ];
 
+const FLAGSHIP_IDS = [
+  ToolId.VideoGenerator,
+  ToolId.Live,
+  ToolId.Storybook,
+  ToolId.Studio,
+  ToolId.VideoCaptioner,
+  ToolId.Chat
+];
+
 const isToolNew = (releaseDate?: string) => {
   if (!releaseDate) return false;
   const releaseTime = new Date(releaseDate).getTime();
@@ -178,17 +187,25 @@ const App: React.FC = () => {
   const [currentTool, setCurrentTool] = useState<ToolId>(ToolId.Dashboard);
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAllTools, setShowAllTools] = useState(false);
   const [pendingExternalUrl, setPendingExternalUrl] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // Use null for checking state
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); 
   const [hasSelectedKey, setHasSelectedKey] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Initial Auth Check
+    // 1. Initial License Check
     const hasAccess = localStorage.getItem('nano_access_granted');
     setIsAuthenticated(hasAccess === 'true');
     
-    // API Key Check
+    // 2. API Key Check (BYOK Model)
     const checkKey = async () => {
+      // ADMIN BYPASS: If logged in with Master Key, skip BYOK gate
+      const isAdmin = localStorage.getItem('is_admin_session') === 'true';
+      if (isAdmin) {
+         setHasSelectedKey(true);
+         return;
+      }
+
       if ((window as any).aistudio) {
         const selected = await (window as any).aistudio.hasSelectedApiKey();
         setHasSelectedKey(selected);
@@ -212,6 +229,8 @@ const App: React.FC = () => {
       setPendingExternalUrl(null);
     }
   };
+
+  const flagshipTools = TOOLS.filter(t => FLAGSHIP_IDS.includes(t.id));
 
   const filteredTools = TOOLS.filter(tool => {
     const query = searchQuery.toLowerCase();
@@ -290,63 +309,87 @@ const App: React.FC = () => {
   };
 
   const renderDashboard = () => (
-    <div className="space-y-12 animate-fade-in">
+    <div className="space-y-12 animate-fade-in pb-20">
       <div className="text-center space-y-4 py-10">
-        <h2 className="text-4xl md:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-          Unleash <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-amber-600">AI Power</span>
+        <h2 className="text-5xl md:text-7xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">
+          The <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-600">Pro Suite</span>
         </h2>
-        <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-          Experience the next generation of AI tools powered by Gemini 3. 
+        <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto font-medium uppercase tracking-widest opacity-80">
+          Six Flagship Solutions for Premium Creation
         </p>
-        <div className="max-w-md mx-auto relative pt-4">
-           <div className="absolute inset-y-0 left-0 pl-3 pt-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-slate-400" />
-           </div>
-           <input
-              type="text"
-              placeholder="Find a feature..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl py-3 pl-10 pr-10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm"
-           />
-           {searchQuery && (
-             <button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-0 pr-3 pt-4 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-               <X className="h-5 w-5" />
-             </button>
-           )}
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTools.length > 0 ? (
-           filteredTools.map((tool) => (
-            <button
-              key={tool.id}
-              onClick={() => (tool as any).externalUrl ? setPendingExternalUrl((tool as any).externalUrl) : setCurrentTool(tool.id)}
-              onMouseEnter={() => setHoveredTool(tool.id)}
-              onMouseLeave={() => setHoveredTool(null)}
-              className="group relative bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-slate-600 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 overflow-hidden"
-              style={{ boxShadow: hoveredTool === tool.id ? `0 10px 30px -10px ${SHADOW_COLORS[tool.color] || 'rgba(0,0,0,0.5)'}` : '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-            >
-              {isToolNew((tool as any).releaseDate) && (
-                 <div className="absolute top-3 right-3 bg-amber-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg z-10 animate-pulse">NEW</div>
-              )}
-              <div className={`absolute top-0 right-0 p-24 opacity-5 bg-gradient-to-br ${tool.gradient} blur-3xl rounded-full -mr-10 -mt-10 group-hover:opacity-10 transition-opacity`}></div>
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center mb-4 shadow-lg`}>
-                <tool.icon className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                 <h3 className="text-xl font-bold text-white mb-2">{tool.title}</h3>
-                 <p className="text-slate-400 text-sm leading-relaxed">{tool.description}</p>
-              </div>
-              <div className="mt-6 flex items-center text-xs font-semibold uppercase tracking-wider text-slate-500 group-hover:text-white transition-colors">
-                {(tool as any).externalUrl ? 'Open Site' : 'Launch Tool'} <span className="ml-2">→</span>
-              </div>
-            </button>
-          ))
-        ) : (
-           <div className="col-span-full text-center py-12 text-slate-500"><p>No tools found matching "{searchQuery}".</p></div>
-        )}
+      {/* Flagship Six Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {flagshipTools.map((tool) => (
+          <button
+            key={tool.id}
+            onClick={() => setCurrentTool(tool.id)}
+            onMouseEnter={() => setHoveredTool(tool.id)}
+            onMouseLeave={() => setHoveredTool(null)}
+            className="group relative bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 text-left transition-all hover:-translate-y-2 hover:border-amber-500/50 overflow-hidden shadow-xl"
+            style={{ boxShadow: hoveredTool === tool.id ? `0 20px 40px -15px ${SHADOW_COLORS[tool.color] || 'rgba(0,0,0,0.5)'}` : 'none' }}
+          >
+            <div className={`absolute top-0 right-0 p-32 opacity-10 bg-gradient-to-br ${tool.gradient} blur-[80px] rounded-full -mr-16 -mt-16 group-hover:opacity-20 transition-opacity`}></div>
+            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center mb-6 shadow-2xl group-hover:scale-110 transition-transform`}>
+              <tool.icon className="w-8 h-8 text-white" />
+            </div>
+            <div className="relative z-10">
+               <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2 uppercase tracking-tight">{tool.title}</h3>
+               <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed font-medium">{tool.description}</p>
+            </div>
+            <div className="mt-8 flex items-center text-xs font-black uppercase tracking-[0.2em] text-amber-600 group-hover:text-amber-500 transition-colors">
+              Launch Flagship <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Secondary Library Access */}
+      <div className="pt-20 border-t border-slate-200 dark:border-slate-800">
+        <div className="flex flex-col items-center gap-8">
+           <button 
+             onClick={() => setShowAllTools(!showAllTools)}
+             className="group flex items-center gap-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-slate-600 dark:text-slate-300 transition-all border border-slate-200 dark:border-slate-700"
+           >
+             {showAllTools ? <ChevronUp /> : <ChevronDown />}
+             {showAllTools ? 'Hide Extended Library' : 'Access Extended Utility Library'}
+             <span className="bg-slate-300 dark:bg-slate-700 text-[10px] px-2 py-0.5 rounded-full ml-2">60+ Tools</span>
+           </button>
+
+           {showAllTools && (
+             <div className="w-full space-y-10 animate-fade-in-up">
+                <div className="max-w-md mx-auto relative">
+                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Search className="h-5 w-5 text-slate-400" />
+                   </div>
+                   <input
+                      type="text"
+                      placeholder="Search utility tools..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl py-3 pl-10 pr-10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                   />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                   {filteredTools.map((tool) => (
+                      <button
+                        key={tool.id}
+                        onClick={() => (tool as any).externalUrl ? setPendingExternalUrl((tool as any).externalUrl) : setCurrentTool(tool.id)}
+                        className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 p-5 rounded-2xl text-left transition-all hover:bg-white dark:hover:bg-slate-900 group"
+                      >
+                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center mb-4 opacity-80 group-hover:opacity-100`}>
+                           <tool.icon className="w-5 h-5 text-white" />
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">{tool.title}</h4>
+                        <p className="text-[10px] text-slate-500 leading-tight line-clamp-2">{tool.description}</p>
+                      </button>
+                   ))}
+                </div>
+             </div>
+           )}
+        </div>
       </div>
     </div>
   );
@@ -354,34 +397,43 @@ const App: React.FC = () => {
   // Still checking Local Storage - show nothing to avoid flash
   if (isAuthenticated === null) return <div className="min-h-screen bg-slate-950" />;
 
-  // Not logged in - show login gate
+  // Auth Gate 1: Not logged in (License Check)
   if (isAuthenticated === false) return <LoginGate onLogin={() => setIsAuthenticated(true)} />;
 
-  // API Key missing - show key selection gate
+  // Auth Gate 2: API Key missing (BYOK Check)
   if (hasSelectedKey === false) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center space-y-8 animate-fade-in">
-        <div className="bg-amber-500 p-6 rounded-[2.5rem] shadow-2xl shadow-amber-900/30 ring-8 ring-amber-500/10">
-          <Key className="w-14 h-14 text-slate-900" />
+        <div className="bg-amber-500 p-8 rounded-[3rem] shadow-2xl shadow-amber-900/30 ring-8 ring-amber-500/10">
+          <Key className="w-16 h-16 text-slate-900" />
         </div>
-        <div className="max-w-md space-y-4">
-          <h1 className="text-4xl font-black text-white uppercase tracking-tighter">AI PRO UNLOCK</h1>
-          <p className="text-slate-400 text-sm leading-relaxed font-medium">
-            To enable the full suite of Pro features (including Video synthesis, high-resolution Image generation, and Live Audio), you must select your own paid Google Gemini API key.
+        <div className="max-w-lg space-y-4">
+          <h1 className="text-5xl font-black text-white uppercase tracking-tighter">AI PRO UNLOCK</h1>
+          <p className="text-slate-400 text-sm leading-relaxed font-medium uppercase tracking-widest">
+            License Verified. Phase 2: Compute Connectivity.
+          </p>
+          <p className="text-slate-500 text-xs leading-relaxed max-w-md mx-auto">
+            To power the suite's high-compute tasks (Video, Live Audio, 4K Imagery), you must connect your own personal Google Gemini API key. You will be billed directly by Google for your specific usage.
           </p>
         </div>
         <div className="flex flex-col gap-5 w-full max-w-xs">
           <button 
             onClick={handleOpenSelectKey}
-            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-10 py-5 rounded-2xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3 text-lg"
+            className="bg-white hover:bg-slate-100 text-slate-950 font-black px-10 py-5 rounded-2xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3 text-lg uppercase tracking-widest"
           >
-            Select API Key
+            Connect API Key
           </button>
-          <div className="space-y-2">
-             <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-500 hover:text-amber-400 font-bold uppercase tracking-widest underline underline-offset-4 transition-colors">
+          <div className="space-y-4 pt-4">
+             <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex items-start gap-3 text-left">
+                <CreditCard className="w-5 h-5 text-amber-500 shrink-0" />
+                <div className="space-y-1">
+                   <p className="text-[10px] font-black text-white uppercase">Billing Information</p>
+                   <p className="text-[10px] text-slate-500 leading-tight">Users must select an API key from a paid GCP project to enable Pro features.</p>
+                </div>
+             </div>
+             <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-500 hover:text-amber-400 font-bold uppercase tracking-widest underline underline-offset-8 transition-colors">
                Setup Billing & Key Guide
              </a>
-             <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">Digital Gentry Secure Tunnel v2.5</p>
           </div>
         </div>
       </div>
@@ -407,7 +459,6 @@ const App: React.FC = () => {
             </div>
             <div className="flex gap-3">
               <button onClick={() => setPendingExternalUrl(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl transition-colors border border-slate-700">Cancel</button>
-              {/* Fix: Added missing onClick handler for the Proceed button to fix external navigation. */}
               <button onClick={confirmExternalNavigation} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-amber-900/20">Proceed</button>
             </div>
           </div>

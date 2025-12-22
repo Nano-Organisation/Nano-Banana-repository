@@ -60,7 +60,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome }) =>
                <Settings className="w-5 h-5" />
              </button>
              <div className="hidden sm:block text-slate-400 dark:text-slate-500 text-sm font-medium border-l border-slate-200 dark:border-slate-800 pl-4 ml-2">
-               Powered by Gemini 2.5
+               Powered by Gemini 3
              </div>
           </div>
         </div>
