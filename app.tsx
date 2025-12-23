@@ -1,4 +1,4 @@
-// Fix: Migrated main application logic to app.tsx to resolve casing collision errors.
+// Fix: Moved application logic to app.tsx (lowercase) to resolve naming collisions with App.tsx on case-insensitive systems and match the root file specified for compilation.
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types';
 import Layout from './components/Layout';

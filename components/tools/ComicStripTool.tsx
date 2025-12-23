@@ -168,7 +168,13 @@ const ComicStripTool: React.FC = () => {
             .map(c => `${c.id}: ${c.description}`)
             .join('. ') || "Subject from anchor.";
 
+         // RESTORE STYLE LOGIC: Injects specific layout directions based on stripStyle
+         const stripDirection = stripStyle.id === 'sunday_strip' 
+            ? "Classic newspaper layout, flat fixed perspective, wide shots only." 
+            : "Cinematic layouts, varied camera angles, dynamic shot depths.";
+
          const telegraphicPrompt = `
+           DIRECTION: ${stripDirection}.
            ACTIVE_CAST: ${localCasting}.
            SCENE: ${newPages[i].imagePrompt}. 
            STYLE: ${artStyle.label}. ${artStyle.desc}. 
@@ -256,7 +262,10 @@ const ComicStripTool: React.FC = () => {
       });
     }
     doc.setFontSize(8); doc.setTextColor(150); doc.text(WATERMARK_TEXT, pageWidth / 2, pageHeight - 5, { align: 'center' });
-    doc.save(`comic-strip-${Date.now()}.pdf`);
+    
+    // Human-readable timestamp helper (YYYY-MM-DD_HH-mm-ss)
+    const timestamp = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '-');
+    doc.save(`comic-strip-${timestamp}.pdf`);
   };
 
   const handlePlayNarrative = async () => {
@@ -284,7 +293,8 @@ const ComicStripTool: React.FC = () => {
       for (let i = 0; i < panels.length; i++) {
         if (cancelPlaybackRef.current) break;
         setActivePanelIndex(i);
-        const speechUrl = await generateSpeechWithGemini(panels[i].text, selectedVoice);
+        // FIX ACCENT DRIFT: Prepend a prosody instruction to ensure consistent voice performance
+        const speechUrl = await generateSpeechWithGemini(`[Maintain consistent voice performance]: ${panels[i].text}`, selectedVoice);
         if (i === 0) setIsAudioLoading(false);
         if (audioRef.current) {
           audioRef.current.src = speechUrl;
@@ -332,7 +342,11 @@ const ComicStripTool: React.FC = () => {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `comic-movie-${Date.now()}.webm`;
+          
+          // Human-readable timestamp helper (YYYY-MM-DD_HH-mm-ss)
+          const timestamp = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '-');
+          a.download = `comic-movie-${timestamp}.webm`;
+          
           a.click();
           resolve();
         };
@@ -406,7 +420,8 @@ const ComicStripTool: React.FC = () => {
         img.crossOrigin = "anonymous";
         await new Promise(res => img.onload = res);
 
-        const speechUrl = await generateSpeechWithGemini(page.text, selectedVoice);
+        // FIX ACCENT DRIFT: Prepend a prosody instruction for consistent movie voice track
+        const speechUrl = await generateSpeechWithGemini(`[Maintain consistent voice performance]: ${page.text}`, selectedVoice);
         const speechResp = await fetch(speechUrl);
         const speechArr = await speechResp.arrayBuffer();
         const buffer = await audioCtx.decodeAudioData(speechArr);
