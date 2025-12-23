@@ -1,2 +1,3 @@
-// Fix: Changed App.tsx (uppercase) to be a proxy for app.tsx (lowercase) to resolve casing collision errors since app.tsx is a root file for compilation.
-export { default } from './app';
+// Fix: App.tsx (uppercase) is now a proxy for app.tsx (lowercase) which contains the main application logic.
+// This resolves casing collisions in environments where both files are treated as root files.
+export { default } from './app.tsx';

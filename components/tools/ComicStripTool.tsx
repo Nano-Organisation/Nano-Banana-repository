@@ -168,17 +168,17 @@ const ComicStripTool: React.FC = () => {
             .map(c => `${c.id}: ${c.description}`)
             .join('. ') || "Subject from anchor.";
 
-         // RESTORE STYLE LOGIC: Injects specific layout directions based on stripStyle
+         // RESTORE STYLE LOGIC: Injects aggressive layout directions to override anchor photo depth
          const stripDirection = stripStyle.id === 'sunday_strip' 
-            ? "Classic newspaper layout, flat fixed perspective, wide shots only." 
-            : "Cinematic layouts, varied camera angles, dynamic shot depths.";
+            ? "MANDATORY: FLAT 2D PERSPECTIVE. WIDE ANGLE STAGE-LIKE COMPOSITION. ZERO DEPTH OF FIELD. NO BLURRED BACKGROUNDS. NO CINEMATIC LIGHTING. NO CAMERA TILT. FULL BODY SHOTS ONLY. TRADITIONAL NEWSPAPER COMIC STRIP LAYOUT. IGNORE 3D DEPTH OF ANCHOR IMAGE. RENDER AS FLAT 2D ILLUSTRATION." 
+            : "Modern cinematic digital art, varied camera angles, dynamic shot depths, depth of field, bokeh, movie-style lighting.";
 
          const telegraphicPrompt = `
-           DIRECTION: ${stripDirection}.
+           COMPOSITION: ${stripDirection}.
            ACTIVE_CAST: ${localCasting}.
            SCENE: ${newPages[i].imagePrompt}. 
            STYLE: ${artStyle.label}. ${artStyle.desc}. 
-           RULES: 1 PANEL. NO BUBBLES. MATCH REF POSE.
+           RULES: 1 PANEL. NO BUBBLES. MATCH REF POSE. IGNORE ANCHOR DEPTH.
          `.replace(/\s+/g, ' ').trim();
 
          try {
