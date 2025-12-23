@@ -235,6 +235,7 @@ const StorybookTool: React.FC = () => {
                 Visual Style: ${script.style}.
                 NON-NEGOTIABLE CHARACTER INVARIANTS: ${script.characterDescription}.
                 Scene: ${script.pages[i].imagePrompt}.
+                CONFLICT RESOLUTION RULE: If the Scene text describes an item being removed, put away, or changed (e.g. taking off a medal), this specific action OVERRIDES the NON-NEGOTIABLE list above.
                 IMMUTABILITY PROTOCOL: Do NOT allow environmental context (e.g., trees, texture) to mutate the character's physical spec. 
                 Hair MUST remain a solid matte shape with zero added texture. 
                 Limbs MUST remain thin 2px lines without varying in weight.
@@ -404,7 +405,7 @@ const StorybookTool: React.FC = () => {
               {bookData.dedication || "Dedicated to all the dreamers."}
            </div>
            <div className="absolute bottom-8 text-xs text-slate-400 uppercase tracking-widest">
-              © {new Date().getFullYear()} {bookData.author} • Generated with Nano Banana
+              © {new Date().getFullYear()} {bookData.author}
            </div>
            <button 
               onClick={openMetadataEditor}
@@ -581,7 +582,10 @@ const StorybookTool: React.FC = () => {
       doc.setTextColor(255); doc.setFont('times', 'italic'); doc.setFontSize(14);
       const splitBlurb = doc.splitTextToSize(`"${bookData.backCoverBlurb || bookData.characterName}"`, pageWidth - (margin * 4));
       doc.text(splitBlurb, pageWidth / 2, pageHeight / 2, { align: 'center' });
-      doc.save(`ai-storybook-${mode}.pdf`);
+      
+      const now = new Date();
+      const timestamp = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}-${now.getMinutes().toString().padStart(2, '0')}-${now.getSeconds().toString().padStart(2, '0')}`;
+      doc.save(`ai-storybook-${mode}-${timestamp}.pdf`);
     } catch (e) {
       alert("Could not generate PDF. Please ensure all images are loaded.");
     }

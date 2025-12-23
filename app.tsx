@@ -1,5 +1,3 @@
-
-/* Fix: Moved main application logic to lowercase app.tsx to resolve casing collision errors where both App.tsx and app.tsx are included in the compilation set. */
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types';
 import Layout from './components/Layout';

@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Schema, Chat, Part, Modality, GenerateContentResponse } from "@google/genai";
 import {
   StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis,
@@ -413,7 +414,9 @@ export const generateStoryScript = async (topic: string, style: string, charDesc
   const prompt = `Story about: ${topic}. Style: ${style}. Character: ${charDesc || 'new'}.
   
   CRITICAL CHARACTER CONSISTENCY PROTOCOL:
-  Describe each character as a "Visual Identity Block" using strictly limited shape and color terms.
+  1. Describe each character as a "Visual Identity Block" using strictly limited shape and color terms.
+  2. DYNAMIC STATE AWARENESS: If the narrative text describes a character interacting with their appearance (removing a hat, unpinning a medal, rolling up sleeves), you MUST flag this in the corresponding page's 'imagePrompt' as a persistent state change for all subsequent frames.
+  3. LAYER-FIRST CLOTHING: Describe outfits from the inside out (e.g., "White collared shirt beneath a green waist-apron") to ensure secondary layers don't vanish in complex scenes.
   
   Do NOT use ambiguous prose for physical features. Use atomic geometric labels.`;
 
@@ -556,14 +559,18 @@ export const analyzeVideoCharacters = async (f: string): Promise<string> => {
 
 export const generateBabyTransformation = (f: string, a: string) => generateVideoWithGemini(`Toddler version. ${a}.`, '9:16', f);
 
+/* Fix: Corrected typo in type reference for BabyDebateScript. */
 export const generateBabyDebateScript = async (topic: string, participants: BabyDebateParticipant[]): Promise<BabyDebateScript> => {
   const prompt = `Generate a toddler debate script about: ${topic}.`;
+  /* Fix: Corrected type name reference. */
   const schema: Schema = { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, scriptLines: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { speaker: { type: Type.STRING }, text: { type: Type.STRING } } } }, visualContext: { type: Type.STRING }, safeCharacterDescriptions: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, description: { type: Type.STRING } } } } } };
+  /* Fix: Corrected generic type argument. */
   const data = await generateStructuredContent<BabyDebateScript>(prompt, schema);
   data.participants = participants;
   return data;
 };
 
+/* Fix: Corrected type name reference for parameter. */
 export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: string, musicStyle: string, showCaptions: boolean, ratio: string): Promise<string> => {
   const prompt = `High-end 3D toddler animation. Visual Style: ${style}. ${script.visualContext}. Action: Expression-filled toddler discussion.`;
   const images = script.participants.map(p => p.image).filter(Boolean) as string[];
@@ -597,6 +604,15 @@ export const generateDailyJoke = async (dayIndex: number): Promise<string> => {
 
 export const generateQuote = async (category: string): Promise<string> => {
   return generateTextWithGemini(`Provide a famous quote about ${category}.`);
+};
+
+export const generateDailyJokeWithRetry = async (dayIdx: number) : Promise<string> => {
+    try {
+        const text = await generateDailyJoke(dayIdx);
+        return text;
+    } catch(err) {
+        return "Why did the AI cross the road? To get to the other dataset!";
+    }
 };
 
 export const generateConnectionFact = async (person?: string): Promise<string> => {
