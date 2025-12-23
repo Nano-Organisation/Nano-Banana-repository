@@ -1,7 +1,6 @@
-
 import React, { useState, useRef } from 'react';
-import { Layout, RefreshCw, Upload, X, Download, Image as ImageIcon, MessageSquare, Palette, Columns, Rows, Clock } from 'lucide-react';
-import { generateComicScriptFromImages, getAiClient } from '../../services/geminiService';
+import { Layout, RefreshCw, Upload, X, Download, Image as ImageIcon, MessageSquare, Palette, Columns, Rows, Clock, Volume2, Music, Play, Waves, Settings2, Check } from 'lucide-react';
+import { generateComicScriptFromImages, getAiClient, generateSpeechWithGemini, generateBackgroundMusic } from '../../services/geminiService';
 import { LoadingState, StorybookData } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
 import jsPDF from 'jspdf';
@@ -54,6 +53,14 @@ const ART_STYLES = [
   }
 ];
 
+const VOICES = [
+  { id: 'Kore', name: 'Kore (Balanced)' },
+  { id: 'Puck', name: 'Puck (Energetic)' },
+  { id: 'Charon', name: 'Charon (Deep)' },
+  { id: 'Fenrir', name: 'Fenrir (Intense)' },
+  { id: 'Zephyr', name: 'Zephyr (Calm)' }
+];
+
 const ComicStripTool: React.FC = () => {
   const [seedImages, setSeedImages] = useState<string[]>([]);
   const [topic, setTopic] = useState('');
@@ -64,6 +71,18 @@ const ComicStripTool: React.FC = () => {
   const [status, setStatus] = useState<LoadingState>('idle');
   const [progressMsg, setProgressMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Narration State
+  const [isNarrationOpen, setIsNarrationOpen] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState(VOICES[0].id);
+  const [addMusic, setAddMusic] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [activePanelIndex, setActivePanelIndex] = useState<number | null>(null);
+  const [isAudioLoading, setIsAudioLoading] = useState(false);
+  
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const musicRef = useRef<HTMLVideoElement | null>(null);
+  const cancelPlaybackRef = useRef(false);
 
   const handleSeedImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -302,6 +321,85 @@ const ComicStripTool: React.FC = () => {
     doc.save(`comic-strip-${timestamp}.pdf`);
   };
 
+  const handlePlayNarrative = async () => {
+    if (!comicData || isPlaying) return;
+    setIsPlaying(true);
+    setIsAudioLoading(true);
+    cancelPlaybackRef.current = false;
+
+    try {
+      // 1. Optional background music with PRODUCTION BUFFER
+      if (addMusic) {
+        const musicUrl = await generateBackgroundMusic(comicData.title || "Comic Narrative", comicData.style || "Comic");
+        
+        // Fetch entirely as blob before starting
+        const musicResp = await fetch(musicUrl);
+        const musicBlob = await musicResp.blob();
+        const musicObjUrl = URL.createObjectURL(musicBlob);
+
+        if (musicRef.current) {
+          musicRef.current.src = musicObjUrl;
+          await new Promise((resolve) => {
+            if (!musicRef.current) return resolve(null);
+            musicRef.current.oncanplaythrough = resolve;
+            setTimeout(resolve, 3000); // 3s max wait for buffer
+          });
+          if (cancelPlaybackRef.current) return;
+          musicRef.current.volume = 0.2;
+          musicRef.current.loop = true;
+          musicRef.current.play().catch(e => console.log("Music play prevented", e));
+        }
+      }
+
+      // 2. Sequential Speech Reading
+      const panels = comicData.pages || [];
+      for (let i = 0; i < panels.length; i++) {
+        if (cancelPlaybackRef.current) break;
+        setActivePanelIndex(i);
+        const text = panels[i].text;
+        
+        const speechUrl = await generateSpeechWithGemini(text, selectedVoice);
+        
+        if (i === 0) setIsAudioLoading(false);
+
+        if (audioRef.current) {
+          audioRef.current.src = speechUrl;
+          await new Promise((resolve) => {
+            if (!audioRef.current) return resolve(null);
+            audioRef.current.onended = () => resolve(null);
+            audioRef.current.play().catch(e => {
+              console.log("Speech play prevented", e);
+              resolve(null);
+            });
+          });
+        }
+        
+        // Brief pause between panels
+        await new Promise(r => setTimeout(r, 500));
+      }
+    } catch (e) {
+      console.error("Narrative playback error", e);
+    } finally {
+      setIsPlaying(false);
+      setActivePanelIndex(null);
+      setIsAudioLoading(false);
+      if (musicRef.current) {
+        musicRef.current.pause();
+      }
+    }
+  };
+
+  const stopPlayback = () => {
+    cancelPlaybackRef.current = true;
+    setIsPlaying(false);
+    setActivePanelIndex(null);
+    setIsAudioLoading(false);
+    if (audioRef.current) audioRef.current.pause();
+    if (musicRef.current) musicRef.current.pause();
+  };
+
+  const isAllImagesGenerated = comicData && comicData.pages && comicData.pages.length > 0 && comicData.pages.every(p => p.imageUrl);
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
@@ -423,6 +521,67 @@ const ComicStripTool: React.FC = () => {
                   {status === 'loading' ? 'Forging Consistency...' : 'Generate Strip'}
                </button>
             </div>
+
+            {/* DEDICATED SIDEBAR: AI Narration Hub */}
+            {isAllImagesGenerated && (
+               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4 animate-fade-in">
+                  <div className="flex justify-between items-center">
+                     <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <Volume2 className="w-4 h-4 text-yellow-500" /> AI Narration Hub
+                     </h3>
+                     {isPlaying && (
+                        <div className="flex gap-0.5 items-end h-3">
+                           <div className="w-0.5 bg-yellow-500 animate-[bounce_0.6s_ease-in-out_infinite]" style={{ height: '60%' }}></div>
+                           <div className="w-0.5 bg-yellow-500 animate-[bounce_0.6s_ease-in-out_infinite_0.2s]" style={{ height: '100%' }}></div>
+                           <div className="w-0.5 bg-yellow-500 animate-[bounce_0.6s_ease-in-out_infinite_0.4s]" style={{ height: '40%' }}></div>
+                        </div>
+                     )}
+                  </div>
+
+                  <div className="space-y-4">
+                     <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase">Voice Casting</label>
+                        <select 
+                           value={selectedVoice}
+                           onChange={(e) => setSelectedVoice(e.target.value)}
+                           disabled={isPlaying}
+                           className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:ring-1 focus:ring-yellow-500 disabled:opacity-50"
+                        >
+                           {VOICES.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                        </select>
+                     </div>
+
+                     <div className="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5 cursor-pointer select-none">
+                           <Music className="w-3 h-3 text-yellow-500" /> Cinematic Score
+                        </label>
+                        <button 
+                           onClick={() => !isPlaying && setAddMusic(!addMusic)}
+                           className={`w-8 h-4 rounded-full relative transition-all ${addMusic ? 'bg-yellow-500' : 'bg-slate-700'} ${isPlaying ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                           <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${addMusic ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                        </button>
+                     </div>
+
+                     <button
+                        onClick={isPlaying ? stopPlayback : handlePlayNarrative}
+                        className={`w-full py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95
+                           ${isPlaying 
+                              ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-500/20' 
+                              : 'bg-yellow-500 text-black hover:bg-yellow-600 shadow-yellow-500/20'}`}
+                     >
+                        {isAudioLoading ? (
+                           <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : isPlaying ? (
+                           <X className="w-4 h-4" />
+                        ) : (
+                           <Play className="w-3.5 h-3.5 fill-current" />
+                        )}
+                        {isAudioLoading ? 'Loading AI Audio...' : isPlaying ? 'Stop Narrative' : 'Play Narrative'}
+                     </button>
+                  </div>
+               </div>
+            )}
          </div>
 
          <div className="md:col-span-2 space-y-6 overflow-hidden">
@@ -435,7 +594,8 @@ const ComicStripTool: React.FC = () => {
 
             {comicData && (
                <div className="space-y-6 animate-fade-in-up">
-                  <div className={`bg-white p-8 rounded-sm shadow-2xl border-4 border-black w-full mx-auto ${orientation === 'horizontal' ? 'overflow-x-auto custom-scrollbar' : ''}`}>
+                  <div className={`bg-white p-8 rounded-sm shadow-2xl border-4 border-black w-full mx-auto relative ${orientation === 'horizontal' ? 'overflow-x-auto custom-scrollbar' : ''}`}>
+                     
                      <div className="bg-yellow-300 border-2 border-black p-4 mb-6 text-center shadow-[4px_4px_0px_rgba(0,0,0,1)] sticky left-0">
                         <h1 className="text-3xl font-black text-black uppercase tracking-tighter">{comicData.title}</h1>
                      </div>
@@ -443,7 +603,11 @@ const ComicStripTool: React.FC = () => {
                      <div className={`flex ${orientation === 'horizontal' ? 'flex-row gap-8 pb-4 min-w-max' : 'flex-col gap-8'}`}>
                         {(comicData.pages || []).map((panel, idx) => (
                            <div key={idx} className={`flex ${orientation === 'horizontal' ? 'flex-col w-64' : 'flex-row gap-4'}`}>
-                              <div className={`${orientation === 'horizontal' ? 'w-full mb-4' : 'w-1/2'} aspect-square border-2 border-black bg-slate-100 relative overflow-hidden`}>
+                              <div className={`
+                                 ${orientation === 'horizontal' ? 'w-full mb-4' : 'w-1/2'} 
+                                 aspect-square border-2 border-black bg-slate-100 relative overflow-hidden transition-all duration-700
+                                 ${activePanelIndex === idx ? 'ring-4 ring-yellow-400 ring-offset-2 scale-[1.02] shadow-[0_0_20px_rgba(234,179,8,0.4)] animate-pulse' : ''}
+                              `}>
                                  {panel.imageUrl ? (
                                     <img src={panel.imageUrl} className="w-full h-full object-cover" />
                                  ) : (
@@ -452,15 +616,17 @@ const ComicStripTool: React.FC = () => {
                                     </div>
                                  )}
                                  <div className="absolute top-2 left-2 bg-black text-white text-[10px] font-bold px-2 py-0.5">{idx + 1}</div>
-                                 {/* Time tags hidden per user request, background logic preserved */}
                               </div>
                               <div className={`${orientation === 'horizontal' ? 'w-full' : 'w-1/2'} flex items-center`}>
-                                 <div className="bg-white border-2 border-black p-4 rounded-[20px] relative shadow-[2px_2px_0px_rgba(0,0,0,0.2)] text-black font-mono text-sm leading-snug w-full">
+                                 <div className={`
+                                    bg-white border-2 border-black p-4 rounded-[20px] relative shadow-[2px_2px_0px_rgba(0,0,0,0.2)] text-black font-mono text-sm leading-snug w-full transition-all duration-700
+                                    ${activePanelIndex === idx ? 'bg-yellow-50 border-yellow-500 shadow-lg' : ''}
+                                 `}>
                                     {orientation === 'vertical' && (
-                                      <div className="absolute top-1/2 -left-3 w-4 h-4 bg-white border-b-2 border-l-2 border-black transform rotate-45"></div>
+                                      <div className={`absolute top-1/2 -left-3 w-4 h-4 bg-white border-b-2 border-l-2 border-black transform rotate-45 transition-colors ${activePanelIndex === idx ? 'bg-yellow-50 border-yellow-500' : ''}`}></div>
                                     )}
                                     {orientation === 'horizontal' && (
-                                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-t-2 border-l-2 border-black transform rotate-45"></div>
+                                      <div className={`absolute -top-3 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-t-2 border-l-2 border-black transform rotate-45 transition-colors ${activePanelIndex === idx ? 'bg-yellow-50 border-yellow-500' : ''}`}></div>
                                     )}
                                     {panel.text}
                                  </div>
@@ -482,6 +648,18 @@ const ComicStripTool: React.FC = () => {
             )}
          </div>
       </div>
+      
+      {/* Hidden Audio/Video Elements for Narration */}
+      <audio ref={audioRef} className="hidden" />
+      {/* Hidden video element for Cinematic Score (MP4 support) */}
+      <video ref={musicRef} className="hidden" playsInline />
+      
+      <style>{`
+        @keyframes bounce {
+          0%, 100% { height: 40%; }
+          50% { height: 100%; }
+        }
+      `}</style>
     </div>
   );
 };
