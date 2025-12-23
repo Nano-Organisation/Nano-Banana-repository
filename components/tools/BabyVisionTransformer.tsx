@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Youtube, Upload, RefreshCw, Baby, Camera, Music, Download, AlertCircle, Play, Wand2 } from 'lucide-react';
 import { analyzeVideoCharacters, generateBabyTransformation } from '../../services/geminiService';
@@ -116,6 +117,7 @@ const BabyVisionTransformer: React.FC = () => {
                   className="w-full h-full object-cover"
                   controls
                   onSeeked={captureFrame}
+                  crossOrigin="anonymous"
                 />
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-slate-600">
@@ -177,7 +179,7 @@ const BabyVisionTransformer: React.FC = () => {
                 </div>
              ) : resultVideoUrl ? (
                 <div className="w-full h-full relative group">
-                   <video src={resultVideoUrl} className="w-full h-full object-cover" autoPlay loop muted playsInline />
+                   <video src={resultVideoUrl} className="w-full h-full object-cover" autoPlay loop muted playsInline crossOrigin="anonymous" />
                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-4">
                       <a 
                         href={resultVideoUrl} 

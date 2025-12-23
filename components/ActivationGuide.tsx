@@ -1,5 +1,5 @@
 import React from 'react';
-/* Fix: Added missing AlertCircle import from lucide-react. */
+// Fix: Added missing AlertCircle import from lucide-react.
 import { Shield, Key, FileText, Zap, Cpu, Video, Settings, ChevronRight, ArrowLeft, ExternalLink, Sparkles, AlertCircle } from 'lucide-react';
 
 interface ActivationGuideProps {

@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type, Schema, Chat, Part, Modality, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, Type, Schema, Chat, Part, Modality, GenerateContentResponse, VideoGenerationReferenceType } from "@google/genai";
 import {
   StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis,
   DailyTip, HelpfulList, PodcastScript, QuizData, RiddleData, AffirmationPlan,
@@ -10,12 +10,9 @@ import {
 
 export const getApiKey = () => process.env.API_KEY;
 
-/* Fix: Always create a fresh instance of GoogleGenAI before each request to ensure up-to-date API keys. */
 export const getAiClient = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
-
-// --- Concurrency & Queueing Logic ---
 
 class TaskQueue {
   private queue: (() => Promise<void>)[] = [];
@@ -58,11 +55,8 @@ class TaskQueue {
   }
 }
 
-// Separate queues for high-compute vs standard tasks
-const videoQueue = new TaskQueue(1); // Veo/Pro-Image: Strictly sequential
-const standardQueue = new TaskQueue(3); // Text/Flash-Image: Some concurrency allowed
-
-// --- Enhanced Retry with Granular Reporting ---
+const videoQueue = new TaskQueue(1);
+const standardQueue = new TaskQueue(3);
 
 export const withRetry = async <T>(
   fn: () => Promise<T>, 
@@ -76,35 +70,21 @@ export const withRetry = async <T>(
       return await fn();
     } catch (error: any) {
       lastError = error;
-      
-      const status = error.status || 
-                     error.response?.status || 
-                     error?.error?.code || 
-                     (error?.message?.includes('429') ? 429 : null);
-                     
+      const status = error.status || error.response?.status || error?.error?.code || (error?.message?.includes('429') ? 429 : null);
       const message = (error?.message || (typeof error === 'string' ? error : JSON.stringify(error)) || "").toLowerCase();
-      
       const isHardExhaustion = message.includes('quota') || message.includes('billing') || message.includes('plan');
       const isOverloaded = status === 503 || message.includes('overloaded') || message.includes('503') || message.includes('unavailable');
       const isRateLimit = status === 429 || message.includes('429') || message.includes('resource_exhausted') || message.includes('too many requests');
       
-      // Stop retrying if it's a permanent billing/plan block
       if (isHardExhaustion && isRateLimit) throw error;
-      
-      // Stop if it's an invalid request or safety block (not retryable)
-      if (!isOverloaded && !isRateLimit) throw error;
+      if (!isOverloaded && !isRateLimit && status !== 500) throw error; // Retry 500s too as they are often transient model-side errors
       
       if (attempt === retries - 1) break;
-      
       const multiplier = isRateLimit ? 5 : 2;
       const backoff = baseDelay * Math.pow(multiplier, attempt); 
       const jitter = Math.random() * 1000;
       const totalWait = Math.round((backoff + jitter)/1000);
-      
-      const statusMsg = `Model is busy, retrying (attempt ${attempt + 1}/${retries}) in ${totalWait}s...`;
-      console.warn(statusMsg);
-      if (onRetry) onRetry(statusMsg);
-
+      if (onRetry) onRetry(`Model is busy, retrying (attempt ${attempt + 1}/${retries}) in ${totalWait}s...`);
       await new Promise(resolve => setTimeout(resolve, backoff + jitter));
     }
   }
@@ -112,33 +92,23 @@ export const withRetry = async <T>(
 };
 
 export const handleGeminiError = (error: any) => {
-  console.debug("Gemini API Error Detail:", error);
-  
   let rawMsg = "";
   if (typeof error === 'string') rawMsg = error;
   else if (error?.message && typeof error.message === 'string') rawMsg = error.message;
-  else {
-    try { rawMsg = JSON.stringify(error); } 
-    catch (e) { rawMsg = String(error); }
-  }
-  
+  else { try { rawMsg = JSON.stringify(error); } catch (e) { rawMsg = String(error); } }
   const msg = rawMsg.toLowerCase();
-  
   if (msg.includes('429') || msg.includes('quota') || msg.includes('resource_exhausted') || msg.includes('exceeded your current quota')) {
      if (msg.includes('billing') || msg.includes('plan')) {
-        throw new Error("BILLING_ERROR: Your Google Cloud project has no active billing or has reached its budget. Please check console.cloud.google.com/billing.");
+        throw new Error("BILLING_ERROR: Your Google Cloud project has no active billing.");
      }
-     throw new Error("QUOTA_ERROR: You have exceeded your Gemini API quota. If you are on the Free tier, wait for the daily reset. If on Pay-As-You-Go, check your billing limits at ai.google.dev/usage.");
+     throw new Error("QUOTA_ERROR: You have exceeded your Gemini API quota.");
   }
-  
   if (msg.includes('503') || msg.includes('overloaded')) {
-     throw new Error("SERVER_OVERLOAD: The AI server is under heavy load. Please try again in 15 seconds.");
+     throw new Error("SERVER_OVERLOAD: The AI server is under heavy load.");
   }
-  
   if (msg.includes('requested entity was not found')) {
-     throw new Error("CONNECTION_ERROR: API model or key not found. Please re-select your API key in the App Settings.");
+     throw new Error("CONNECTION_ERROR: API model or key not found.");
   }
-  
   throw new Error(rawMsg || "An unexpected error occurred during the AI request.");
 };
 
@@ -152,10 +122,7 @@ export const generateTextWithGemini = async (prompt: string, systemInstruction?:
         config: { systemInstruction, temperature: 0.5 }
       }), 5, 3000, onRetry);
       return response.text || "";
-    } catch (error) {
-      handleGeminiError(error);
-      return "";
-    }
+    } catch (error) { handleGeminiError(error); return ""; }
   });
 };
 
@@ -163,8 +130,6 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
   return standardQueue.run(async () => {
     const ai = getAiClient();
     const finalPrompt = `${prompt}. SPELLING PROTOCOL: Any and all visible text, signs, or labels MUST be spelled with 100% accuracy.`;
-
-    // Fix: Removed space from function name 'attempt generation' to fix 'Cannot find name' error.
     const attemptGeneration = async (includeRefImage: boolean): Promise<string | null> => {
       try {
         const parts: any[] = [];
@@ -179,39 +144,51 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
           contents: { parts },
           config: { imageConfig: { aspectRatio: aspectRatio as any } }
         }), 3, 4000, onRetry);
-        
         const imgData = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData)?.inlineData?.data;
         return imgData ? `data:image/png;base64,${imgData}` : null;
-      } catch (e) { 
-        const msg = (e?.message || "").toLowerCase();
-        if (msg.includes('429') || msg.includes('quota')) throw e;
-        return null; 
-      }
+      } catch (e) { const msg = (e?.message || "").toLowerCase(); if (msg.includes('429') || msg.includes('quota')) throw e; return null; }
     };
-    
     try {
       const result = await attemptGeneration(!!referenceImage) || await attemptGeneration(false);
-      if (!result) throw new Error("Image generation failed due to safety filters or model unavailability.");
+      if (!result) throw new Error("Image generation failed.");
       return result;
-    } catch (error) {
-      handleGeminiError(error);
-      return "";
-    }
+    } catch (error) { handleGeminiError(error); return ""; }
   });
 };
 
-/* Fix: Added aspectRatio support to generateProImageWithGemini config and updated signature to accept it. */
-export const generateProImageWithGemini = async (prompt: string, aspectRatio: string = '1:1', size: string = '1K', onRetry?: (msg: string) => void): Promise<string> => {
+export const generateProImageWithGemini = async (
+  prompt: string, 
+  aspectRatio: string = '1:1', 
+  size: string = '1K', 
+  referenceImage?: string,
+  onRetry?: (msg: string) => void
+): Promise<string> => {
   return videoQueue.run(async () => {
     const ai = getAiClient();
     try {
+      const parts: any[] = [];
+      if (referenceImage) {
+        const base64Data = referenceImage.split(',')[1];
+        const mimeType = referenceImage.split(';')[0].split(':')[1];
+        // For vision tasks, parts often prefer data first then text
+        parts.push({ inlineData: { mimeType, data: base64Data } });
+      }
+      parts.push({ text: prompt });
+
       const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
         model: 'gemini-3-pro-image-preview',
-        contents: { parts: [{ text: prompt }] },
-        config: { imageConfig: { imageSize: size as any, aspectRatio: aspectRatio as any } }
+        contents: { parts },
+        config: { 
+          imageConfig: { 
+            imageSize: size as any, 
+            aspectRatio: aspectRatio as any 
+          },
+          temperature: 0.4 
+        }
       }), 5, 5000, onRetry);
+
       const imagePart = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
-      if (!imagePart) throw new Error("No image returned.");
+      if (!imagePart) throw new Error("No image returned from Pro model.");
       return `data:image/png;base64,${imagePart.inlineData.data}`;
     } catch (error) { handleGeminiError(error); return ""; }
   });
@@ -227,23 +204,17 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
         if (Array.isArray(imageBase64)) {
           config.referenceImages = imageBase64.slice(0, 3).map(img => ({
             image: { imageBytes: img.split(',')[1], mimeType: img.split(';')[0].split(':')[1] },
-            referenceType: 'ASSET'
+            referenceType: VideoGenerationReferenceType.ASSET
           }));
           return await ai.models.generateVideos({ model: 'veo-3.1-generate-preview', prompt, config });
         } else {
-          return await ai.models.generateVideos({ 
-            model: 'veo-3.1-fast-generate-preview', prompt, 
-            image: { imageBytes: imageBase64.split(',')[1], mimeType: imageBase64.split(';')[0].split(':')[1] }, 
-            config 
-          });
+          return await ai.models.generateVideos({ model: 'veo-3.1-fast-generate-preview', prompt, image: { imageBytes: imageBase64.split(',')[1], mimeType: imageBase64.split(';')[0].split(':')[1] }, config });
         }
       }
       return await ai.models.generateVideos({ model: 'veo-3.1-fast-generate-preview', prompt, config });
     };
-
     try {
       let operation: any = await withRetry(() => startOp(), 5, 8000, onRetry);
-      
       while (!(operation as any).done) {
         await new Promise(r => setTimeout(r, 12000));
         if (!operation || !(operation as any).name) break;
@@ -251,14 +222,9 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
         if (!polledOp) throw new Error("Video tracker lost.");
         operation = polledOp;
       }
-      
       if ((operation as any).error) throw new Error((operation as any).error.message);
-      
       const generatedVideos = (operation as any).response?.generatedVideos;
-      if (!generatedVideos || generatedVideos.length === 0) {
-        throw new Error("Safety Block: Content filtered.");
-      }
-
+      if (!generatedVideos || generatedVideos.length === 0) throw new Error("Safety Block: Content filtered.");
       const link = generatedVideos[0]?.video?.uri;
       return `${link}&key=${getApiKey()}`;
     } catch (error) { handleGeminiError(error); return ""; }
@@ -341,36 +307,15 @@ export const generateSpeechWithGemini = async (text: string, voice: string, spee
       }));
       const base64Pcm = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
       if (!base64Pcm) return "";
-
       const pcmBinary = atob(base64Pcm);
       const pcmLength = pcmBinary.length;
       const sampleRate = 24000;
       const numChannels = 1;
       const bitsPerSample = 16;
-
       const header = new ArrayBuffer(44);
       const view = new DataView(header);
-
-      const writeString = (offset: number, str: string) => {
-        for (let i = 0; i < str.length; i++) {
-          view.setUint8(offset + i, str.charCodeAt(i));
-        }
-      };
-
-      writeString(0, 'RIFF');
-      view.setUint32(4, 36 + pcmLength, true);
-      writeString(8, 'WAVE');
-      writeString(12, 'fmt ');
-      view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true);
-      view.setUint16(22, numChannels, true);
-      view.setUint32(24, sampleRate, true);
-      view.setUint32(28, sampleRate * numChannels * (bitsPerSample / 8), true);
-      view.setUint16(32, numChannels * (bitsPerSample / 8), true);
-      view.setUint16(34, bitsPerSample, true);
-      writeString(36, 'data');
-      view.setUint32(40, pcmLength, true);
-
+      const writeString = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+      writeString(0, 'RIFF'); view.setUint32(4, 36 + pcmLength, true); writeString(8, 'WAVE'); writeString(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, numChannels, true); view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * numChannels * (bitsPerSample / 8), true); view.setUint16(32, numChannels * (bitsPerSample / 8), true); view.setUint16(34, bitsPerSample, true); writeString(36, 'data'); view.setUint32(40, pcmLength, true);
       const headerBinary = String.fromCharCode(...new Uint8Array(header));
       return `data:audio/wav;base64,${btoa(headerBinary + pcmBinary)}`;
     } catch (error) { handleGeminiError(error); return ""; }
@@ -404,59 +349,58 @@ const generateStructuredContent = async <T>(prompt: string, schema: Schema, mode
         model, contents, config: { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.2 }
       }), 5, 2000); 
       return JSON.parse(response.text || "{}") as T;
-    } catch (error) { 
-      handleGeminiError(error);
-      return {} as T; 
-    }
+    } catch (error) { handleGeminiError(error); return {} as T; }
   });
 };
 
 export const generateStoryScript = async (topic: string, style: string, charDesc?: string): Promise<StorybookData> => {
   const prompt = `Story about: ${topic}. Style: ${style}. Character: ${charDesc || 'new'}.
-  
   CRITICAL CHARACTER CONSISTENCY PROTOCOL:
   1. Describe each character as a "Visual Identity Block" using strictly limited shape and color terms.
   2. DYNAMIC STATE AWARENESS: If the narrative text describes a character interacting with their appearance (removing a hat, unpinning a medal, rolling up sleeves), you MUST flag this in the corresponding page's 'imagePrompt' as a persistent state change for all subsequent frames.
   3. LAYER-FIRST CLOTHING: Describe outfits from the inside out (e.g., "White collared shirt beneath a green waist-apron") to ensure secondary layers don't vanish in complex scenes.
-  
   Do NOT use ambiguous prose for physical features. Use atomic geometric labels.`;
-
   const schema: Schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, style: { type: Type.STRING }, characterName: { type: Type.STRING }, characterDescription: { type: Type.STRING }, author: { type: Type.STRING }, dedication: { type: Type.STRING }, authorBio: { type: Type.STRING }, backCoverBlurb: { type: Type.STRING }, pages: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { pageNumber: { type: Type.INTEGER }, text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } } } } };
   return generateStructuredContent<StorybookData>(prompt, schema);
 };
 
-// Fix: Removed space from function name 'generateNurseryRhymeStoryboard'.
 export const generateNurseryRhymeStoryboard = async (rhyme: string): Promise<RhymeData> => {
   const prompt = `Create a 4-panel visual storyboard for: "${rhyme}".`;
-  const schema: Schema = {
-    type: Type.OBJECT,
-    properties: {
-      title: { type: Type.STRING },
-      panels: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { lyrics: { type: Type.STRING }, imagePrompt: { type: Type.STRING } }, required: ['lyrics', 'imagePrompt'] } }
-    },
-    required: ['title', 'panels']
-  };
+  const schema: Schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, panels: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { lyrics: { type: Type.STRING }, imagePrompt: { type: Type.STRING } }, required: ['lyrics', 'imagePrompt'] } } }, required: ['title', 'panels'] };
   return generateStructuredContent<RhymeData>(prompt, schema);
 };
 
 export const generateComicScriptFromImages = async (images: string[], topic: string): Promise<StorybookData> => {
   const parts: any[] = images.map(img => ({ inlineData: { mimeType: 'image/png', data: img.split(',')[1] } }));
-  parts.push({ text: `Comic script about ${topic}. 
-  CRITICAL: Identify and flag any "State-Change Events". 
-  A State-Change Event occurs if:
-  - The character changes their clothes/attire.
-  - A persistent prop (like a briefcase or hat) is lost, stolen, or put down.
-  - A significant time jump occurs (e.g., transitioning from Day to Night, or Night to Next Morning) where an outfit change is expected.
-  
-  TEMPORAL LOGIC: 
-  - For each panel, explicitly define the 'timeOfDay' (e.g., "Day", "Sunset", "Night", "Morning").
-  - Compare time across panels. If a day-cycle shift is detected (e.g. Panel 1 is 'Day' and Panel 2 is 'Next Morning'), set 'isAttireChange' to true to trigger an automatic wardrobe update.` } as any);
+  parts.push({ text: `Task: Create a 4-panel comic script based on these images. Topic: ${topic}. 
+  ENSEMBLE CASTING PROTOCOL (Brevity Required):
+  1. Identify ALL prominent subjects. 
+  2. For EACH subject, create a "Casting Sheet" entry with a unique ID (e.g., Subject_A).
+  3. Describe visual constants strictly (e.g., "Subject_A: red dress, blonde bob hair, 30s"). 
+  4. Max 40 words per description.
+
+  PANEL LOGIC:
+  - 'charactersPresent': List only the IDs appearing in each specific panel.
+  - 'timeOfDay': "Day", "Sunset", "Night", or "Morning".
+  - 'imagePrompt': Describe the scene context specifically.
+  - Keep text short and punchy.` } as any);
   
   const schema: Schema = { 
     type: Type.OBJECT, 
     properties: { 
       title: { type: Type.STRING }, 
       characterDescription: { type: Type.STRING }, 
+      castingSheet: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id: { type: Type.STRING },
+            description: { type: Type.STRING }
+          },
+          required: ['id', 'description']
+        }
+      },
       pages: { 
         type: Type.ARRAY, 
         items: { 
@@ -465,14 +409,14 @@ export const generateComicScriptFromImages = async (images: string[], topic: str
             pageNumber: { type: Type.INTEGER }, 
             text: { type: Type.STRING }, 
             imagePrompt: { type: Type.STRING },
-            isAttireChange: { type: Type.BOOLEAN },
-            timeOfDay: { type: Type.STRING }
+            timeOfDay: { type: Type.STRING },
+            charactersPresent: { type: Type.ARRAY, items: { type: Type.STRING } }
           },
-          required: ['pageNumber', 'text', 'imagePrompt', 'timeOfDay']
+          required: ['pageNumber', 'text', 'imagePrompt', 'timeOfDay', 'charactersPresent']
         } 
       } 
     },
-    required: ['title', 'pages']
+    required: ['title', 'pages', 'castingSheet']
   };
   
   const response = await withRetry<GenerateContentResponse>(() => getAiClient().models.generateContent({ 
@@ -489,17 +433,52 @@ export const generateMemeConcept = async (topic: string): Promise<MemeData> => {
 };
 
 export const generateSocialCampaign = async (topic: string, settings: SocialSettings): Promise<SocialCampaign> => {
-  const schema: Schema = { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, linkedin: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } } } };
-  return generateStructuredContent<SocialCampaign>(`Campaign for ${topic}`, schema);
+  const schema: Schema = { 
+    type: Type.OBJECT, 
+    properties: { 
+      topic: { type: Type.STRING }, 
+      linkedin: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } },
+      twitter: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } },
+      instagram: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } },
+      facebook: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } },
+      tiktok: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } },
+      youtube_shorts: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } },
+      threads: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } },
+      pinterest: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } }
+    } 
+  };
+  return generateStructuredContent<SocialCampaign>(`Campaign for ${topic} with settings: ${JSON.stringify(settings)}`, schema);
 };
 
 export const analyzePrompt = async (userPrompt: string, platform: string): Promise<PromptAnalysis> => {
-  const schema: Schema = { type: Type.OBJECT, properties: { score: { type: Type.INTEGER }, strengths: { type: Type.ARRAY, items: { type: Type.STRING } }, weakness: { type: Type.ARRAY, items: { type: Type.STRING } }, suggestion: { type: Type.STRING }, reasoning: { type: Type.STRING } } };
+  const schema: Schema = { 
+    type: Type.OBJECT, 
+    properties: { 
+      score: { type: Type.INTEGER }, 
+      strengths: { type: Type.ARRAY, items: { type: Type.STRING } }, 
+      weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } }, 
+      suggestion: { type: Type.STRING }, 
+      reasoning: { type: Type.STRING },
+      platformAdvice: { type: Type.STRING },
+      isOptimal: { type: Type.BOOLEAN }
+    },
+    required: ['score', 'strengths', 'weaknesses', 'suggestion', 'reasoning', 'platformAdvice', 'isOptimal']
+  };
   return generateStructuredContent<PromptAnalysis>(`Analyze prompt for ${platform}: "${userPrompt}"`, schema);
 };
 
 export const generateDailyTip = async (dayIndex: number): Promise<DailyTip> => {
-  const schema: Schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, content: { type: Type.STRING }, category: { type: Type.STRING } } };
+  const schema: Schema = { 
+    type: Type.OBJECT, 
+    properties: { 
+      dayIndex: { type: Type.INTEGER },
+      title: { type: Type.STRING }, 
+      content: { type: Type.STRING }, 
+      category: { type: Type.STRING },
+      example: { type: Type.STRING }
+    },
+    required: ['dayIndex', 'title', 'content', 'category']
+  };
   return generateStructuredContent<DailyTip>(`AI tip for day ${dayIndex}`, schema);
 };
 
@@ -514,7 +493,7 @@ export const generatePodcastScript = async (topic: string, h: string, g: string)
 };
 
 export const generateQuiz = async (t: string, c: number, d: string): Promise<QuizData> => {
-  const schema: Schema = { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, questions: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correctAnswer: { type: Type.STRING }, explanation: { type: Type.STRING } } } } } };
+  const schema: Schema = { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, difficulty: { type: Type.STRING }, questions: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correctAnswer: { type: Type.STRING }, explanation: { type: Type.STRING } } } } } };
   return generateStructuredContent<QuizData>(`Quiz about ${t}`, schema);
 };
 
@@ -530,7 +509,15 @@ export const generateUiCode = async (p: string, d: string, s: string, i?: string
 };
 
 export const generateAffirmationPlan = async (t: string, tone: string): Promise<AffirmationPlan> => {
-  const schema: Schema = { type: Type.OBJECT, properties: { weeklyMantra: { type: Type.STRING }, dailyAffirmations: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { day: { type: Type.STRING }, text: { type: Type.STRING } } } } } };
+  const schema: Schema = { 
+    type: Type.OBJECT, 
+    properties: { 
+      topic: { type: Type.STRING },
+      weeklyMantra: { type: Type.STRING }, 
+      dailyAffirmations: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { day: { type: Type.STRING }, text: { type: Type.STRING } } } } 
+    },
+    required: ['topic', 'weeklyMantra', 'dailyAffirmations']
+  };
   return generateStructuredContent<AffirmationPlan>(`${tone} affirmations for ${t}`, schema);
 };
 
@@ -558,12 +545,36 @@ export const analyzePaperCommercial = async (t: string): Promise<CommercialAnaly
 };
 
 export const generateBabyNames = async (g: string, s: string, o: string, i: boolean): Promise<BabyName[]> => {
-  const schema: Schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, meaning: { type: Type.STRING }, origin: { type: Type.STRING }, reason: { type: Type.STRING } } } };
+  const schema: Schema = { 
+    type: Type.ARRAY, 
+    items: { 
+      type: Type.OBJECT, 
+      properties: { 
+        name: { type: Type.STRING }, 
+        meaning: { type: Type.STRING }, 
+        origin: { type: Type.STRING }, 
+        lineage: { type: Type.STRING },
+        gender: { type: Type.STRING },
+        reason: { type: Type.STRING } 
+      },
+      required: ['name', 'meaning', 'origin', 'lineage', 'gender', 'reason']
+    } 
+  };
   return generateStructuredContent<BabyName[]>(`${g} names, ${s} style, ${o} origin`, schema);
 };
 
 export const generate3DOrchestration = async (i: string, img?: string): Promise<AI360Response> => {
-  const schema: Schema = { type: Type.OBJECT, properties: { status: { type: Type.STRING }, reason: { type: Type.STRING }, safety_categories: { type: Type.ARRAY, items: { type: Type.STRING } }, generation_prompt: { type: Type.STRING } } };
+  const schema: Schema = { 
+    type: Type.OBJECT, 
+    properties: { 
+      status: { type: Type.STRING }, 
+      reason: { type: Type.STRING }, 
+      safety_categories: { type: Type.ARRAY, items: { type: Type.STRING } }, 
+      generation_prompt: { type: Type.STRING },
+      clarification_question: { type: Type.STRING }
+    },
+    required: ['status', 'reason', 'safety_categories']
+  };
   return generateStructuredContent<AI360Response>(`3D orchestration for: ${i}`, schema, 'gemini-3-flash-preview', img);
 };
 
@@ -605,7 +616,6 @@ export const generateBabyDebateScript = async (topic: string, participants: Baby
   return data;
 };
 
-// Fix: Removed space from function name 'generateTalking BabyVideo' to fix import error in BabyDebates.tsx.
 export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: string, musicStyle: string, showCaptions: boolean, ratio: string): Promise<string> => {
   const prompt = `High-end 3D toddler animation. Visual Style: ${style}. ${script.visualContext}. Action: Expression-filled toddler discussion.`;
   const images = script.participants.map(p => p.image).filter(Boolean) as string[];
@@ -622,11 +632,6 @@ export const analyzeSlideshow = async (images: string[]): Promise<string> => {
       return response.text || "";
     } catch (e) { return "Ready."; }
   });
-};
-
-export const generateUGCScript = async (product: string, audience: string, painPoint: string): Promise<UGCScript> => {
-  const schema: Schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, targetAudience: { type: Type.STRING }, totalDuration: { type: Type.STRING }, sections: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { section: { type: Type.STRING }, visual: { type: Type.STRING }, audio: { type: Type.STRING }, duration: { type: Type.STRING } }, required: ['section', 'visual', 'audio', 'duration'] } } }, required: ['title', 'targetAudience', 'totalDuration', 'sections'] };
-  return generateStructuredContent<UGCScript>(`UGC script for ${product}`, schema);
 };
 
 export const generatePoem = async (topic: string, style: string): Promise<string> => {
@@ -658,4 +663,31 @@ export const generateConnectionFact = async (person?: string): Promise<string> =
 export const analyzeWealthPath = async (personName: string): Promise<WealthAnalysis> => {
   const schema: Schema = { type: Type.OBJECT, properties: { personName: { type: Type.STRING }, estimatedNetWorth: { type: Type.STRING }, originStart: { type: Type.STRING }, privilegeAnalysis: { type: Type.STRING }, keySuccessFactors: { type: Type.ARRAY, items: { type: Type.STRING } }, actionableSteps: { type: Type.ARRAY, items: { type: Type.STRING } }, realityCheck: { type: Type.STRING } }, required: ['personName', 'estimatedNetWorth', 'originStart', 'privilegeAnalysis', 'keySuccessFactors', 'actionableSteps', 'realityCheck'] };
   return generateStructuredContent<WealthAnalysis>(`Wealth analysis for ${personName}`, schema);
+};
+
+export const generateUGCScript = async (product: string, audience: string, painPoint: string): Promise<UGCScript> => {
+  const prompt = `Write a viral UGC ad script for: ${product}. Target audience: ${audience}. Main pain point to solve: ${painPoint}.`;
+  const schema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      title: { type: Type.STRING },
+      targetAudience: { type: Type.STRING },
+      totalDuration: { type: Type.STRING },
+      sections: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            section: { type: Type.STRING },
+            visual: { type: Type.STRING },
+            audio: { type: Type.STRING },
+            duration: { type: Type.STRING }
+          },
+          required: ['section', 'visual', 'audio', 'duration']
+        }
+      }
+    },
+    required: ['title', 'targetAudience', 'totalDuration', 'sections']
+  };
+  return generateStructuredContent<UGCScript>(prompt, schema);
 };

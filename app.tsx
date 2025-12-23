@@ -1,3 +1,4 @@
+// Fix: Migrated main application logic to app.tsx to resolve casing collision errors.
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types';
 import Layout from './components/Layout';
@@ -149,7 +150,7 @@ const TOOLS = [
   { id: ToolId.Meme, title: "AI Meme", description: "Instant meme generator from topics.", icon: Laugh, color: "yellow", gradient: "from-yellow-400 to-amber-500", releaseDate: '2025-12-04' },
   { id: ToolId.Storybook, title: "AI Storybook", description: "Create illustrated books, comics, and fairy tales.", icon: BookOpen, color: "amber", gradient: "from-amber-500 to-yellow-600", releaseDate: '2025-12-04' },
   { id: ToolId.YouTubeThumbnail, title: "AI Thumbnails", description: "Generate 5 viral-style YouTube thumbnails at once.", icon: Youtube, color: "red", gradient: "from-red-600 to-orange-600", releaseDate: '2025-12-04' },
-  { id: ToolId.Games, title: "AI Games", description: "Interactive AI adventures, mysteries, and trivia.", icon: Gamepad2, color: "orange", gradient: "from-orange-500 to-red-600" },
+  { id: ToolId.GAMES, title: "AI Games", description: "Interactive AI adventures, mysteries, and trivia.", icon: Gamepad2, color: "orange", gradient: "from-orange-500 to-red-600" },
   { id: ToolId.Pinterest, title: "AI Pinterest", description: "Generate viral-worthy, vertical images tailored for Pinterest.", icon: Pin, color: "red", gradient: "from-red-500 to-rose-600", releaseDate: '2025-12-04' },
   { id: ToolId.Tutor, title: "AI Tutor", description: "Expert guidance on using popular AI platforms.", icon: GraduationCap, color: "indigo", gradient: "from-indigo-500 to-violet-600" },
   { id: ToolId.GifGenerator, title: "AI GIF", description: "Generate animated GIFs using Veo.", icon: Film, color: "rose", gradient: "from-rose-500 to-pink-600", releaseDate: '2025-12-04' },
@@ -162,7 +163,7 @@ const TOOLS = [
   { id: ToolId.VisualQA, title: "AI Lens", description: "Ask questions about any image you upload.", icon: Eye, color: "blue", gradient: "from-blue-500 to-cyan-600" },
   { id: ToolId.Summarizer, title: "AI Sum", description: "Intelligent text summarization.", icon: FileText, color: "emerald", gradient: "from-emerald-500 to-teal-600" },
   { id: ToolId.StoryTeller, title: "AI Tales", description: "Creative story and content generation.", icon: Feather, color: "pink", gradient: "from-pink-500 to-rose-600" },
-  { id: ToolId.CodeAssistant, title: "AI Dev", description: "Code generation, debugging, and security auditing.", icon: Terminal, color: "cyan", gradient: "from-cyan-500 to-sky-600" },
+  { id: ToolId.CodeAssistant, title: "AI Dev", description: "Code generation, prototyping, and security auditing.", icon: Terminal, color: "cyan", gradient: "from-cyan-500 to-sky-600" },
   { id: ToolId.AutomationHub, title: "AI Automate", description: "Browser extension builder and Excel automation.", icon: Bot, color: "violet", gradient: "from-violet-500 to-purple-600", releaseDate: '2025-12-04' },
   { id: ToolId.SecurityBox, title: "AI Security Box", description: "Access the external Security Hub.", icon: Shield, color: "slate", gradient: "from-slate-700 to-slate-900", externalUrl: "https://sec-hub.online" }
 ];
@@ -226,6 +227,7 @@ const App: React.FC = () => {
   const handleOpenSelectKey = async () => {
     if ((window as any).aistudio) {
       await (window as any).aistudio.openSelectKey();
+      /* Fix: Assume selection success immediately after triggering the dialog to mitigate race condition. */
       setHasSelectedKey(true);
     }
   };
@@ -290,7 +292,7 @@ const App: React.FC = () => {
       case ToolId.Meme: return <MemeGenerator />;
       case ToolId.Storybook: return <StorybookTool />;
       case ToolId.YouTubeThumbnail: return <ThumbnailTool />;
-      case ToolId.Games: return <GamesTool />;
+      case ToolId.GAMES: return <GamesTool />;
       case ToolId.Pinterest: return <PinterestTool />;
       case ToolId.Tutor: return <TextTool mode="tutor" />;
       case ToolId.GifGenerator: return <GifGenerator />;

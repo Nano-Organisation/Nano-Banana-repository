@@ -1,5 +1,8 @@
 {
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
   "name": "AI Shop Suite",
-  "description": ""
+  "description": "A comprehensive suite of AI-powered creative and utility tools."
 }

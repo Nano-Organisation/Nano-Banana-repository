@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Video, RefreshCw, Upload, Lock, Play, Pause, Zap, Sparkles, Ghost, Camera, Box, Type, Activity, Image as ImageIcon, Download, AlertTriangle } from 'lucide-react';
 import { generateVideoWithGemini } from '../../services/geminiService';
@@ -214,7 +215,7 @@ const AIMimicryTool: React.FC = () => {
                   >
                      {videoSrc ? (
                         <>
-                           <video src={videoSrc} className="w-full h-full object-cover opacity-50" />
+                           <video src={videoSrc} className="w-full h-full object-cover opacity-50" crossOrigin="anonymous" />
                            <div className="absolute inset-0 flex items-center justify-center">
                               <span className="bg-black/60 text-white text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">Change Video</span>
                            </div>
@@ -336,6 +337,7 @@ const AIMimicryTool: React.FC = () => {
                         className="w-full h-full object-contain"
                         onClick={togglePlay}
                         onEnded={() => setIsPlaying(false)}
+                        crossOrigin="anonymous"
                      />
                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         {!isPlaying && <div className="bg-black/50 p-4 rounded-full backdrop-blur-md"><Play className="w-8 h-8 text-white fill-white" /></div>}
@@ -373,6 +375,7 @@ const AIMimicryTool: React.FC = () => {
                         controls 
                         autoPlay 
                         loop
+                        crossOrigin="anonymous"
                      />
                      <div className="absolute top-4 right-4">
                         <a href={resultVideoUrl} download="mimicry.mp4" className="bg-black/60 hover:bg-fuchsia-600 text-white px-4 py-2 rounded-lg font-bold backdrop-blur-md transition-colors text-xs flex items-center gap-2">

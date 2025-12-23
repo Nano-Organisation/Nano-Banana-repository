@@ -1,4 +1,3 @@
-
 export enum ToolId {
   Dashboard = 'DASHBOARD',
   ImageEditor = 'IMAGE_EDITOR',
@@ -10,7 +9,7 @@ export enum ToolId {
   Chat = 'CHAT',
   Design = 'DESIGN',
   Tutor = 'TUTOR',
-  Games = 'GAMES',
+  GAMES = 'GAMES',
   BackgroundRemover = 'BACKGROUND_REMOVER',
   DocTool = 'DOC_TOOL',
   GifGenerator = 'GIF_GENERATOR',
@@ -119,6 +118,8 @@ export interface StoryPage {
   imageUrl?: string;
   isAttireChange?: boolean;
   timeOfDay?: string;
+  wardrobeItemId?: string;
+  charactersPresent?: string[];
 }
 
 export interface StorybookData {
@@ -132,6 +133,8 @@ export interface StorybookData {
   authorBio: string;
   backCoverBlurb: string;
   pages: StoryPage[];
+  wardrobeManifest?: { id: string; description: string }[];
+  castingSheet?: { id: string; description: string }[];
 }
 
 export interface RhymeData {
@@ -162,6 +165,16 @@ export interface SocialPostContent {
   hashtags?: string;
 }
 
+export type SocialPlatform = 'linkedin' | 'twitter' | 'instagram' | 'facebook' | 'tiktok' | 'youtube_shorts' | 'threads' | 'pinterest';
+
+export interface SocialSettings {
+  platforms: SocialPlatform[];
+  tone: string;
+  style: string;
+  language: string;
+  useEmojis: boolean;
+}
+
 export interface SocialCampaign {
   topic: string;
   linkedin?: SocialPostContent;
@@ -174,33 +187,22 @@ export interface SocialCampaign {
   pinterest?: SocialPostContent;
 }
 
-export type SocialPlatform = 'linkedin' | 'twitter' | 'instagram' | 'facebook' | 'tiktok' | 'youtube_shorts' | 'threads' | 'pinterest';
-
-export interface SocialSettings {
-  platforms: SocialPlatform[];
-  tone: string;
-  style: string;
-  language: string;
-  useEmojis: boolean;
-}
-
 export interface PromptAnalysis {
   score: number;
-  isOptimal: boolean;
   strengths: string[];
   weaknesses: string[];
   suggestion: string;
   reasoning: string;
   platformAdvice: string;
+  isOptimal: boolean;
 }
 
 export interface DailyTip {
   dayIndex: number;
-  date: string;
-  category: 'Prompting' | 'Security';
   title: string;
   content: string;
-  example?: string;
+  category: string;
+  example: string;
 }
 
 export interface HelpfulList {
@@ -217,7 +219,6 @@ export interface PodcastScript {
 }
 
 export interface QuizQuestion {
-  id: number;
   question: string;
   options: string[];
   correctAnswer: string;
@@ -231,33 +232,41 @@ export interface QuizData {
 }
 
 export interface RiddleData {
-  topic: string;
   riddle: string;
   answer: string;
   explanation: string;
 }
 
+export interface AffirmationItem {
+  day: string;
+  text: string;
+}
+
 export interface AffirmationPlan {
   topic: string;
   weeklyMantra: string;
-  dailyAffirmations: { day: string; text: string }[];
+  dailyAffirmations: AffirmationItem[];
+}
+
+export interface BrandColor {
+  name: string;
+  hex: string;
 }
 
 export interface BrandIdentity {
   companyName: string;
-  missionStatement: string;
   slogan: string;
-  colorPalette: { name: string; hex: string }[];
+  missionStatement: string;
+  colorPalette: BrandColor[];
   fontPairing: { heading: string; body: string };
   logoPrompt: string;
-  borderPadding?: number;
   brandVoice: string;
   stationaryPrompt: string;
   pptTemplatePrompt: string;
   calendarPrompt: string;
 }
 
-export interface UGCSection {
+export interface UGCScriptSection {
   section: string;
   visual: string;
   audio: string;
@@ -268,7 +277,7 @@ export interface UGCScript {
   title: string;
   targetAudience: string;
   totalDuration: string;
-  sections: UGCSection[];
+  sections: UGCScriptSection[];
 }
 
 export interface WealthAnalysis {
@@ -292,11 +301,11 @@ export interface CommercialAnalysis {
 
 export interface BabyName {
   name: string;
-  gender: string;
-  origin: string;
   meaning: string;
-  lineage: string;
+  origin: string;
   reason: string;
+  gender: string;
+  lineage: string;
 }
 
 export interface LearnerBrief {
@@ -304,15 +313,12 @@ export interface LearnerBrief {
   podcastScript: string;
 }
 
-export interface ExportData {}
-
 export interface AI360Response {
-  status: "accepted" | "rejected" | "needs_clarification";
+  status: 'accepted' | 'rejected' | 'needs_clarification';
   reason: string;
   safety_categories: string[];
-  clarification_question: string | null;
-  generation_prompt: string | null;
-  style: "realistic" | "stylized" | "neutral" | null;
+  generation_prompt?: string;
+  clarification_question?: string;
 }
 
 export interface CarouselSlide {
@@ -323,7 +329,7 @@ export interface CarouselSlide {
 
 export interface CarouselData {
   topic: string;
-  authorHandle: string;
+  authorHandle?: string;
   slides: CarouselSlide[];
 }
 
@@ -341,18 +347,23 @@ export interface PetProfile {
   visualPrompt: string;
 }
 
+export interface BabyDebateScriptLine {
+  speaker: string;
+  text: string;
+}
+
 export interface BabyDebateParticipant {
   name: string;
-  image?: string;
   tone: string;
+  image?: string;
 }
 
 export interface BabyDebateScript {
   topic: string;
-  scriptLines: { speaker: string; text: string }[];
+  scriptLines: BabyDebateScriptLine[];
   visualContext: string;
-  participants: BabyDebateParticipant[];
   safeCharacterDescriptions: { name: string; description: string }[];
+  participants: BabyDebateParticipant[];
 }
 
 export interface UserDefinedStyle {
@@ -369,8 +380,8 @@ export interface UserDefinedStyle {
   };
   referenceImages: string[];
   styleBlock: string;
-  thumbnail?: string;
   createdAt: string;
+  thumbnail?: string;
 }
 
 export interface CaptionBlock {

@@ -68,7 +68,7 @@ const StyleForge: React.FC = () => {
     if (t.length < 3) return false;
     
     // English-only character set (Strictly alphanumeric + standard typography/punctuation)
-    // Fix: Added – (en dash), — (em dash), and smart quotes to the permitted character set.
+    /* Fix: Added common extended punctuation characters (en dash, em dash, smart quotes) to the allowed character set. */
     if (!/^[a-zA-Z0-9\s.,!?'"()\-;:/–—‘’“”]+$/.test(t)) return false;
     
     // Heuristic nonsense detection:
