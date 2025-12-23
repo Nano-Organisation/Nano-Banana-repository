@@ -1,5 +1,6 @@
+
 import React, { useState, useRef } from 'react';
-import { Layout, RefreshCw, Upload, X, Download, Image as ImageIcon, MessageSquare, Palette, Columns, Rows } from 'lucide-react';
+import { Layout, RefreshCw, Upload, X, Download, Image as ImageIcon, MessageSquare, Palette, Columns, Rows, Clock } from 'lucide-react';
 import { generateComicScriptFromImages, getAiClient } from '../../services/geminiService';
 import { LoadingState, StorybookData } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
@@ -95,7 +96,7 @@ const ComicStripTool: React.FC = () => {
     if (seedImages.length === 0) return;
     setStatus('loading');
     setComicData(null);
-    setProgressMsg('Extracting Character Clinical Blueprint...');
+    setProgressMsg('Extracting Global Visual DNA...');
 
     const stripStyle = STRIP_STYLES.find(s => s.id === selectedStripStyleId) || STRIP_STYLES[0];
     const artStyle = ART_STYLES.find(s => s.id === selectedArtStyleId) || ART_STYLES[0];
@@ -103,50 +104,70 @@ const ComicStripTool: React.FC = () => {
     try {
       const ai = getAiClient();
 
-      // 1. CHARACTER ANALYSIS: Extract strict geometry to prevent mutation
+      // 1. ASSET AUDIT: Extract strict geometry and colors to prevent mutation
       const analysisParts = seedImages.map(img => ({
          inlineData: { mimeType: 'image/png', data: img.split(',')[1] }
       }));
-      analysisParts.push({ text: "Perform a clinical visual audit of the main character. Identify the EXACT geometry of the following features: 1. Hat (shape, size, color, specific feather angle). 2. Hair (exact texture, color, length). 3. Glasses (frame shape, thickness). 4. Clothing (cut, color). 5. Accessories (cane handle shape). Describe them as 'Locked Assets' that cannot change regardless of artistic style." } as any);
+      analysisParts.push({ text: "Perform a clinical visual audit of these images. Establish 'Locked Visual Constants' for: 1. THE MAIN CHARACTER (EXACT hair/skin/hat/attire). 2. SHOES (EXACT color, style). 3. ANIMAL COMPANIONS (EXACT breed, and fur color - e.g. 'Pure White'). 4. SECONDARY CHARACTERS (EXACT skin tone). 5. THE ENVIRONMENT (EXACT table/floor colors). Return a detailed descriptive block of these constants." } as any);
       
       const dnaResponse = await ai.models.generateContent({
          model: 'gemini-3-flash-preview',
          contents: { parts: analysisParts as any }
       });
-      const visualDNA = dnaResponse.text || "Main character from reference images.";
+      const visualDNA = dnaResponse.text || "Main character and environment from reference images.";
 
       // 2. Generate Script
       setProgressMsg('Scripting narrative continuity...');
       const script = await generateComicScriptFromImages(seedImages, topic);
       script.style = `${stripStyle.label} with ${artStyle.label} art`;
       script.characterDescription = visualDNA; 
+      
+      if (!script.pages || !Array.isArray(script.pages)) {
+        script.pages = [];
+      }
       setComicData(script);
 
       // 3. Generate Panels
-      const newPages = [...script.pages];
+      const newPages = [...(script.pages || [])];
 
       for (let i = 0; i < newPages.length; i++) {
          if (i > 0) await new Promise(r => setTimeout(r, 6500));
 
-         setProgressMsg(`Inking Panel ${i + 1}/${newPages.length} [Identity Locked]...`);
+         setProgressMsg(`Inking Panel ${i + 1}/${newPages.length}...`);
          try {
-            // MULTI-REFERENCE SATURATION
             const panelParts = seedImages.map(img => ({
                inlineData: { mimeType: 'image/png', data: img.split(',')[1] }
             }));
 
+            const currentTimeOfDay = newPages[i].timeOfDay?.toLowerCase() || 'day';
+            const prevTimeOfDay = i > 0 ? newPages[i - 1].timeOfDay?.toLowerCase() : null;
+            
+            let lockOverride = "";
+            const isSignificantTimeShift = prevTimeOfDay && (
+              (prevTimeOfDay !== currentTimeOfDay && (currentTimeOfDay.includes('morning') || currentTimeOfDay.includes('night'))) ||
+              (newPages[i].isAttireChange)
+            );
+
+            if (isSignificantTimeShift) {
+               lockOverride = `TEMPORAL STATE-CHANGE DETECTED: The time has shifted to ${currentTimeOfDay}. 
+               WARDROBE UPDATE PROTOCOL: The character MUST be wearing a new, appropriate outfit for ${currentTimeOfDay}. 
+               STRICT CONTINUITY: Keep face, hair, and ANIMAL COMPANION (White Setter) EXACTLY the same as visual constants.`;
+            } else {
+               lockOverride = "IDENTITY LOCK: Every asset including the WHITE DOG MUST match the established DNA EXACTLY. No fur color mutation allowed.";
+            }
+
             const panelPrompt = `
-               STRICT IDENTITY LOCK PROTOCOL: 
-               The character in this panel MUST match the reference images EXACTLY. 
-               LOCKED CHARACTER BLUEPRINT: ${visualDNA}.
+               STRICT IDENTITY & COMPANION LOCK PROTOCOL: 
+               ${lockOverride}
+               LOCKED VISUAL CONSTANTS: ${visualDNA}.
+               
+               NON-NEGOTIABLE REQUIREMENTS:
+               - The ANIMAL COMPANION (White Dog/Setter) MUST remain PURE WHITE in every single frame. Do NOT change it to gray, yellow, or cream.
+               - Environment must reflect ${currentTimeOfDay} lighting conditions.
                
                RENDERING RULES: ${artStyle.label} - ${artStyle.desc}. 
-               CRITICAL CONSTRAINT: Do NOT allow Style rules to change the character's physical features (e.g. do not change hair texture or hat size). The Style only applies to the flat color and ink texture. 
-               
-               VISUALS: Flat 2D art, zero gradients, zero shading, high-contrast silhouettes. 
                ACTION: ${newPages[i].imagePrompt}. 
-               
-               OUTPUT: Single comic panel. No text. No speech bubbles. Consistent character model.
+               OUTPUT: Single comic panel. No text. No speech bubbles.
             `.replace(/\s+/g, ' ').trim();
 
             panelParts.push({ text: panelPrompt } as any);
@@ -192,8 +213,10 @@ const ComicStripTool: React.FC = () => {
 
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    doc.text(comicData.title, pageWidth / 2, y, { align: 'center' });
+    doc.text(comicData.title || 'AI Comic Strip', pageWidth / 2, y, { align: 'center' });
     y += 15;
+
+    const pages = comicData.pages || [];
 
     if (isHorizontal) {
       const panelSize = 65;
@@ -201,10 +224,17 @@ const ComicStripTool: React.FC = () => {
       let x = margin;
       y += 10;
 
-      comicData.pages.forEach((page, i) => {
+      pages.forEach((page, i) => {
         if (x + panelSize > pageWidth - margin) {
           x = margin;
-          y += panelSize + 30;
+          y += panelSize + 35;
+        }
+        
+        // Proactive page break for horizontal layout
+        if (y + panelSize + 20 > pageHeight - margin) {
+           doc.addPage();
+           y = margin + 10;
+           x = margin;
         }
 
         if (page.imageUrl) {
@@ -218,16 +248,22 @@ const ComicStripTool: React.FC = () => {
 
         doc.setFontSize(10);
         doc.setFont('courier', 'bold');
-        const splitText = doc.splitTextToSize(page.text, panelSize);
+        const splitText = doc.splitTextToSize(page.text || '', panelSize - 4);
+        const textHeight = (splitText.length * 5) + 5;
         doc.setFillColor(255, 255, 224);
-        doc.roundedRect(x, y + panelSize + 2, panelSize, (splitText.length * 5) + 5, 2, 2, 'FD');
+        doc.roundedRect(x, y + panelSize + 2, panelSize, textHeight, 2, 2, 'FD');
         doc.text(splitText, x + 2, y + panelSize + 7);
 
         x += panelSize + spacing;
       });
     } else {
-      comicData.pages.forEach((page, i) => {
-        if (y > 250) {
+      pages.forEach((page, i) => {
+        const panelImgHeight = 90;
+        const textAreaPadding = 20;
+        const totalPanelEstimatedHeight = panelImgHeight + textAreaPadding;
+
+        // Proactive page break to prevent cut-off
+        if (y + totalPanelEstimatedHeight > pageHeight - margin) {
            doc.addPage();
            y = 20;
         }
@@ -244,20 +280,26 @@ const ComicStripTool: React.FC = () => {
         doc.setFontSize(12);
         doc.setFont('courier', 'bold');
         const textX = margin + 100;
-        const splitText = doc.splitTextToSize(page.text, pageWidth - textX - margin);
+        const availableTextWidth = pageWidth - textX - margin;
+        const splitText = doc.splitTextToSize(page.text || '', availableTextWidth);
+        const finalBoxHeight = (splitText.length * 7) + 10;
+
         doc.setDrawColor(0);
         doc.setFillColor(255, 255, 224);
-        doc.roundedRect(textX - 5, y + 10, pageWidth - textX - margin + 5, (splitText.length * 7) + 10, 3, 3, 'FD');
+        doc.roundedRect(textX - 5, y + 10, availableTextWidth + 5, finalBoxHeight, 3, 3, 'FD');
         doc.text(splitText, textX, y + 20);
 
-        y += 100;
+        y += Math.max(100, finalBoxHeight + 20);
       });
     }
 
     doc.setFontSize(8);
     doc.setTextColor(150);
     doc.text(WATERMARK_TEXT, pageWidth / 2, pageHeight - 5, { align: 'center' });
-    doc.save(`comic-strip-${Date.now()}.pdf`);
+    
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}-${now.getMinutes().toString().padStart(2, '0')}-${now.getSeconds().toString().padStart(2, '0')}`;
+    doc.save(`comic-strip-${timestamp}.pdf`);
   };
 
   return (
@@ -399,7 +441,7 @@ const ComicStripTool: React.FC = () => {
                      </div>
 
                      <div className={`flex ${orientation === 'horizontal' ? 'flex-row gap-8 pb-4 min-w-max' : 'flex-col gap-8'}`}>
-                        {comicData.pages.map((panel, idx) => (
+                        {(comicData.pages || []).map((panel, idx) => (
                            <div key={idx} className={`flex ${orientation === 'horizontal' ? 'flex-col w-64' : 'flex-row gap-4'}`}>
                               <div className={`${orientation === 'horizontal' ? 'w-full mb-4' : 'w-1/2'} aspect-square border-2 border-black bg-slate-100 relative overflow-hidden`}>
                                  {panel.imageUrl ? (
@@ -410,6 +452,7 @@ const ComicStripTool: React.FC = () => {
                                     </div>
                                  )}
                                  <div className="absolute top-2 left-2 bg-black text-white text-[10px] font-bold px-2 py-0.5">{idx + 1}</div>
+                                 {/* Time tags hidden per user request, background logic preserved */}
                               </div>
                               <div className={`${orientation === 'horizontal' ? 'w-full' : 'w-1/2'} flex items-center`}>
                                  <div className="bg-white border-2 border-black p-4 rounded-[20px] relative shadow-[2px_2px_0px_rgba(0,0,0,0.2)] text-black font-mono text-sm leading-snug w-full">

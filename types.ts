@@ -117,6 +117,8 @@ export interface StoryPage {
   text: string;
   imagePrompt: string;
   imageUrl?: string;
+  isAttireChange?: boolean;
+  timeOfDay?: string;
 }
 
 export interface StorybookData {

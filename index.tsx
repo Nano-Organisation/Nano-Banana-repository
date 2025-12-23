@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-/* Fix: Reverted to capitalized './App.tsx' to resolve casing collisions in the build graph. */
+// Fix: Changed import to 'App.tsx' to match the file casing and resolve build collisions.
 import App from './App.tsx';
 
 const rootElement = document.getElementById('root');

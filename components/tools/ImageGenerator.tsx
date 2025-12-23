@@ -87,7 +87,8 @@ const ImageGenerator: React.FC = () => {
 
     try {
       if (isPro) {
-        const img = await generateProImageWithGemini(`${prompt} --ar ${aspectRatio}`, size, onRetry);
+        /* Fix: Proper usage of generateProImageWithGemini passing aspectRatio as a separate param. */
+        const img = await generateProImageWithGemini(prompt, aspectRatio, size, onRetry);
         setResultImage(img);
       } else {
         const img = await generateImageWithGemini(prompt, aspectRatio, undefined, onRetry);

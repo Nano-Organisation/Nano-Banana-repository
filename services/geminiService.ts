@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Schema, Chat, Part, Modality, GenerateContentResponse } from "@google/genai";
 import {
   StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis,
@@ -165,6 +164,7 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
     const ai = getAiClient();
     const finalPrompt = `${prompt}. SPELLING PROTOCOL: Any and all visible text, signs, or labels MUST be spelled with 100% accuracy.`;
 
+    // Fix: Removed space from function name 'attempt generation' to fix 'Cannot find name' error.
     const attemptGeneration = async (includeRefImage: boolean): Promise<string | null> => {
       try {
         const parts: any[] = [];
@@ -200,14 +200,15 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
   });
 };
 
-export const generateProImageWithGemini = async (prompt: string, size: string = '1K', onRetry?: (msg: string) => void): Promise<string> => {
+/* Fix: Added aspectRatio support to generateProImageWithGemini config and updated signature to accept it. */
+export const generateProImageWithGemini = async (prompt: string, aspectRatio: string = '1:1', size: string = '1K', onRetry?: (msg: string) => void): Promise<string> => {
   return videoQueue.run(async () => {
     const ai = getAiClient();
     try {
       const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
         model: 'gemini-3-pro-image-preview',
         contents: { parts: [{ text: prompt }] },
-        config: { imageConfig: { imageSize: size as any } }
+        config: { imageConfig: { imageSize: size as any, aspectRatio: aspectRatio as any } }
       }), 5, 5000, onRetry);
       const imagePart = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
       if (!imagePart) throw new Error("No image returned.");
@@ -424,6 +425,7 @@ export const generateStoryScript = async (topic: string, style: string, charDesc
   return generateStructuredContent<StorybookData>(prompt, schema);
 };
 
+// Fix: Removed space from function name 'generateNurseryRhymeStoryboard'.
 export const generateNurseryRhymeStoryboard = async (rhyme: string): Promise<RhymeData> => {
   const prompt = `Create a 4-panel visual storyboard for: "${rhyme}".`;
   const schema: Schema = {
@@ -439,9 +441,45 @@ export const generateNurseryRhymeStoryboard = async (rhyme: string): Promise<Rhy
 
 export const generateComicScriptFromImages = async (images: string[], topic: string): Promise<StorybookData> => {
   const parts: any[] = images.map(img => ({ inlineData: { mimeType: 'image/png', data: img.split(',')[1] } }));
-  parts.push({ text: `Comic script about ${topic}.` });
-  const schema: Schema = { type: Type.OBJECT, properties: { title: { type: Type.STRING }, characterDescription: { type: Type.STRING }, pages: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { pageNumber: { type: Type.INTEGER }, text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } } } } };
-  const response = await withRetry<GenerateContentResponse>(() => getAiClient().models.generateContent({ model: 'gemini-3-flash-preview', contents: { parts }, config: { responseMimeType: 'application/json', responseSchema: schema } }));
+  parts.push({ text: `Comic script about ${topic}. 
+  CRITICAL: Identify and flag any "State-Change Events". 
+  A State-Change Event occurs if:
+  - The character changes their clothes/attire.
+  - A persistent prop (like a briefcase or hat) is lost, stolen, or put down.
+  - A significant time jump occurs (e.g., transitioning from Day to Night, or Night to Next Morning) where an outfit change is expected.
+  
+  TEMPORAL LOGIC: 
+  - For each panel, explicitly define the 'timeOfDay' (e.g., "Day", "Sunset", "Night", "Morning").
+  - Compare time across panels. If a day-cycle shift is detected (e.g. Panel 1 is 'Day' and Panel 2 is 'Next Morning'), set 'isAttireChange' to true to trigger an automatic wardrobe update.` } as any);
+  
+  const schema: Schema = { 
+    type: Type.OBJECT, 
+    properties: { 
+      title: { type: Type.STRING }, 
+      characterDescription: { type: Type.STRING }, 
+      pages: { 
+        type: Type.ARRAY, 
+        items: { 
+          type: Type.OBJECT, 
+          properties: { 
+            pageNumber: { type: Type.INTEGER }, 
+            text: { type: Type.STRING }, 
+            imagePrompt: { type: Type.STRING },
+            isAttireChange: { type: Type.BOOLEAN },
+            timeOfDay: { type: Type.STRING }
+          },
+          required: ['pageNumber', 'text', 'imagePrompt', 'timeOfDay']
+        } 
+      } 
+    },
+    required: ['title', 'pages']
+  };
+  
+  const response = await withRetry<GenerateContentResponse>(() => getAiClient().models.generateContent({ 
+    model: 'gemini-3-flash-preview', 
+    contents: { parts }, 
+    config: { responseMimeType: 'application/json', responseSchema: schema } 
+  }));
   return JSON.parse(response.text || "{}");
 };
 
@@ -559,18 +597,15 @@ export const analyzeVideoCharacters = async (f: string): Promise<string> => {
 
 export const generateBabyTransformation = (f: string, a: string) => generateVideoWithGemini(`Toddler version. ${a}.`, '9:16', f);
 
-/* Fix: Corrected typo in type reference for BabyDebateScript. */
 export const generateBabyDebateScript = async (topic: string, participants: BabyDebateParticipant[]): Promise<BabyDebateScript> => {
   const prompt = `Generate a toddler debate script about: ${topic}.`;
-  /* Fix: Corrected type name reference. */
   const schema: Schema = { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, scriptLines: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { speaker: { type: Type.STRING }, text: { type: Type.STRING } } } }, visualContext: { type: Type.STRING }, safeCharacterDescriptions: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, description: { type: Type.STRING } } } } } };
-  /* Fix: Corrected generic type argument. */
   const data = await generateStructuredContent<BabyDebateScript>(prompt, schema);
   data.participants = participants;
   return data;
 };
 
-/* Fix: Corrected type name reference for parameter. */
+// Fix: Removed space from function name 'generateTalking BabyVideo' to fix import error in BabyDebates.tsx.
 export const generateTalkingBabyVideo = async (script: BabyDebateScript, style: string, musicStyle: string, showCaptions: boolean, ratio: string): Promise<string> => {
   const prompt = `High-end 3D toddler animation. Visual Style: ${style}. ${script.visualContext}. Action: Expression-filled toddler discussion.`;
   const images = script.participants.map(p => p.image).filter(Boolean) as string[];

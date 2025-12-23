@@ -26,7 +26,7 @@ const STYLES = [
   { 
     id: 'edewede_ai_o3', 
     label: 'Edewede-AI-O3', 
-    desc: 'Analog 2D storybook minimalism inspired by mid-century printmaking and educational infographics. Features clean, intentional contours and flat color blocks with slight misregistered ink edges to mimic vintage offset printing. Compositions are calm and airy, utilizing generous negative space and geometric groupings in flattened frontal views. Palette: 3–5 strictly limited earthy tones (ochre, muted sage, dusty terracotta, charcoal) on off-white paper. Characters are essential symbols: bodies as bold silhouettes, hair as oversized solid geometric shapes (like large afros or circular bobs), limbs as thin tapered lines, and faces with tiny dot eyes and small pink circular cheeks. Zero gradients, zero highlights, and zero 3D depth cues. Environment props like trees and buildings are reduced to primitive geometric blocks, circles, and triangles.',
+    desc: 'Analog 2D storybook minimalism inspired by mid-century printmaking and educational infographics. Features clean, intentional contours and flat color blocks with slight misregistered ink edges to mimic vintage offset printing. Compositions are calm and airy, utilizing generous negative space and geometric groupings in flattened frontal views. Palette: 3–5 strictly limited earthy tones (ochre, muted sage, dusty terracotta, charcoal) on off-white paper. Characters are essential symbols: bodies as bold silhouettes, hair as oversized solid geometric shapes (like large afros or circular bobs), limbs as thin tapered lines, and faces with tiny dot eyes and small pink circular cheeks. Zero gradients, zero highlights, and zero 3D depth cues. Environment props are reduced to primitive geometric blocks, circles, and triangles.',
     uiDesc: 'Mid-century minimalism with flat geometric characters and earthy tones.'
   }
 ];
@@ -129,7 +129,7 @@ const StorybookTool: React.FC = () => {
     if (!bookData || !newCharName.trim()) return;
     setIsSavingChar(true);
 
-    let previewUrl = bookData.pages[0]?.imageUrl; // Fallback
+    let previewUrl = (bookData.pages || [])[0]?.imageUrl; // Fallback
 
     try {
        const portraitPrompt = `Character portrait of ${bookData.characterDescription}. Isolated, white background, high quality. Visual Style: ${bookData.style}`;
@@ -193,6 +193,11 @@ const StorybookTool: React.FC = () => {
          script.characterDescription = existingCharacterDescription;
       }
 
+      // Fix: Ensure script.pages is always an array
+      if (!script.pages || !Array.isArray(script.pages)) {
+        script.pages = [];
+      }
+
       // Generate Images Sequentially
       let characterReferenceImage: string | undefined = undefined;
 
@@ -201,7 +206,7 @@ const StorybookTool: React.FC = () => {
          let lastErr: any = null;
          for (let attempt = 0; attempt < 3; attempt++) {
             try {
-               setProgressMsg(`Illustrating Page ${idx + 1}/${script.pages.length}${attempt > 0 ? ` (Attempt ${attempt + 1})` : ''}...`);
+               setProgressMsg(`Illustrating Page ${idx + 1}/${(script.pages || []).length}${attempt > 0 ? ` (Attempt ${attempt + 1})` : ''}...`);
                const imageUrl = await generateImageWithGemini(prompt, '1:1', ref);
                return imageUrl;
             } catch (e) {
@@ -214,19 +219,22 @@ const StorybookTool: React.FC = () => {
       };
 
       // Generate First Page
-      try {
-         const firstPagePrompt = `Visual Style: ${script.style}. NON-NEGOTIABLE CHARACTER INVARIANTS: ${script.characterDescription}. Scene: ${script.pages[0].imagePrompt}. Anatomy Protocol: Ensure perfectly consistent limb thickness and solid matte hair fills regardless of background elements.`;
-         const imageUrl = await drawPage(0, firstPagePrompt);
-         characterReferenceImage = imageUrl;
+      if ((script.pages || []).length > 0) {
+        try {
+           const firstPagePrompt = `Visual Style: ${script.style}. NON-NEGOTIABLE CHARACTER INVARIANTS: ${script.characterDescription}. Scene: ${script.pages[0].imagePrompt}. Anatomy Protocol: Ensure perfectly consistent limb thickness and solid matte hair fills regardless of background elements.`;
+           const imageUrl = await drawPage(0, firstPagePrompt);
+           characterReferenceImage = imageUrl;
 
-         // Update local script object instead of triggering UI switch via setBookData
-         script.pages[0] = { ...script.pages[0], imageUrl };
-      } catch (e) {
-         console.warn("Failed to generate first page image. Continuing book creation...", e);
+           // Update local script object instead of triggering UI switch via setBookData
+           script.pages[0] = { ...script.pages[0], imageUrl };
+        } catch (e) {
+           console.warn("Failed to generate first page image. Continuing book creation...", e);
+        }
       }
 
       // Generate remaining pages
-      for (let i = 1; i < script.pages.length; i++) {
+      const pagesCount = (script.pages || []).length;
+      for (let i = 1; i < pagesCount; i++) {
           // Significant buffer delay between different pages during high traffic
           await new Promise(resolve => setTimeout(resolve, 6500));
 
@@ -318,7 +326,7 @@ const StorybookTool: React.FC = () => {
     if (!bookData) return;
 
     // Detect character name change and sync through book
-    let updatedPages = [...bookData.pages];
+    let updatedPages = [...(bookData.pages || [])];
     let updatedBlurb = editData.backCoverBlurb || bookData.backCoverBlurb;
     
     if (editData.characterName && editData.characterName !== bookData.characterName) {
@@ -349,7 +357,7 @@ const StorybookTool: React.FC = () => {
     setShowEditMetadata(false);
   };
 
-  const totalViews = bookData ? bookData.pages.length + 4 : 0;
+  const totalViews = bookData ? (bookData.pages?.length || 0) + 4 : 0;
 
   const nextView = () => {
     if (viewIndex < totalViews - 1) {
@@ -377,7 +385,7 @@ const StorybookTool: React.FC = () => {
               </h1>
               <div className="w-24 h-px bg-slate-800 mb-6"></div>
               <div className="w-48 h-48 bg-slate-200 rounded-full overflow-hidden mb-8 border-2 border-slate-400 shadow-inner flex items-center justify-center">
-                 {bookData.pages[0]?.imageUrl ? (
+                 {bookData.pages && bookData.pages[0]?.imageUrl ? (
                     <img src={bookData.pages[0].imageUrl} className="w-full h-full object-cover" alt="Cover Art" />
                  ) : (
                     <BookOpen className="w-16 h-16 text-slate-400 opacity-50" />
@@ -418,7 +426,8 @@ const StorybookTool: React.FC = () => {
       );
     }
 
-    if (viewIndex === bookData.pages.length + 2) { // Author Bio
+    const pages = bookData.pages || [];
+    if (viewIndex === pages.length + 2) { // Author Bio
       return (
         <div className="flex-1 bg-[#fffbf0] p-12 flex flex-col items-center justify-center text-center relative border-r border-slate-300 group">
            <h2 className="text-2xl font-bold text-slate-900 mb-6 font-serif uppercase tracking-widest border-b-2 border-amber-500 pb-2">About the Author</h2>
@@ -444,7 +453,7 @@ const StorybookTool: React.FC = () => {
       );
     }
 
-    if (viewIndex === bookData.pages.length + 3) { // Back Cover
+    if (viewIndex === pages.length + 3) { // Back Cover
       return (
         <div className="flex-1 bg-[#1e293b] p-12 flex flex-col items-center justify-center text-center relative text-white group">
            <div className="max-w-md mx-auto space-y-8">
@@ -472,7 +481,9 @@ const StorybookTool: React.FC = () => {
     }
 
     const pageIndex = viewIndex - 2;
-    const page = bookData.pages[pageIndex];
+    const page = pages[pageIndex];
+
+    if (!page) return null;
 
     return (
       <>
@@ -535,7 +546,7 @@ const StorybookTool: React.FC = () => {
       doc.setDrawColor(50); doc.setLineWidth(1); doc.rect(margin, margin, pageWidth - margin*2, pageHeight - margin*2);
       
       doc.setFont('helvetica', 'bold'); doc.setFontSize(32);
-      const splitTitle = doc.splitTextToSize(bookData.title.toUpperCase(), pageWidth - (margin * 3));
+      const splitTitle = doc.splitTextToSize((bookData.title || '').toUpperCase(), pageWidth - (margin * 3));
       doc.text(splitTitle, pageWidth / 2, pageHeight / 3, { align: 'center' });
       
       doc.setFont('helvetica', 'normal'); doc.setFontSize(16);
@@ -547,7 +558,7 @@ const StorybookTool: React.FC = () => {
       doc.setFontSize(12); doc.setFont('times', 'italic');
       doc.text(bookData.dedication || "", pageWidth / 2, pageHeight / 2, { align: 'center' });
 
-      bookData.pages.forEach((page) => {
+      (bookData.pages || []).forEach((page) => {
         doc.addPage(); addWatermark();
         doc.setFontSize(10); doc.setTextColor(150); doc.text(`${page.pageNumber}`, pageWidth - margin, margin, { align: 'right' }); doc.setTextColor(0);
 
@@ -559,7 +570,7 @@ const StorybookTool: React.FC = () => {
             try { doc.addImage(page.imageUrl, 'PNG', x, margin + 10, imgSize, imgSize); textY = margin + 10 + imgSize + 20; } catch (e) { console.error("PDF Img Error"); }
           }
           doc.setFontSize(14); doc.setFont('times', 'roman');
-          const splitText = doc.splitTextToSize(page.text, maxTextWidth);
+          const splitText = doc.splitTextToSize(page.text || '', maxTextWidth);
           doc.text(splitText, pageWidth/2, textY, { align: 'center' });
         } else {
           const halfWidth = pageWidth / 2;
@@ -567,7 +578,7 @@ const StorybookTool: React.FC = () => {
             try { doc.addImage(page.imageUrl, 'PNG', margin, margin, halfWidth - margin*1.5, halfWidth - margin*1.5); } catch (e) { console.error("PDF Img Error"); }
           }
           doc.setFontSize(14); doc.setFont('times', 'roman');
-          const splitText = doc.splitTextToSize(page.text, halfWidth - margin*2);
+          const splitText = doc.splitTextToSize(page.text || '', halfWidth - margin*2);
           doc.text(splitText, halfWidth + margin, pageHeight / 2, { align: 'left', baseline: 'middle' });
         }
       });
