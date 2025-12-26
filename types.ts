@@ -122,6 +122,9 @@ export interface StoryPage {
   timeOfDay?: string;
   wardrobeItemId?: string;
   charactersPresent?: string[];
+  locationId?: string;
+  environmentDescription?: string;
+  stageDirections?: string;
 }
 
 export interface StorybookData {
@@ -137,6 +140,7 @@ export interface StorybookData {
   pages: StoryPage[];
   wardrobeManifest?: { id: string; description: string }[];
   castingSheet?: { id: string; description: string }[];
+  propManifest?: { id: string; description: string }[];
 }
 
 export interface RhymeData {

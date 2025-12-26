@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen, Sparkles, RefreshCw, ChevronLeft, ChevronRight, Download, Edit3, FileText, Smartphone, Save, User, Trash2, CheckCircle2, Settings, X, FileJson, Book, Image as ImageIcon, Music, Volume2, VolumeX, ToggleLeft, ToggleRight, PlusCircle, Users, Clock, MapPin, UserMinus } from 'lucide-react';
-import { generateStoryScript, generateImageWithGemini, generateBackgroundMusic } from '../../services/geminiService';
+import { generateStoryScript, generateImageWithGemini, generateBackgroundMusic, generateProImageWithGemini } from '../../services/geminiService';
 import { StorybookData, StoryPage, LoadingState, SavedCharacter } from '../../types';
 import jsPDF from 'jspdf';
 import { WATERMARK_TEXT } from '../../utils/watermark';
@@ -119,6 +119,20 @@ const StorybookLargeTool: React.FC = () => {
     } catch (e) {}
   };
 
+  const nextView = () => {
+    if (viewIndex < totalViews - 1) {
+      setViewIndex(v => v + 1);
+      playPageTurnSound();
+    }
+  };
+
+  const prevView = () => {
+    if (viewIndex > 0) {
+      setViewIndex(v => v - 1);
+      playPageTurnSound();
+    }
+  };
+
   const toggleCharacterSelection = (id: string) => {
     setSelectedCharacterIds(prev => {
       if (prev.includes(id)) return prev.filter(i => i !== id);
@@ -163,6 +177,11 @@ const StorybookLargeTool: React.FC = () => {
     } catch (e) { console.error("Delete failed", e); }
   };
 
+  const cleanNarrativeText = (text: string) => {
+    // Regex to remove bracketed stage directions/meta-notes like [STATE CHANGE: ...]
+    return text.replace(/\[.*?\]/g, '').trim();
+  };
+
   const handleGenerate = async (isExtending = false) => {
     if (!concept.trim() && !isExtending) return;
 
@@ -199,14 +218,37 @@ const StorybookLargeTool: React.FC = () => {
       
       if (characterDescs) script.characterDescription = characterDescs;
       if (!script.pages || !Array.isArray(script.pages)) script.pages = [];
-      script.pages = script.pages.slice(0, 10);
+      
+      // CLEANSE: Ensure narrative text contains no leaked bracketed metadata
+      script.pages = script.pages.map(p => ({
+        ...p,
+        text: cleanNarrativeText(p.text)
+      })).slice(0, targetPageCount);
 
       const existingPages = isExtending ? [...(bookData?.pages || [])] : [];
-      let characterReferenceImage: string | undefined = isExtending ? (bookData?.pages || [])[0]?.imageUrl : undefined;
+      
+      // LOGIC FIX: Environment-Keyed Anchor Map
+      // Instead of one global anchor, we track the first image generated for EACH unique location.
+      const locationAnchorMap: Record<string, string> = {};
+      if (isExtending && existingPages.length > 0) {
+         // Seed the map with existing page anchors
+         existingPages.forEach(p => {
+            if (p.locationId && p.imageUrl && !locationAnchorMap[p.locationId]) {
+               locationAnchorMap[p.locationId] = p.imageUrl;
+            }
+         });
+      }
 
-      // Jump viewer to the new chapter start immediately
+      const placeholderPages = script.pages.map((p, i) => ({
+        ...p,
+        imageUrl: '',
+      }));
+
       if (isExtending) {
+        setBookData(prev => prev ? { ...prev, pages: [...existingPages, ...placeholderPages] } : null);
         setViewIndex(existingPages.length + 2);
+      } else {
+        setBookData({ ...script, pages: placeholderPages });
       }
 
       const drawPage = async (idx: number, prompt: string, ref?: string) => {
@@ -215,36 +257,62 @@ const StorybookLargeTool: React.FC = () => {
                setProgressMsg(`Illustrating Panel ${idx + 1}/${script.pages.length}...`);
                return await generateImageWithGemini(prompt, '1:1', ref);
             } catch (e) {
-               await new Promise(r => setTimeout(r, 5000));
+               await new Promise(r => setTimeout(r, 7000));
             }
          }
          return '';
       };
 
+      const propInstructions = (script.propManifest || [])
+        .map(p => `PROP DNA [${p.id}]: ${p.description}`)
+        .join('. ');
+
       for (let i = 0; i < script.pages.length; i++) {
-          if (i > 0 || isExtending) await new Promise(resolve => setTimeout(resolve, 7000));
+          if (i > 0 || isExtending) await new Promise(resolve => setTimeout(resolve, 8000));
           
+          const page = script.pages[i];
+          const locId = page.locationId || 'default';
+          
+          // Determine if we have a scene anchor for this specific room
+          const currentReference = locationAnchorMap[locId];
+
           const pagePrompt = `
-            Visual Style: ${script.style}. 
-            Character DNA: ${script.characterDescription}. 
-            Scene: ${script.pages[i].imagePrompt}. 
-            CRITICAL VISIBILITY RULE: Faces MUST be 100% clearly visible. Hair must be scale-appropriate and must not overlap or obscure any facial features.
-            CONSISTENCY PROTOCOL: Maintain identical facial proportions, eye position, and character height ratios across all panels.
+            STYLE: ${script.style}. 
+            CHARACTER DNA: ${script.characterDescription}. 
+            PROPS: ${propInstructions}.
+            ENVIRONMENT: ${page.environmentDescription}.
+            SCENE: ${page.imagePrompt}. 
+            STAGE DIRECTIONS: ${page.stageDirections || 'None'}.
+            
+            IMMUTABILITY RULE: 
+            - If this is location "${locId}", do NOT use background data from other locations.
+            - Reference image is for character facial consistency ONLY.
+            - Clear, unobstructed view of faces.
           `.replace(/\s+/g, ' ').trim();
 
-          const imageUrl = await drawPage(i, pagePrompt, characterReferenceImage);
-          if (!characterReferenceImage && imageUrl) characterReferenceImage = imageUrl;
-          script.pages[i] = { ...script.pages[i], imageUrl };
+          const imageUrl = await drawPage(i, pagePrompt, currentReference);
+          
+          // Store this image as the anchor for this location if one doesn't exist
+          if (!locationAnchorMap[locId] && imageUrl) {
+             locationAnchorMap[locId] = imageUrl;
+          }
           
           if (isExtending) {
-            setBookData(prev => prev ? { ...prev, pages: [...existingPages, ...script.pages.slice(0, i + 1)] } : null);
+            setBookData(prev => {
+              if (!prev) return null;
+              const nextPages = [...prev.pages];
+              const targetIdx = existingPages.length + i;
+              nextPages[targetIdx] = { ...nextPages[targetIdx], imageUrl };
+              return { ...prev, pages: nextPages };
+            });
           } else {
-            setBookData({ ...script, pages: script.pages.slice(0, i + 1) });
+            setBookData(prev => {
+              if (!prev) return null;
+              const nextPages = [...prev.pages];
+              nextPages[i] = { ...nextPages[i], imageUrl };
+              return { ...prev, pages: nextPages };
+            });
           }
-      }
-
-      if (!isExtending) {
-        setBookData(script);
       }
       
       setStatus('success');
@@ -314,8 +382,6 @@ const StorybookLargeTool: React.FC = () => {
   };
 
   const totalViews = bookData ? (bookData.pages?.length || 0) + 4 : 0;
-  const nextView = () => { if (viewIndex < totalViews - 1) { setViewIndex(v => v + 1); playPageTurnSound(); } };
-  const prevView = () => { if (viewIndex > 0) { setViewIndex(v => v - 1); playPageTurnSound(); } };
 
   const renderCurrentView = () => {
     if (!bookData) return null;
@@ -511,7 +577,7 @@ const StorybookLargeTool: React.FC = () => {
                <button onClick={() => { setConcept(''); setShowExtendModal(true); }} className="flex items-center gap-2 text-indigo-400 hover:text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors bg-indigo-900/20 border border-indigo-900/30"><PlusCircle className="w-4 h-4" /> Extend Story</button>
              </div>
              <div className="flex flex-wrap gap-2 justify-center items-center">
-                <button onClick={() => setSoundEnabled(!soundEnabled)} className="p-2 bg-slate-800 rounded-lg text-indigo-400">{soundEnabled ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}</button>
+                <button onClick={() => setSoundEnabled(!soundEnabled)} className="p-2 bg-slate-800 rounded-lg text-indigo-400">{soundEnabled ? <ToggleRight className="w-5 h-5 text-indigo-400" /> : <ToggleLeft className="w-5 h-5" />}</button>
                 <button onClick={() => setShowSaveCharDialog(true)} className="flex items-center gap-2 bg-slate-800 text-slate-300 px-4 py-2 rounded-lg border border-slate-700 hover:bg-indigo-600 transition-colors"><Save className="w-4 h-4" /> Save Actor</button>
                 <button onClick={handleGenerateMusic} disabled={generatingMusic} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors shadow-lg disabled:opacity-50">{generatingMusic ? <RefreshCw className="w-4 h-4 animate-spin"/> : <Music className="w-4 h-4"/>} Soundtrack</button>
                 <div className="h-8 w-px bg-slate-700 mx-2 hidden md:block"></div>

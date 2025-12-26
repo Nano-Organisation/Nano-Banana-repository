@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types.ts';
 import Layout from './components/Layout.tsx';
@@ -471,8 +470,7 @@ const App: React.FC = () => {
               <p className="text-slate-400 text-sm leading-relaxed">You are about to leave Digital Gentry AI. <br /> Proceed to <span className="text-amber-400 font-medium">{new URL(pendingExternalUrl).hostname}</span>?</p>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setPendingExternalUrl(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl transition-colors border border-slate-700">Cancel</button>
-              <button onClick={confirmExternalNavigation} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-amber-900/20">Proceed</button>
+              <button onClick={() => setPendingExternalUrl(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl transition-colors shadow-lg shadow-amber-900/20">Proceed</button>
             </div>
           </div>
         </div>
