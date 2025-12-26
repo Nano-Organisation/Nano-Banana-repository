@@ -1,4 +1,4 @@
-// Fix: Moved application logic to app.tsx (lowercase) to match the root file specified for compilation and avoid casing collisions with index.tsx imports.
+
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types.ts';
 import Layout from './components/Layout.tsx';
@@ -18,6 +18,7 @@ import SoundGenerator from './components/tools/SoundGenerator.tsx';
 import PinterestTool from './components/tools/PinterestTool.tsx';
 import ThumbnailTool from './components/tools/ThumbnailTool.tsx';
 import StorybookTool from './components/tools/StorybookTool.tsx';
+import StorybookLargeTool from './components/tools/StorybookLargeTool.tsx';
 import LiveTool from './components/tools/LiveTool.tsx';
 import MemeGenerator from './components/tools/MemeGenerator.tsx';
 import AutomationHub from './components/tools/AutomationHub.tsx';
@@ -76,7 +77,7 @@ import {
   ListChecks, BookMarked, Brain, Activity, Share2, Youtube, Pin, Film, 
   Volume2, Eraser, FileType, Terminal, FileText, Image as ImageIcon, Palette, 
   Eye, Code, Search, X, Gamepad2, GraduationCap, PenTool, Bot, FlaskConical,
-  Key, Music, Type, CreditCard, ChevronDown, ChevronUp, HelpCircle
+  Key, Music, Type as LucideType, CreditCard, ChevronDown, ChevronUp, HelpCircle
 } from 'lucide-react';
 
 const SHADOW_COLORS: Record<string, string> = {
@@ -102,7 +103,7 @@ const SHADOW_COLORS: Record<string, string> = {
 
 const TOOLS = [
   { id: ToolId.Chat, title: "AI Chat", description: "Conversational AI assistant for general queries.", icon: MessageSquare, color: "green", gradient: "from-green-500 to-emerald-600" },
-  { id: ToolId.VideoCaptioner, title: "AI Captions", description: "Auto-generate viral timed captions with emojis and animations.", icon: Type, color: "blue", gradient: "from-blue-500 to-indigo-600", releaseDate: '2025-12-21' },
+  { id: ToolId.VideoCaptioner, title: "AI Captions", description: "Auto-generate viral timed captions with emojis and animations.", icon: LucideType, color: "blue", gradient: "from-blue-500 to-indigo-600", releaseDate: '2025-12-21' },
   { id: ToolId.NurseryRhymes, title: "AI Nursery Rhymes", description: "Visualize classic nursery rhymes with beautiful AI art.", icon: Music, color: "pink", gradient: "from-pink-400 to-rose-500", releaseDate: '2025-12-20' },
   { id: ToolId.StyleEngine, title: "AI Style Forge", description: "Create, name, and reuse your own visual recipes for consistent art.", icon: FlaskConical, color: "indigo", gradient: "from-indigo-600 to-violet-700", releaseDate: '2025-12-19' },
   { id: ToolId.ImagesToMovie, title: "AI Images to movie", description: "Turn a collection of photos into a cinematic movie sequence.", icon: Clapperboard, color: "amber", gradient: "from-amber-400 to-orange-600", releaseDate: '2025-12-18' },
@@ -149,6 +150,7 @@ const TOOLS = [
   { id: ToolId.Social, title: "AI Social", description: "Multi-platform social media campaign generator.", icon: Share2, color: "blue", gradient: "from-blue-500 to-cyan-600", releaseDate: '2025-12-04' },
   { id: ToolId.Meme, title: "AI Meme", description: "Instant meme generator from topics.", icon: Laugh, color: "yellow", gradient: "from-yellow-400 to-amber-500", releaseDate: '2025-12-04' },
   { id: ToolId.Storybook, title: "AI Storybook", description: "Create illustrated books, comics, and fairy tales.", icon: BookOpen, color: "amber", gradient: "from-amber-500 to-yellow-600", releaseDate: '2025-12-04' },
+  { id: ToolId.StorybookLarge, title: "AI Storybook Large", description: "Create high-quality large illustrated stories.", icon: BookOpen, color: "orange", gradient: "from-orange-500 to-red-600", releaseDate: '2025-12-22' },
   { id: ToolId.YouTubeThumbnail, title: "AI Thumbnails", description: "Generate 5 viral-style YouTube thumbnails at once.", icon: Youtube, color: "red", gradient: "from-red-600 to-orange-600", releaseDate: '2025-12-04' },
   { id: ToolId.GAMES, title: "AI Games", description: "Interactive AI adventures, mysteries, and trivia.", icon: Gamepad2, color: "orange", gradient: "from-orange-500 to-red-600" },
   { id: ToolId.Pinterest, title: "AI Pinterest", description: "Generate viral-worthy, vertical images tailored for Pinterest.", icon: Pin, color: "red", gradient: "from-red-500 to-rose-600", releaseDate: '2025-12-04' },
@@ -168,26 +170,23 @@ const TOOLS = [
   { id: ToolId.SecurityBox, title: "AI Security Box", description: "Access the external Security Hub.", icon: Shield, color: "slate", gradient: "from-slate-700 to-slate-900", externalUrl: "https://sec-hub.online" }
 ];
 
-const FLAGSHIP_IDS = [
+const flagshipTools = TOOLS.filter(t => [
   ToolId.VideoGenerator,
   ToolId.Live,
   ToolId.Storybook,
+  ToolId.StorybookLarge,
   ToolId.Studio,
-  ToolId.VideoCaptioner,
-  ToolId.Chat
-];
+  ToolId.VideoCaptioner
+].includes(t.id));
 
-/**
- * Checks if a tool is "new" based on its release date metadata.
- */
 const isToolNew = (releaseDate?: string) => {
   if (!releaseDate) return false;
   const release = new Date(releaseDate);
   const now = new Date();
-  if (release > now) return true; // Future releases are marked as New/Upcoming
+  if (release > now) return true;
   const diffTime = Math.abs(now.getTime() - release.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays <= 30; // 30 day threshold
+  return diffDays <= 30;
 };
 
 const App: React.FC = () => {
@@ -201,19 +200,14 @@ const App: React.FC = () => {
   const [showActivationGuide, setShowActivationGuide] = useState(false);
 
   useEffect(() => {
-    // 1. Initial License Check
     const hasAccess = localStorage.getItem('nano_access_granted');
     setIsAuthenticated(hasAccess === 'true');
-    
-    // 2. API Key Check (BYOK Model)
     const checkKey = async () => {
-      // ADMIN BYPASS: If logged in with Master Key, skip BYOK gate
       const isAdmin = localStorage.getItem('is_admin_session') === 'true';
       if (isAdmin) {
          setHasSelectedKey(true);
          return;
       }
-
       if ((window as any).aistudio) {
         const selected = await (window as any).aistudio.hasSelectedApiKey();
         setHasSelectedKey(selected);
@@ -227,7 +221,6 @@ const App: React.FC = () => {
   const handleOpenSelectKey = async () => {
     if ((window as any).aistudio) {
       await (window as any).aistudio.openSelectKey();
-      /* Fix: Assume selection success immediately after triggering the dialog to mitigate race condition. */
       setHasSelectedKey(true);
     }
   };
@@ -238,8 +231,6 @@ const App: React.FC = () => {
       setPendingExternalUrl(null);
     }
   };
-
-  const flagshipTools = TOOLS.filter(t => FLAGSHIP_IDS.includes(t.id));
 
   const filteredTools = TOOLS.filter(tool => {
     const query = searchQuery.toLowerCase();
@@ -291,6 +282,7 @@ const App: React.FC = () => {
       case ToolId.Social: return <SocialTool />;
       case ToolId.Meme: return <MemeGenerator />;
       case ToolId.Storybook: return <StorybookTool />;
+      case ToolId.StorybookLarge: return <StorybookLargeTool />;
       case ToolId.YouTubeThumbnail: return <ThumbnailTool />;
       case ToolId.GAMES: return <GamesTool />;
       case ToolId.Pinterest: return <PinterestTool />;
@@ -327,8 +319,6 @@ const App: React.FC = () => {
           Six Flagship Solutions for Premium Creation
         </p>
       </div>
-
-      {/* Flagship Six Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {flagshipTools.map((tool) => (
           <button
@@ -339,13 +329,11 @@ const App: React.FC = () => {
             className="group relative bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 text-left transition-all hover:-translate-y-2 hover:border-amber-500/50 overflow-hidden shadow-xl"
             style={{ boxShadow: hoveredTool === tool.id ? `0 20px 40px -15px ${SHADOW_COLORS[tool.color] || 'rgba(0,0,0,0.5)'}` : 'none' }}
           >
-            {/* NEW Tag Reinforcement */}
             {tool.releaseDate && isToolNew(tool.releaseDate) && (
               <div className="absolute top-6 right-6 bg-amber-500 text-slate-900 text-[10px] font-black px-2.5 py-1 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.6)] animate-pulse uppercase tracking-tighter z-30 ring-2 ring-amber-500/20">
                 New
               </div>
             )}
-
             <div className={`absolute top-0 right-0 p-32 opacity-10 bg-gradient-to-br ${tool.gradient} blur-[80px] rounded-full -mr-16 -mt-16 group-hover:opacity-20 transition-opacity`}></div>
             <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center mb-6 shadow-2xl group-hover:scale-110 transition-transform`}>
               <tool.icon className="w-8 h-8 text-white" />
@@ -360,8 +348,6 @@ const App: React.FC = () => {
           </button>
         ))}
       </div>
-
-      {/* Secondary Library Access */}
       <div className="pt-20 border-t border-slate-200 dark:border-slate-800">
         <div className="flex flex-col items-center gap-8">
            <button 
@@ -372,7 +358,6 @@ const App: React.FC = () => {
              {showAllTools ? 'Hide Extended Library' : 'Access Extended Utility Library'}
              <span className="bg-slate-300 dark:bg-slate-700 text-[10px] px-2 py-0.5 rounded-full ml-2">60+ Tools</span>
            </button>
-
            {showAllTools && (
              <div className="w-full space-y-10 animate-fade-in-up">
                 <div className="max-w-md mx-auto relative">
@@ -387,7 +372,6 @@ const App: React.FC = () => {
                       className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl py-3 pl-10 pr-10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                    />
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                    {filteredTools.map((tool) => (
                       <button
@@ -395,13 +379,11 @@ const App: React.FC = () => {
                         onClick={() => (tool as any).externalUrl ? setPendingExternalUrl((tool as any).externalUrl) : setCurrentTool(tool.id)}
                         className="relative bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 p-5 rounded-2xl text-left transition-all hover:bg-white dark:hover:bg-slate-900 group"
                       >
-                        {/* NEW Tag Reinforcement for Utility Tools */}
                         {tool.releaseDate && isToolNew(tool.releaseDate) && (
                           <div className="absolute top-2 right-2 bg-amber-500 text-slate-900 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse uppercase tracking-tighter z-20 ring-1 ring-amber-500/20">
                             New
                           </div>
                         )}
-
                         <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center mb-4 opacity-80 group-hover:opacity-100`}>
                            <tool.icon className="w-5 h-5 text-white" />
                         </div>
@@ -420,23 +402,15 @@ const App: React.FC = () => {
   if (showActivationGuide) {
      return <ActivationGuide onBack={() => setShowActivationGuide(false)} />;
   }
-
-  // Still checking Local Storage - show nothing to avoid flash
   if (isAuthenticated === null) return <div className="min-h-screen bg-slate-950" />;
-
-  // Auth Gate 1: Not logged in (License Check)
   if (isAuthenticated === false) return <LoginGate onLogin={() => setIsAuthenticated(true)} />;
-
-  // Auth Gate 2: API Key missing (BYOK Check)
   if (hasSelectedKey === false) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center space-y-8 animate-fade-in relative">
-        {/* Subtle Background Ambience */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
           <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-amber-500/10 rounded-full blur-[120px]"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-500/10 rounded-full blur-[120px]"></div>
         </div>
-
         <div className="bg-amber-500 p-8 rounded-[3rem] shadow-2xl shadow-amber-900/30 ring-8 ring-amber-500/10 relative z-10">
           <Key className="w-16 h-16 text-slate-900" />
         </div>
@@ -456,7 +430,6 @@ const App: React.FC = () => {
           >
             Connect API Key
           </button>
-          
           <button 
             onClick={() => setShowActivationGuide(true)}
             className="flex items-center justify-center gap-2 text-[10px] font-black text-slate-600 hover:text-amber-500 transition-colors uppercase tracking-[0.2em] mt-4"
@@ -464,7 +437,6 @@ const App: React.FC = () => {
             <HelpCircle className="w-3.5 h-3.5" />
             Activation Instructions
           </button>
-
           <div className="space-y-4 pt-4">
              <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex items-start gap-3 text-left">
                 <CreditCard className="w-5 h-5 text-amber-500 shrink-0" />
@@ -481,7 +453,6 @@ const App: React.FC = () => {
       </div>
     );
   }
-
   return (
     <Layout 
       onBack={currentTool !== ToolId.Dashboard ? () => setCurrentTool(ToolId.Dashboard) : undefined}

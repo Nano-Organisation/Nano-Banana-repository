@@ -1,3 +1,4 @@
+
 export enum ToolId {
   Dashboard = 'DASHBOARD',
   ImageEditor = 'IMAGE_EDITOR',
@@ -17,6 +18,7 @@ export enum ToolId {
   Pinterest = 'PINTEREST',
   YouTubeThumbnail = 'YOUTUBE_THUMBNAIL',
   Storybook = 'STORYBOOK',
+  StorybookLarge = 'STORYBOOK_LARGE',
   Live = 'LIVE',
   Meme = 'MEME',
   AutomationHub = 'AUTOMATION_HUB',
