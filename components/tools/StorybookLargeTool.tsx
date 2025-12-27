@@ -185,6 +185,13 @@ const StorybookLargeTool: React.FC = () => {
     } catch (e) { console.error("Delete failed", e); }
   };
 
+  const updatePageText = (index: number, newText: string) => {
+    if (!bookData) return;
+    const updatedPages = [...bookData.pages];
+    updatedPages[index] = { ...updatedPages[index], text: newText };
+    setBookData({ ...bookData, pages: updatedPages });
+  };
+
   const cleanNarrativeText = (text: string) => {
     return text.replace(/\[.*?\]/g, '').trim();
   };
@@ -459,9 +466,13 @@ const StorybookLargeTool: React.FC = () => {
             </div>
          </div>
          <div className="flex-1 bg-[#fffbf0] p-6 md:p-12 flex flex-col justify-center relative overflow-y-auto">
-            <div className="prose prose-slate max-w-none">
+            <div className="prose prose-slate max-w-none flex flex-col h-full">
                {pageIndex === 0 && <h2 className="text-2xl font-serif font-bold text-black mb-6 border-b border-indigo-900/10 pb-4">{bookData.title}</h2>}
-               <p className="text-lg md:text-xl font-serif leading-relaxed text-black whitespace-pre-wrap">{page.text}</p>
+               <textarea
+                  value={page.text}
+                  onChange={(e) => updatePageText(pageIndex, e.target.value)}
+                  className="flex-1 w-full bg-transparent text-lg md:text-xl font-serif leading-relaxed text-black whitespace-pre-wrap focus:outline-none resize-none border-none p-0 custom-scrollbar"
+               />
             </div>
             <div className="absolute bottom-4 right-6 text-xs text-black font-mono">{pageIndex + 1}</div>
          </div>
@@ -674,7 +685,7 @@ const StorybookLargeTool: React.FC = () => {
                <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
                   <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Title</label><input value={editData.title || ''} onChange={(e) => setEditData({...editData, title: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white outline-none" /></div>
                   <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Author</label><input value={editData.author || ''} onChange={(e) => setEditData({...editData, author: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white outline-none" /></div>
-                  <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full overflow-hidden bg-slate-800 border border-slate-700">{editData.authorImage ? <img src={editData.authorImage} className="w-full h-full object-cover"/> : <User className="w-6 h-6 text-slate-500 m-3"/>}</div><button onClick={() => authorImageRef.current?.click()} className="text-xs bg-slate-800 px-3 py-2 rounded text-slate-300">New Photo</button><input type="file" authorImageRef className="hidden" accept="image/*" onChange={handleAuthorImageUpload} /></div>
+                  <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full overflow-hidden bg-slate-800 border border-slate-700">{editData.authorImage ? <img src={editData.authorImage} className="w-full h-full object-cover"/> : <User className="w-6 h-6 text-slate-500 m-3"/>}</div><button onClick={() => authorImageRef.current?.click()} className="text-xs bg-slate-800 px-3 py-2 rounded text-slate-300">New Photo</button><input type="file" ref={authorImageRef} className="hidden" accept="image/*" onChange={handleAuthorImageUpload} /></div>
                   <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Dedication</label><textarea value={editData.dedication || ''} onChange={(e) => setEditData({...editData, dedication: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white h-20 resize-none" /></div>
                   <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Blurb</label><textarea value={editData.backCoverBlurb || ''} onChange={(e) => setEditData({...editData, backCoverBlurb: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white h-24 resize-none" /></div>
                </div>
@@ -707,7 +718,7 @@ const StorybookLargeTool: React.FC = () => {
                          </div>
                          <div className="flex-1 min-w-0">
                             <p className="text-sm font-black text-white uppercase tracking-tight">{char.id}</p>
-                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest line-clamp-2 mt-1">{char.description}</p>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">{char.description}</p>
                          </div>
                       </label>
                     ))
