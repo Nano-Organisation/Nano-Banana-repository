@@ -360,15 +360,13 @@ const generateStructuredContent = async <T>(prompt: string, schema: Schema, mode
 
 export const generateStoryScript = async (topic: string, style: string, charDesc?: string): Promise<StorybookData> => {
   const prompt = `Story about: ${topic}. Style: ${style}. Character: ${charDesc || 'new'}.
-  CRITICAL CONSISTENCY PROTOCOL:
-  1. CHARACTER DNA: Describe each character using immutable physical attributes (e.g. "Male, 40s, black square glasses, dark hair"). Never change these unless a state change is specified.
-  2. STAGE DIRECTIONS (MANDATORY): Put all technical tracking like "[STATE CHANGE: PROP_X deployed]" ONLY in the 'stageDirections' field. 
-  3. ZERO LEAKAGE: Never put square brackets or meta-notes in the 'text' field.
-  4. PROP DNA: Create a 'propManifest' with strictly geometric visual descriptions (e.g. "Basket: cylindrical wire mesh with silver handle").
-  5. ENVIRONMENT ANCHORS: 
-     - Assign a 'locationId' to every page. 
-     - When locationId changes, provide a fresh 'environmentDescription' with 0% overlap with previous locations.
-  Do NOT use ambiguous prose. Use atomic visual labels.`;
+  CRITICAL VISUAL DNA PROTOCOL:
+  1. CHARACTER DNA: Describe EACH character in 'castingSheet' using strictly immutable physical attributes (e.g. "Male, 40s, black square glasses, dark hair"). 
+  2. PROP DNA: Identify recurring items (e.g. "The Silver Compass", "Ancient Map") and define them in 'propManifest' with geometric visual consistency.
+  3. STAGE DIRECTIONS: Segment all technical metadata (camera shots, state changes, character attire shifts) into the 'stageDirections' field.
+  4. NARRATIVE PURITY: The 'text' field must contain ONLY prose meant for the reader. NEVER include square brackets, technical tags, or logic markers in 'text'.
+  5. ENVIRONMENT ANCHORING: Every page MUST have a 'locationId'. If the locationId changes, provide a NEW 'environmentDescription' that defines the new space from scratch.
+  Do NOT use flowery language for technical fields. Use atomic visual labels.`;
 
   const schema: Schema = { 
     type: Type.OBJECT, 
@@ -392,6 +390,17 @@ export const generateStoryScript = async (topic: string, style: string, charDesc
           required: ['id', 'description']
         }
       },
+      castingSheet: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id: { type: Type.STRING },
+            description: { type: Type.STRING }
+          },
+          required: ['id', 'description']
+        }
+      },
       pages: { 
         type: Type.ARRAY, 
         items: { 
@@ -402,13 +411,14 @@ export const generateStoryScript = async (topic: string, style: string, charDesc
             imagePrompt: { type: Type.STRING },
             locationId: { type: Type.STRING },
             environmentDescription: { type: Type.STRING },
-            stageDirections: { type: Type.STRING }
+            stageDirections: { type: Type.STRING },
+            charactersPresent: { type: Type.ARRAY, items: { type: Type.STRING } }
           },
           required: ['pageNumber', 'text', 'imagePrompt', 'locationId', 'environmentDescription', 'stageDirections']
         } 
       } 
     },
-    required: ['title', 'style', 'characterName', 'characterDescription', 'pages']
+    required: ['title', 'style', 'characterName', 'characterDescription', 'pages', 'propManifest', 'castingSheet']
   };
   return generateStructuredContent<StorybookData>(prompt, schema);
 };

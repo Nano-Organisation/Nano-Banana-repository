@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Film, Upload, RefreshCw, X, Download, Lock, Monitor, Smartphone, Square, Clapperboard, Music, Sliders, Play, Sparkles, Plus, Star, AlertCircle, Layers, Shuffle, Image as ImageIcon } from 'lucide-react';
 import { generateBackgroundMusic, analyzeSlideshow } from '../../services/geminiService';
@@ -320,6 +319,7 @@ const ImagesToMovie: React.FC = () => {
                  {images.map((img, idx) => (
                     <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group ring-1 ring-black/5 dark:ring-white/5">
                        <img src={img} className="w-full h-full object-cover" />
+                       {idx === 0 && <div className="absolute top-1 left-1 bg-yellow-500 text-black text-[8px] font-black px-1 rounded shadow">ANCHOR</div>}
                        <button 
                          onClick={() => removeImage(idx)}
                          className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
@@ -388,7 +388,7 @@ const ImagesToMovie: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
                <button 
                   onClick={() => setIncludeIntro(!includeIntro)}
-                  className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${includeIntro ? 'bg-slate-100 dark:bg-slate-800 border-amber-500/50 text-slate-900 dark:text-white' : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-600'}`}
+                  className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${includeIntro ? 'bg-slate-100 dark:bg-slate-800 border-amber-500/50 text-slate-900 dark:text-white' : 'bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-600'}`}
                >
                   <div className="flex items-center gap-2">
                      <Sparkles className={`w-3.5 h-3.5 ${includeIntro ? 'text-amber-500' : ''}`} />
@@ -398,7 +398,7 @@ const ImagesToMovie: React.FC = () => {
                </button>
                <button 
                   onClick={() => setIncludeOutro(!includeOutro)}
-                  className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${includeOutro ? 'bg-slate-100 dark:bg-slate-800 border-amber-500/50 text-slate-900 dark:text-white' : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-600'}`}
+                  className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${includeOutro ? 'bg-slate-100 dark:bg-slate-800 border-amber-500/50 text-slate-900 dark:text-white' : 'bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-600'}`}
                >
                   <div className="flex items-center gap-2">
                      <Film className={`w-3.5 h-3.5 ${includeOutro ? 'text-amber-500' : ''}`} />

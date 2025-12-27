@@ -159,7 +159,7 @@ const ChatInterface: React.FC = () => {
         </h2>
         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-mono transition-colors ${isThinkingMode ? 'bg-purple-900/20 border-purple-500/30 text-purple-400' : 'bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400'}`}>
            {isThinkingMode ? <BrainCircuit className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
-           /* Fix: Updated label to match the actual models used (gemini-3-flash-preview and gemini-3-pro-preview). */
+           {/* Updated label to match the actual models used (gemini-3-flash-preview and gemini-3-pro-preview). */}
            Model: {isThinkingMode ? 'gemini-3-pro-preview (Deep Reasoning)' : 'gemini-3-flash-preview'}
         </div>
       </div>
@@ -169,7 +169,7 @@ const ChatInterface: React.FC = () => {
         {/* Chat Header */}
         <div className={`px-6 py-4 border-b flex justify-between items-center transition-colors ${isThinkingMode ? 'bg-purple-900/10 border-purple-900/30' : 'bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800'}`}>
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium">
-             <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)] ${isThinkingMode ? 'bg-purple-500 shadow-purple-500/50' : 'bg-green-500'}`}></div>
+             <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)] ${isThinkingMode ? 'bg-purple-50 shadow-purple-500/50' : 'bg-green-500'}`}></div>
              {isThinkingMode ? <span className="text-purple-600 dark:text-purple-300 font-bold">Deep Reasoning Mode</span> : 'Flash Session'}
           </div>
           <div className="flex items-center gap-3">
@@ -231,7 +231,7 @@ const ChatInterface: React.FC = () => {
                   {/* Subtle pulse indicator for thinking messages */}
                   {msg.role === 'model' && msg.isThinking && (
                     <div className="absolute top-3 right-3 opacity-20">
-                       <BrainCircuit className="w-4 h-4 text-purple-600 dark:text-purple-500" />
+                       <BrainCircuit className="w-4 h-4 text-purple-600 dark:text-purple-50" />
                     </div>
                   )}
                 </div>

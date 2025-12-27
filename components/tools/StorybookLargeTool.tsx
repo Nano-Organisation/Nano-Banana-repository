@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen, Sparkles, RefreshCw, ChevronLeft, ChevronRight, Download, Edit3, FileText, Smartphone, Save, User, Trash2, CheckCircle2, Settings, X, FileJson, Book, Image as ImageIcon, Music, Volume2, VolumeX, ToggleLeft, ToggleRight, PlusCircle, Users, Clock, MapPin, UserMinus } from 'lucide-react';
 import { generateStoryScript, generateImageWithGemini, generateBackgroundMusic, generateProImageWithGemini } from '../../services/geminiService';
@@ -178,7 +177,7 @@ const StorybookLargeTool: React.FC = () => {
   };
 
   const cleanNarrativeText = (text: string) => {
-    // Regex to remove bracketed stage directions/meta-notes like [STATE CHANGE: ...]
+    // Regex to strictly strip any accidentally generated technical tags like [STATE CHANGE: ...]
     return text.replace(/\[.*?\]/g, '').trim();
   };
 
@@ -219,7 +218,7 @@ const StorybookLargeTool: React.FC = () => {
       if (characterDescs) script.characterDescription = characterDescs;
       if (!script.pages || !Array.isArray(script.pages)) script.pages = [];
       
-      // CLEANSE: Ensure narrative text contains no leaked bracketed metadata
+      // Mandatory CLEANSE step to prevent metadata leaks to the UI
       script.pages = script.pages.map(p => ({
         ...p,
         text: cleanNarrativeText(p.text)
@@ -227,11 +226,9 @@ const StorybookLargeTool: React.FC = () => {
 
       const existingPages = isExtending ? [...(bookData?.pages || [])] : [];
       
-      // LOGIC FIX: Environment-Keyed Anchor Map
-      // Instead of one global anchor, we track the first image generated for EACH unique location.
+      // DYNAMIC ANCHOR RE-KEYING: Map references by locationId to prevent cross-room asset drift
       const locationAnchorMap: Record<string, string> = {};
       if (isExtending && existingPages.length > 0) {
-         // Seed the map with existing page anchors
          existingPages.forEach(p => {
             if (p.locationId && p.imageUrl && !locationAnchorMap[p.locationId]) {
                locationAnchorMap[p.locationId] = p.imageUrl;
@@ -251,6 +248,15 @@ const StorybookLargeTool: React.FC = () => {
         setBookData({ ...script, pages: placeholderPages });
       }
 
+      // ATOMIC DNA EXTRACTION: Build static instruction blocks for casting and props
+      const castingInstructions = (script.castingSheet || [])
+        .map(c => `CHARACTER DNA [${c.id}]: ${c.description}`)
+        .join('. ');
+
+      const propInstructions = (script.propManifest || [])
+        .map(p => `PROP DNA [${p.id}]: ${p.description}`)
+        .join('. ');
+
       const drawPage = async (idx: number, prompt: string, ref?: string) => {
          for (let attempt = 0; attempt < 3; attempt++) {
             try {
@@ -263,56 +269,41 @@ const StorybookLargeTool: React.FC = () => {
          return '';
       };
 
-      const propInstructions = (script.propManifest || [])
-        .map(p => `PROP DNA [${p.id}]: ${p.description}`)
-        .join('. ');
-
       for (let i = 0; i < script.pages.length; i++) {
-          if (i > 0 || isExtending) await new Promise(resolve => setTimeout(resolve, 8000));
+          if (i > 0 || isExtending) await new Promise(resolve => setTimeout(resolve, 8500));
           
           const page = script.pages[i];
           const locId = page.locationId || 'default';
-          
-          // Determine if we have a scene anchor for this specific room
           const currentReference = locationAnchorMap[locId];
 
           const pagePrompt = `
             STYLE: ${script.style}. 
-            CHARACTER DNA: ${script.characterDescription}. 
-            PROPS: ${propInstructions}.
+            GLOBAL CAST: ${castingInstructions}.
+            GLOBAL PROPS: ${propInstructions}.
             ENVIRONMENT: ${page.environmentDescription}.
             SCENE: ${page.imagePrompt}. 
             STAGE DIRECTIONS: ${page.stageDirections || 'None'}.
             
             IMMUTABILITY RULE: 
-            - If this is location "${locId}", do NOT use background data from other locations.
-            - Reference image is for character facial consistency ONLY.
-            - Clear, unobstructed view of faces.
+            - Use reference image for character facial structure ONLY.
+            - If this is location "${locId}", do NOT use visual data from other locations.
+            - Maintain absolute visual consistency for props defined in DNA.
           `.replace(/\s+/g, ' ').trim();
 
           const imageUrl = await drawPage(i, pagePrompt, currentReference);
           
-          // Store this image as the anchor for this location if one doesn't exist
+          // DYNAMIC RE-KEYING: Set the first successful image of a location as the anchor for all future pages in that room
           if (!locationAnchorMap[locId] && imageUrl) {
              locationAnchorMap[locId] = imageUrl;
           }
           
-          if (isExtending) {
-            setBookData(prev => {
+          setBookData(prev => {
               if (!prev) return null;
               const nextPages = [...prev.pages];
-              const targetIdx = existingPages.length + i;
+              const targetIdx = isExtending ? existingPages.length + i : i;
               nextPages[targetIdx] = { ...nextPages[targetIdx], imageUrl };
               return { ...prev, pages: nextPages };
-            });
-          } else {
-            setBookData(prev => {
-              if (!prev) return null;
-              const nextPages = [...prev.pages];
-              nextPages[i] = { ...nextPages[i], imageUrl };
-              return { ...prev, pages: nextPages };
-            });
-          }
+          });
       }
       
       setStatus('success');
@@ -389,15 +380,15 @@ const StorybookLargeTool: React.FC = () => {
       return (
         <div className="flex-1 bg-[#fffbf0] p-8 md:p-12 flex flex-col items-center justify-center text-center relative border-r border-slate-300">
            <div className="border-4 border-double border-slate-800 p-8 w-full h-full flex flex-col items-center justify-center relative">
-              <h1 className="text-4xl md:text-5xl font-serif font-bold text-slate-900 mb-6 leading-tight">{bookData.title}</h1>
+              <h1 className="text-4xl md:text-5xl font-serif font-bold text-black mb-6 leading-tight">{bookData.title}</h1>
               <div className="w-24 h-px bg-slate-800 mb-6"></div>
               <div className="w-48 h-48 bg-slate-200 rounded-full overflow-hidden mb-8 border-2 border-slate-400 shadow-inner flex items-center justify-center">
                  {bookData.pages && bookData.pages[0]?.imageUrl ? (
                     <img src={bookData.pages[0].imageUrl} className="w-full h-full object-cover" alt="Cover" />
                  ) : ( <BookOpen className="w-16 h-16 text-slate-400 opacity-50" /> )}
               </div>
-              <p className="text-xl font-serif italic text-slate-700">Written & Illustrated by</p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">{bookData.author || "AI Storyteller"}</p>
+              <p className="text-xl font-serif italic text-black">Written & Illustrated by</p>
+              <p className="text-2xl font-bold text-black mt-2">{bookData.author || "AI Storyteller"}</p>
               <button onClick={openMetadataEditor} className="absolute top-2 right-2 bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-full shadow-sm border border-slate-300 transition-all z-10"><Edit3 className="w-4 h-4" /></button>
            </div>
         </div>
@@ -406,8 +397,8 @@ const StorybookLargeTool: React.FC = () => {
     if (viewIndex === 1) {
       return (
         <div className="flex-1 bg-[#fffbf0] p-12 flex flex-col items-center justify-center text-center relative border-r border-slate-300">
-           <div className="max-w-md mx-auto italic text-slate-600 font-serif text-lg leading-relaxed">{bookData.dedication || "Dedicated to all the dreamers."}</div>
-           <div className="absolute bottom-8 text-xs text-slate-400 uppercase tracking-widest">© {new Date().getFullYear()} {bookData.author}</div>
+           <div className="max-w-md mx-auto italic text-black font-serif text-lg leading-relaxed">{bookData.dedication || "Dedicated to all the dreamers."}</div>
+           <div className="absolute bottom-8 text-xs text-black uppercase tracking-widest">© {new Date().getFullYear()} {bookData.author}</div>
            <button onClick={openMetadataEditor} className="absolute top-4 right-4 bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-full shadow-sm border border-slate-300 transition-all z-10"><Edit3 className="w-4 h-4" /></button>
         </div>
       );
@@ -416,29 +407,29 @@ const StorybookLargeTool: React.FC = () => {
     if (viewIndex === pages.length + 2) {
       return (
         <div className="flex-1 bg-[#fffbf0] p-12 flex flex-col items-center justify-center text-center relative border-r border-slate-300">
-           <h2 className="text-2xl font-bold text-slate-900 mb-6 font-serif uppercase tracking-widest border-b-2 border-indigo-500 pb-2">About the Author</h2>
+           <h2 className="text-2xl font-bold text-black mb-6 font-serif uppercase tracking-widest border-b-2 border-indigo-500 pb-2">About the Author</h2>
            <div className="w-32 h-32 bg-slate-200 rounded-full overflow-hidden mb-6 border-4 border-white shadow-lg mx-auto">
               {bookData.authorImage ? <img src={bookData.authorImage} alt="Author" className="w-full h-full object-cover" /> : <User className="w-full h-full text-slate-400 p-6 bg-slate-100" />}
            </div>
-           <h3 className="text-xl font-bold text-slate-800 mb-4">{bookData.author}</h3>
-           <p className="text-slate-600 font-serif leading-relaxed max-w-md mx-auto">{bookData.authorBio || "An AI storyteller crafting worlds from pixels and code."}</p>
+           <h3 className="text-xl font-bold text-black mb-4">{bookData.author}</h3>
+           <p className="text-black font-serif leading-relaxed max-w-md mx-auto">{bookData.authorBio || "An AI storyteller crafting worlds from pixels and code."}</p>
            <button onClick={openMetadataEditor} className="absolute top-4 right-4 bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-full shadow-sm border border-slate-300 transition-all z-10"><Edit3 className="w-4 h-4" /></button>
         </div>
       );
     }
     if (viewIndex === pages.length + 3) {
       return (
-        <div className="flex-1 bg-[#1e293b] p-12 flex flex-col items-center justify-center text-center relative text-white">
+        <div className="flex-1 bg-[#fffbf0] p-12 flex flex-col items-center justify-center text-center relative text-black">
            <div className="max-w-md mx-auto space-y-8">
-              <div className="bg-white/10 p-8 rounded-xl backdrop-blur-sm border border-white/10 relative">
-                 <p className="font-serif text-lg leading-relaxed italic text-indigo-100">"{bookData.backCoverBlurb || bookData.characterDescription}"</p>
+              <div className="bg-slate-900/5 border border-slate-200 p-8 rounded-xl backdrop-blur-sm relative">
+                 <p className="font-serif text-lg leading-relaxed italic text-black">"{bookData.backCoverBlurb || bookData.characterDescription}"</p>
               </div>
               <div className="flex flex-col items-center gap-2 opacity-50">
-                 <div className="w-32 h-12 bg-white rounded flex items-center justify-center"><div className="w-24 h-8 border-t-4 border-b-4 border-black"></div></div>
+                 <div className="w-32 h-12 bg-white border border-slate-200 rounded flex items-center justify-center"><div className="w-24 h-8 border-t-4 border-b-4 border-black"></div></div>
                  <span className="text-xs font-mono">ISBN-9000-AI-STORY</span>
               </div>
            </div>
-           <button onClick={openMetadataEditor} className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full shadow-sm border border-white/20 transition-all z-10"><Edit3 className="w-4 h-4" /></button>
+           <button onClick={openMetadataEditor} className="absolute top-4 right-4 bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-full shadow-sm border border-slate-300 transition-all z-10"><Edit3 className="w-4 h-4" /></button>
         </div>
       );
     }
@@ -460,15 +451,15 @@ const StorybookLargeTool: React.FC = () => {
                    <p className="text-xs text-slate-500 font-medium">Illustrating...</p>
                 </div>
               )}
-              <div className="absolute top-2 left-2 text-xs font-bold text-slate-400 bg-white/80 px-2 py-1 rounded">Page {page.pageNumber}</div>
+              <div className="absolute top-2 left-2 text-xs font-bold text-black bg-white/80 px-2 py-1 rounded">Page {page.pageNumber}</div>
             </div>
          </div>
          <div className="flex-1 bg-[#fffbf0] p-6 md:p-12 flex flex-col justify-center relative overflow-y-auto">
             <div className="prose prose-slate max-w-none">
-               {pageIndex === 0 && <h2 className="text-2xl font-serif font-bold text-slate-800 mb-6 border-b border-indigo-900/10 pb-4">{bookData.title}</h2>}
-               <p className="text-lg md:text-xl font-serif leading-relaxed text-slate-800 whitespace-pre-wrap">{page.text}</p>
+               {pageIndex === 0 && <h2 className="text-2xl font-serif font-bold text-black mb-6 border-b border-indigo-900/10 pb-4">{bookData.title}</h2>}
+               <p className="text-lg md:text-xl font-serif leading-relaxed text-black whitespace-pre-wrap">{page.text}</p>
             </div>
-            <div className="absolute bottom-4 right-6 text-xs text-slate-400 font-mono">{pageIndex + 1}</div>
+            <div className="absolute bottom-4 right-6 text-xs text-black font-mono">{pageIndex + 1}</div>
          </div>
       </>
     );
@@ -481,7 +472,7 @@ const StorybookLargeTool: React.FC = () => {
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 20;
-      const addWatermark = () => { doc.setTextColor(200); doc.setFontSize(8); doc.text(WATERMARK_TEXT, pageWidth / 2, pageHeight - 5, { align: 'center' }); };
+      const addWatermark = () => { doc.setTextColor(0); doc.setFontSize(8); doc.text(WATERMARK_TEXT, pageWidth / 2, pageHeight - 5, { align: 'center' }); };
       doc.setFillColor(255, 251, 240); doc.rect(0, 0, pageWidth, pageHeight, 'F'); addWatermark();
       doc.setDrawColor(50); doc.setLineWidth(1); doc.rect(margin, margin, pageWidth - margin*2, pageHeight - margin*2);
       doc.setFont('helvetica', 'bold'); doc.setFontSize(32);
@@ -504,7 +495,7 @@ const StorybookLargeTool: React.FC = () => {
       });
       doc.addPage(); addWatermark(); doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text("About the Author", pageWidth / 2, margin + 20, { align: 'center' });
       doc.setFontSize(12); const splitBio = doc.splitTextToSize(bookData.authorBio || "", pageWidth - (margin * 3)); doc.text(splitBio, pageWidth / 2, margin + 40, { align: 'center' });
-      doc.addPage(); doc.setFillColor(30, 41, 59); doc.rect(0, 0, pageWidth, pageHeight, 'F'); doc.setTextColor(255);
+      doc.addPage(); doc.setFillColor(255, 251, 240); doc.rect(0, 0, pageWidth, pageHeight, 'F'); doc.setTextColor(0);
       const splitBlurb = doc.splitTextToSize(`"${bookData.backCoverBlurb || bookData.characterName}"`, pageWidth - (margin * 4));
       doc.text(splitBlurb, pageWidth / 2, pageHeight / 2, { align: 'center' });
       doc.save(`ai-storybook-large-${Date.now()}.pdf`);
@@ -601,7 +592,7 @@ const StorybookLargeTool: React.FC = () => {
           <div className="flex items-center justify-center gap-6 pb-6 relative">
             <button onClick={prevView} disabled={viewIndex === 0} className="bg-slate-800 hover:bg-indigo-600 disabled:opacity-50 text-white p-4 rounded-full transition-colors shadow-lg"><ChevronLeft className="w-6 h-6" /></button>
             <div className="flex gap-1 items-center">
-               <span className="text-xs font-mono text-slate-500 uppercase mr-2">{viewIndex === 0 ? 'Cover' : viewIndex === 1 ? 'Intro' : viewIndex >= totalViews - 2 ? 'Back' : `P${viewIndex - 1}`}</span>
+               <span className="text-xs font-mono text-black uppercase mr-2">{viewIndex === 0 ? 'Cover' : viewIndex === 1 ? 'Intro' : viewIndex >= totalViews - 2 ? 'Back' : `P${viewIndex - 1}`}</span>
                <div className="flex gap-1">
                   {[...Array(totalViews)].map((_, i) => (
                     <button key={i} onClick={() => { setViewIndex(i); playPageTurnSound(); }} className={`w-2 h-2 rounded-full transition-all ${viewIndex === i ? 'bg-indigo-500 w-4' : 'bg-slate-700 hover:bg-slate-600'}`} />
@@ -690,7 +681,7 @@ const StorybookLargeTool: React.FC = () => {
 
       {showSaveCharDialog && (
          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-sm space-y-4 shadow-2xl text-center">
+            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-sm space-y-4 shadow-2xl text-center">
                <h3 className="text-xl font-bold text-white">Archive Character</h3>
                <input type="text" autoFocus value={newCharName} onChange={(e) => setNewCharName(e.target.value)} placeholder="Actor Name" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white" />
                <div className="flex gap-3"><button onClick={() => setShowSaveCharDialog(false)} className="flex-1 bg-slate-800 text-slate-300 py-3 rounded-xl font-medium">Cancel</button><button onClick={handleSaveCharacter} disabled={!newCharName.trim() || isSavingChar} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold">{isSavingChar ? 'Processing...' : 'Archive'}</button></div>

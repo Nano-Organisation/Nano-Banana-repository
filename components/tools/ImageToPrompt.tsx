@@ -61,7 +61,7 @@ const ImageToPrompt: React.FC = () => {
         <div className="flex flex-col items-center gap-1">
            <p className="text-slate-600 dark:text-slate-400">Convert images into text descriptions or AI prompts.</p>
            <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">
-              /* Fix: Updated label to match the actual model used (gemini-3-flash-preview). */
+              {/* Updated label to match the actual model used (gemini-3-flash-preview). */}
               Model: gemini-3-flash-preview
            </span>
         </div>
