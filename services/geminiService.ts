@@ -160,7 +160,7 @@ export const generateProImageWithGemini = async (
   prompt: string, 
   aspectRatio: string = '1:1', 
   size: string = '1K', 
-  referenceImage?: string,
+  referenceImage?: string | string[],
   onRetry?: (msg: string) => void
 ): Promise<string> => {
   return videoQueue.run(async () => {
@@ -168,9 +168,14 @@ export const generateProImageWithGemini = async (
     try {
       const parts: any[] = [];
       if (referenceImage) {
-        const base64Data = referenceImage.split(',')[1];
-        const mimeType = referenceImage.split(';')[0].split(':')[1];
-        parts.push({ inlineData: { mimeType, data: base64Data } });
+        const refs = Array.isArray(referenceImage) ? referenceImage : [referenceImage];
+        refs.forEach(ref => {
+          if (ref && ref.includes(',')) {
+            const base64Data = ref.split(',')[1];
+            const mimeType = ref.split(';')[0].split(':')[1];
+            parts.push({ inlineData: { mimeType, data: base64Data } });
+          }
+        });
       }
       parts.push({ text: prompt });
 

@@ -1,8 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-// Standardizing on app.tsx to resolve collision with App.tsx.
-// Fix: Importing from lowercase './app' to match root file casing and resolve collision.
-import App from './app';
+// Fix: Standardizing on capitalized 'App' to ensure consistency with the App.tsx file name
+// and resolving the casing collision error reported in the build logs.
+import App from './App';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
