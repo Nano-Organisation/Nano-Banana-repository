@@ -1,7 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-// Fix: Ensured import matches App.tsx casing exactly to avoid conflicts with app.tsx on case-insensitive systems.
-import App from './App.tsx';
+// Standardizing on App.tsx to resolve collision with app.tsx
+// Fix: Removed .tsx extension to allow standard resolution and avoid casing conflict.
+import App from './App';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
