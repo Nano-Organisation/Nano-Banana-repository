@@ -42,8 +42,8 @@ const StorybookLargeTool: React.FC = () => {
   const [savedCharacters, setSavedCharacters] = useState<SavedCharacter[]>([]);
   const [selectedCharacterIds, setSelectedCharacterIds] = useState<string[]>([]);
   const [showSaveCharDialog, setShowSaveCharDialog] = useState(false);
+  const [selectedToSave, setSelectedToSave] = useState<string[]>([]);
   const [showCharManager, setShowCharManager] = useState(false);
-  const [newCharName, setNewCharName] = useState('');
   const [isSavingChar, setIsSavingChar] = useState(false);
 
   // Extension State
@@ -140,30 +140,39 @@ const StorybookLargeTool: React.FC = () => {
     });
   };
 
-  const handleSaveCharacter = async () => {
-    if (!bookData || !newCharName.trim()) return;
+  const handleSaveCharacters = async () => {
+    if (!bookData || selectedToSave.length === 0) return;
     setIsSavingChar(true);
-    let previewUrl = (bookData.pages || [])[0]?.imageUrl;
-    try {
-       const portraitPrompt = `Character portrait of ${bookData.characterDescription}. Isolated, white background, high quality. Visual Style: ${bookData.style}`;
-       previewUrl = await generateImageWithGemini(portraitPrompt, '1:1');
-    } catch (e) {
-       console.error("Failed to generate character preview", e);
+
+    for (const charId of selectedToSave) {
+      const charInfo = bookData.castingSheet?.find(c => c.id === charId);
+      if (!charInfo) continue;
+
+      let previewUrl = (bookData.pages || [])[0]?.imageUrl;
+      try {
+         const portraitPrompt = `Character portrait of ${charInfo.id}: ${charInfo.description}. Isolated, white background, high quality. Visual Style: ${bookData.style}`;
+         previewUrl = await generateImageWithGemini(portraitPrompt, '1:1');
+      } catch (e) {
+         console.error("Failed to generate character preview", e);
+      }
+
+      const newChar: SavedCharacter = {
+        id: (Date.now() + Math.random()).toString(),
+        name: charInfo.id,
+        description: charInfo.description,
+        previewImage: previewUrl
+      };
+
+      try {
+        await dbService.put(STORES.CHARACTERS, newChar);
+      } catch (e) { console.error("Save failed", e); }
     }
-    const newChar: SavedCharacter = {
-      id: Date.now().toString(),
-      name: newCharName.trim(),
-      description: bookData.characterDescription,
-      previewImage: previewUrl
-    };
-    try {
-      await dbService.put(STORES.CHARACTERS, newChar);
-      await loadCharacters();
-      alert(`Character "${newChar.name}" saved!`);
-    } catch (e) { console.error("Save failed", e); }
+    
+    await loadCharacters();
+    alert(`Selected characters archived!`);
     setIsSavingChar(false);
     setShowSaveCharDialog(false);
-    setNewCharName('');
+    setSelectedToSave([]);
   };
 
   const handleDeleteCharacter = async (id: string, e?: React.MouseEvent) => {
@@ -177,7 +186,6 @@ const StorybookLargeTool: React.FC = () => {
   };
 
   const cleanNarrativeText = (text: string) => {
-    // Regex to strictly strip any accidentally generated technical tags like [STATE CHANGE: ...]
     return text.replace(/\[.*?\]/g, '').trim();
   };
 
@@ -218,7 +226,6 @@ const StorybookLargeTool: React.FC = () => {
       if (characterDescs) script.characterDescription = characterDescs;
       if (!script.pages || !Array.isArray(script.pages)) script.pages = [];
       
-      // Mandatory CLEANSE step to prevent metadata leaks to the UI
       script.pages = script.pages.map(p => ({
         ...p,
         text: cleanNarrativeText(p.text)
@@ -226,7 +233,6 @@ const StorybookLargeTool: React.FC = () => {
 
       const existingPages = isExtending ? [...(bookData?.pages || [])] : [];
       
-      // DYNAMIC ANCHOR RE-KEYING: Map references by locationId to prevent cross-room asset drift
       const locationAnchorMap: Record<string, string> = {};
       if (isExtending && existingPages.length > 0) {
          existingPages.forEach(p => {
@@ -248,7 +254,6 @@ const StorybookLargeTool: React.FC = () => {
         setBookData({ ...script, pages: placeholderPages });
       }
 
-      // ATOMIC DNA EXTRACTION: Build static instruction blocks for casting and props
       const castingInstructions = (script.castingSheet || [])
         .map(c => `CHARACTER DNA [${c.id}]: ${c.description}`)
         .join('. ');
@@ -292,7 +297,6 @@ const StorybookLargeTool: React.FC = () => {
 
           const imageUrl = await drawPage(i, pagePrompt, currentReference);
           
-          // DYNAMIC RE-KEYING: Set the first successful image of a location as the anchor for all future pages in that room
           if (!locationAnchorMap[locId] && imageUrl) {
              locationAnchorMap[locId] = imageUrl;
           }
@@ -496,7 +500,7 @@ const StorybookLargeTool: React.FC = () => {
       doc.addPage(); addWatermark(); doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text("About the Author", pageWidth / 2, margin + 20, { align: 'center' });
       doc.setFontSize(12); const splitBio = doc.splitTextToSize(bookData.authorBio || "", pageWidth - (margin * 3)); doc.text(splitBio, pageWidth / 2, margin + 40, { align: 'center' });
       doc.addPage(); doc.setFillColor(255, 251, 240); doc.rect(0, 0, pageWidth, pageHeight, 'F'); doc.setTextColor(0);
-      const splitBlurb = doc.splitTextToSize(`"${bookData.backCoverBlurb || bookData.characterName}"`, pageWidth - (margin * 4));
+      const splitBlurb = doc.splitTextToSize(`"${bookData.backCoverBlurb || bookData.characterDescription}"`, pageWidth - (margin * 4));
       doc.text(splitBlurb, pageWidth / 2, pageHeight / 2, { align: 'center' });
       doc.save(`ai-storybook-large-${Date.now()}.pdf`);
     } catch (e) { alert("PDF Error"); }
@@ -569,7 +573,7 @@ const StorybookLargeTool: React.FC = () => {
              </div>
              <div className="flex flex-wrap gap-2 justify-center items-center">
                 <button onClick={() => setSoundEnabled(!soundEnabled)} className="p-2 bg-slate-800 rounded-lg text-indigo-400">{soundEnabled ? <ToggleRight className="w-5 h-5 text-indigo-400" /> : <ToggleLeft className="w-5 h-5" />}</button>
-                <button onClick={() => setShowSaveCharDialog(true)} className="flex items-center gap-2 bg-slate-800 text-slate-300 px-4 py-2 rounded-lg border border-slate-700 hover:bg-indigo-600 transition-colors"><Save className="w-4 h-4" /> Save Actor</button>
+                <button onClick={() => { setSelectedToSave([]); setShowSaveCharDialog(true); }} className="flex items-center gap-2 bg-slate-800 text-slate-300 px-4 py-2 rounded-lg border border-slate-700 hover:bg-indigo-600 transition-colors"><Save className="w-4 h-4" /> Save Actor</button>
                 <button onClick={handleGenerateMusic} disabled={generatingMusic} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors shadow-lg disabled:opacity-50">{generatingMusic ? <RefreshCw className="w-4 h-4 animate-spin"/> : <Music className="w-4 h-4"/>} Soundtrack</button>
                 <div className="h-8 w-px bg-slate-700 mx-2 hidden md:block"></div>
                 <button onClick={() => handleDownloadBook('portrait')} className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg border border-slate-700 hover:bg-indigo-600"><Smartphone className="w-4 h-4" /> PDF</button>
@@ -670,7 +674,7 @@ const StorybookLargeTool: React.FC = () => {
                <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
                   <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Title</label><input value={editData.title || ''} onChange={(e) => setEditData({...editData, title: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white outline-none" /></div>
                   <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Author</label><input value={editData.author || ''} onChange={(e) => setEditData({...editData, author: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white outline-none" /></div>
-                  <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full overflow-hidden bg-slate-800 border border-slate-700">{editData.authorImage ? <img src={editData.authorImage} className="w-full h-full object-cover"/> : <User className="w-6 h-6 text-slate-500 m-3"/>}</div><button onClick={() => authorImageRef.current?.click()} className="text-xs bg-slate-800 px-3 py-2 rounded text-slate-300">New Photo</button><input type="file" ref={authorImageRef} className="hidden" accept="image/*" onChange={handleAuthorImageUpload} /></div>
+                  <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full overflow-hidden bg-slate-800 border border-slate-700">{editData.authorImage ? <img src={editData.authorImage} className="w-full h-full object-cover"/> : <User className="w-6 h-6 text-slate-500 m-3"/>}</div><button onClick={() => authorImageRef.current?.click()} className="text-xs bg-slate-800 px-3 py-2 rounded text-slate-300">New Photo</button><input type="file" authorImageRef className="hidden" accept="image/*" onChange={handleAuthorImageUpload} /></div>
                   <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Dedication</label><textarea value={editData.dedication || ''} onChange={(e) => setEditData({...editData, dedication: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white h-20 resize-none" /></div>
                   <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Blurb</label><textarea value={editData.backCoverBlurb || ''} onChange={(e) => setEditData({...editData, backCoverBlurb: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white h-24 resize-none" /></div>
                </div>
@@ -681,10 +685,51 @@ const StorybookLargeTool: React.FC = () => {
 
       {showSaveCharDialog && (
          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-sm space-y-4 shadow-2xl text-center">
-               <h3 className="text-xl font-bold text-white">Archive Character</h3>
-               <input type="text" autoFocus value={newCharName} onChange={(e) => setNewCharName(e.target.value)} placeholder="Actor Name" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white" />
-               <div className="flex gap-3"><button onClick={() => setShowSaveCharDialog(false)} className="flex-1 bg-slate-800 text-slate-300 py-3 rounded-xl font-medium">Cancel</button><button onClick={handleSaveCharacter} disabled={!newCharName.trim() || isSavingChar} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold">{isSavingChar ? 'Processing...' : 'Archive'}</button></div>
+            <div className="bg-slate-900 border border-slate-700 p-8 rounded-[2.5rem] w-full max-w-lg space-y-6 shadow-2xl">
+               <div className="text-center space-y-2">
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic">Archive Cast</h3>
+                  <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Select characters to save to your agency</p>
+               </div>
+               
+               <div className="space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
+                  {bookData?.castingSheet && bookData.castingSheet.length > 0 ? (
+                    bookData.castingSheet.map((char) => (
+                      <label key={char.id} className={`flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${selectedToSave.includes(char.id) ? 'bg-indigo-600/10 border-indigo-500' : 'bg-slate-950 border-slate-800 hover:border-slate-700'}`}>
+                         <div className="pt-0.5">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedToSave.includes(char.id)}
+                              onChange={() => {
+                                 setSelectedToSave(prev => prev.includes(char.id) ? prev.filter(id => id !== char.id) : [...prev, char.id]);
+                              }}
+                              className="w-4 h-4 accent-indigo-600 rounded border-slate-700 bg-slate-800"
+                            />
+                         </div>
+                         <div className="flex-1 min-w-0">
+                            <p className="text-sm font-black text-white uppercase tracking-tight">{char.id}</p>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest line-clamp-2 mt-1">{char.description}</p>
+                         </div>
+                      </label>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-slate-600">
+                       <UserMinus className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                       <p className="text-xs font-bold uppercase">No casting data found</p>
+                    </div>
+                  )}
+               </div>
+
+               <div className="flex gap-3">
+                  <button onClick={() => setShowSaveCharDialog(false)} className="flex-1 bg-slate-800 text-slate-300 py-4 rounded-2xl font-bold uppercase text-xs">Ignore</button>
+                  <button 
+                    onClick={handleSaveCharacters} 
+                    disabled={selectedToSave.length === 0 || isSavingChar}
+                    className="flex-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2"
+                  >
+                     {isSavingChar ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                     {isSavingChar ? 'ARCHIVING...' : 'SAVE SELECTED'}
+                  </button>
+               </div>
             </div>
          </div>
       )}
