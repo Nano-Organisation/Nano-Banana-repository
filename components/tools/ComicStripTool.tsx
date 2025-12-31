@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { Layout, RefreshCw, Upload, X, Download, Image as ImageIcon, MessageSquare, Palette, Columns, Rows, Clock, Volume2, Music, Play, Waves, Settings2, Check, Film, AlertTriangle } from 'lucide-react';
+
+import React, { useState, useRef, useEffect } from 'react';
+import { Layout, RefreshCw, Upload, X, Download, Image as ImageIcon, MessageSquare, Palette, Columns, Rows, Clock, Volume2, Music, Play, Waves, Settings2, Check, Film, AlertTriangle, Lock } from 'lucide-react';
 import { generateComicScriptFromImages, generateProImageWithGemini, generateSpeechWithGemini, generateBackgroundMusic } from '../../services/geminiService';
 import { LoadingState, StorybookData } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
@@ -79,10 +80,35 @@ const ComicStripTool: React.FC = () => {
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [hasKey, setHasKey] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const musicRef = useRef<HTMLVideoElement | null>(null);
   const cancelPlaybackRef = useRef(false);
+
+  useEffect(() => {
+    checkKey();
+  }, []);
+
+  const getAIStudio = () => (window as any).aistudio;
+
+  const checkKey = async () => {
+    const aiStudio = getAIStudio();
+    if (aiStudio) {
+      const selected = await aiStudio.hasSelectedApiKey();
+      setHasKey(selected);
+    } else {
+      setHasKey(true); 
+    }
+  };
+
+  const handleSelectKey = async () => {
+    const aiStudio = getAIStudio();
+    if (aiStudio) {
+      await aiStudio.openSelectKey();
+      setHasKey(true);
+    }
+  };
 
   // Helper to compress images for multimodal stability
   const compressImage = async (dataUrl: string, maxDim: number = 768): Promise<string> => {
@@ -197,6 +223,13 @@ const ComicStripTool: React.FC = () => {
             setComicData(prev => prev ? { ...prev, pages: [...newPages] } : null);
          } catch (e: any) {
             console.error(`Final Panel ${i+1} Critical Failure:`, e);
+            const msg = (e.message || "").toLowerCase();
+            if (msg.includes("billing") || msg.includes("active billing")) {
+                setHasKey(false);
+                handleSelectKey();
+                alert("Pro Image generation requires a billing-enabled API key. Please connect one.");
+                throw e; // Stop generation
+            }
             // Skip failed panel gracefully so user can see what worked
          }
       }
@@ -271,8 +304,15 @@ const ComicStripTool: React.FC = () => {
   const handlePlayNarrative = async () => {
     if (!comicData || isPlaying) return;
     setIsPlaying(true); setIsAudioLoading(true); cancelPlaybackRef.current = false;
+    
     try {
       if (addMusic) {
+        // Pre-check key
+        const aiStudio = getAIStudio();
+        if (aiStudio && !(await aiStudio.hasSelectedApiKey())) {
+            handleSelectKey();
+        }
+
         const musicUrl = await generateBackgroundMusic(comicData.title || "Comic Narrative", comicData.style || "Comic");
         const musicResp = await fetch(musicUrl);
         const musicBlob = await musicResp.blob();
@@ -306,7 +346,15 @@ const ComicStripTool: React.FC = () => {
         }
         await new Promise(r => setTimeout(r, 500));
       }
-    } catch (e) { console.error("Narrative playback error", e); } finally {
+    } catch (e: any) { 
+        console.error("Narrative playback error", e); 
+        const msg = e.message || "";
+        if (msg.includes("BILLING_ERROR") || msg.includes("active billing") || msg.includes("Requested entity was not found")) {
+            setHasKey(false);
+            handleSelectKey();
+            alert("Music generation requires a paid API key (Veo). Please connect a project with billing enabled.");
+        }
+    } finally {
       setIsPlaying(false); setActivePanelIndex(null); setIsAudioLoading(false);
       if (musicRef.current) musicRef.current.pause();
     }
@@ -576,6 +624,11 @@ const ComicStripTool: React.FC = () => {
                            <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${addMusic ? 'translate-x-4' : ''}`}></div>
                         </button>
                      </div>
+                     {!hasKey && addMusic && (
+                        <div className="flex items-center justify-center gap-1 text-[9px] text-amber-500 border border-amber-500/20 bg-amber-500/5 p-2 rounded-lg cursor-pointer hover:bg-amber-500/10 transition-colors" onClick={handleSelectKey}>
+                           <Lock className="w-3 h-3" /> Music requires Paid Key
+                        </div>
+                     )}
                      <div className="grid grid-cols-2 gap-2">
                         <button onClick={isPlaying ? stopPlayback : handlePlayNarrative} className={`py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${isPlaying ? 'bg-red-500 text-white' : 'bg-yellow-500 text-black'}`}>
                            {isAudioLoading ? <RefreshCw className="w-3 h-3 animate-spin" /> : isPlaying ? <X className="w-3 h-3" /> : <Play className="w-2.5 h-2.5 fill-current" />}

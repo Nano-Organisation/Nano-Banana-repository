@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Schema, Chat, Modality, GenerateContentResponse, VideoGenerationReferenceType } from "@google/genai";
 import {
   StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis,
@@ -72,11 +73,14 @@ export const withRetry = async <T>(
       lastError = error;
       const status = error.status || error.response?.status || error?.error?.code || (error?.message?.includes('429') ? 429 : null);
       const message = (error?.message || (typeof error === 'string' ? error : JSON.stringify(error)) || "").toLowerCase();
-      const isHardExhaustion = message.includes('quota') || message.includes('billing') || message.includes('plan');
+      
+      // Critical: Do not retry billing or plan errors
+      const isHardError = message.includes('billing') || message.includes('plan') || message.includes('project has no active billing');
+      if (isHardError) throw error;
+
       const isOverloaded = status === 503 || message.includes('overloaded') || message.includes('503') || message.includes('unavailable');
       const isRateLimit = status === 429 || message.includes('429') || message.includes('resource_exhausted') || message.includes('too many requests');
       
-      if (isHardExhaustion && isRateLimit) throw error;
       if (!isOverloaded && !isRateLimit && status !== 500) throw error; 
       
       if (attempt === retries - 1) break;
@@ -97,10 +101,11 @@ export const handleGeminiError = (error: any) => {
   else if (error?.message && typeof error.message === 'string') rawMsg = error.message;
   else { try { rawMsg = JSON.stringify(error); } catch (e) { rawMsg = String(error); } }
   const msg = rawMsg.toLowerCase();
+  
+  if (msg.includes('billing') || msg.includes('plan') || msg.includes('no active billing')) {
+     throw new Error("BILLING_ERROR: Your Google Cloud project has no active billing. Please select a project with billing enabled.");
+  }
   if (msg.includes('429') || msg.includes('quota') || msg.includes('resource_exhausted') || msg.includes('exceeded your current quota')) {
-     if (msg.includes('billing') || msg.includes('plan')) {
-        throw new Error("BILLING_ERROR: Your Google Cloud project has no active billing.");
-     }
      throw new Error("QUOTA_ERROR: You have exceeded your Gemini API quota.");
   }
   if (msg.includes('503') || msg.includes('overloaded')) {
@@ -160,7 +165,7 @@ export const generateProImageWithGemini = async (
   prompt: string, 
   aspectRatio: string = '1:1', 
   size: string = '1K', 
-  referenceImage?: string | string[],
+  referenceImage?: string,
   onRetry?: (msg: string) => void
 ): Promise<string> => {
   return videoQueue.run(async () => {
@@ -168,14 +173,9 @@ export const generateProImageWithGemini = async (
     try {
       const parts: any[] = [];
       if (referenceImage) {
-        const refs = Array.isArray(referenceImage) ? referenceImage : [referenceImage];
-        refs.forEach(ref => {
-          if (ref && ref.includes(',')) {
-            const base64Data = ref.split(',')[1];
-            const mimeType = ref.split(';')[0].split(':')[1];
-            parts.push({ inlineData: { mimeType, data: base64Data } });
-          }
-        });
+        const base64Data = referenceImage.split(',')[1];
+        const mimeType = referenceImage.split(';')[0].split(':')[1];
+        parts.push({ inlineData: { mimeType, data: base64Data } });
       }
       parts.push({ text: prompt });
 
@@ -198,6 +198,7 @@ export const generateProImageWithGemini = async (
   });
 };
 
+// Original simple generation (kept for compatibility)
 export const generateVideoWithGemini = async (prompt: string, aspectRatio: string = '16:9', imageBase64?: string | string[], onRetry?: (msg: string) => void): Promise<string> => {
   return videoQueue.run(async () => {
     const ai = getAiClient();
@@ -232,6 +233,84 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
       const link = generatedVideos[0]?.video?.uri;
       return `${link}&key=${getApiKey()}`;
     } catch (error) { handleGeminiError(error); return ""; }
+  });
+};
+
+// New: Advanced generation that returns the full video object for extension
+export const generateAdvancedVideo = async (prompt: string, aspectRatio: string = '16:9', imageBase64?: string, onRetry?: (msg: string) => void): Promise<{ uri: string, video: any }> => {
+  return videoQueue.run(async () => {
+    const ai = getAiClient();
+    const startOp = async () => {
+      const config: any = { numberOfVideos: 1, resolution: '720p', aspectRatio: aspectRatio as any };
+      if (imageBase64) {
+          return await ai.models.generateVideos({ 
+            model: 'veo-3.1-fast-generate-preview', 
+            prompt, 
+            image: { imageBytes: imageBase64.split(',')[1], mimeType: imageBase64.split(';')[0].split(':')[1] }, 
+            config 
+          });
+      }
+      return await ai.models.generateVideos({ model: 'veo-3.1-fast-generate-preview', prompt, config });
+    };
+
+    try {
+      let operation: any = await withRetry(() => startOp(), 5, 8000, onRetry);
+      
+      while (!(operation as any).done) {
+        await new Promise(r => setTimeout(r, 10000));
+        if (!operation || !(operation as any).name) break;
+        const polledOp = await ai.operations.getVideosOperation({ operation: operation as any });
+        if (!polledOp) throw new Error("Video tracker lost.");
+        operation = polledOp;
+      }
+      
+      if ((operation as any).error) throw new Error((operation as any).error.message);
+      const generatedVideos = (operation as any).response?.generatedVideos;
+      if (!generatedVideos || generatedVideos.length === 0) throw new Error("Safety Block: Content filtered.");
+      
+      const video = generatedVideos[0]?.video;
+      const link = video?.uri;
+      return { uri: `${link}&key=${getApiKey()}`, video };
+    } catch (error) { handleGeminiError(error); return { uri: "", video: null }; }
+  });
+};
+
+// New: Extension functionality
+export const extendVideo = async (prompt: string, previousVideo: any, onRetry?: (msg: string) => void): Promise<{ uri: string, video: any }> => {
+  return videoQueue.run(async () => {
+    const ai = getAiClient();
+    const startOp = async () => {
+      return await ai.models.generateVideos({
+        model: 'veo-3.1-generate-preview',
+        prompt,
+        video: previousVideo,
+        config: {
+          numberOfVideos: 1,
+          resolution: '720p',
+          aspectRatio: previousVideo.aspectRatio || '16:9'
+        }
+      });
+    };
+
+    try {
+      let operation: any = await withRetry(() => startOp(), 5, 8000, onRetry);
+      
+      while (!(operation as any).done) {
+        await new Promise(r => setTimeout(r, 10000));
+        if (!operation || !(operation as any).name) break;
+        const polledOp = await ai.operations.getVideosOperation({ operation: operation as any });
+        if (!polledOp) throw new Error("Video tracker lost.");
+        operation = polledOp;
+      }
+      
+      if ((operation as any).error) throw new Error((operation as any).error.message);
+      const generatedVideos = (operation as any).response?.generatedVideos;
+      if (!generatedVideos || generatedVideos.length === 0) throw new Error("Safety Block: Content filtered.");
+      
+      const video = generatedVideos[0]?.video;
+      const link = video?.uri;
+      return { uri: `${link}&key=${getApiKey()}`, video };
+    } catch (error) { handleGeminiError(error); return { uri: "", video: null }; }
   });
 };
 
@@ -364,68 +443,68 @@ const generateStructuredContent = async <T>(prompt: string, schema: Schema, mode
 };
 
 export const generateStoryScript = async (topic: string, style: string, charDesc?: string): Promise<StorybookData> => {
-  const prompt = `Story about: ${topic}. Style: ${style}. Character: ${charDesc || 'new'}.
-  CRITICAL VISUAL DNA PROTOCOL:
-  1. CHARACTER DNA: Describe EACH character in 'castingSheet' using strictly immutable physical attributes (e.g. "Male, 40s, black square glasses, dark hair"). 
-  2. PROP DNA: Identify recurring items (e.g. "The Silver Compass", "Ancient Map") and define them in 'propManifest' with geometric visual consistency.
-  3. STAGE DIRECTIONS: Segment all technical metadata (camera shots, state changes, character attire shifts) into the 'stageDirections' field.
-  4. NARRATIVE PURITY: The 'text' field must contain ONLY prose meant for the reader. NEVER include square brackets, technical tags, or logic markers in 'text'.
-  5. ENVIRONMENT ANCHORING: Every page MUST have a 'locationId'. If the locationId changes, provide a NEW 'environmentDescription' that defines the new space from scratch.
-  Do NOT use flowery language for technical fields. Use atomic visual labels.`;
+  return standardQueue.run(async () => {
+      const ai = getAiClient();
+      
+      const systemInstruction = `You are a professional children's book author and art director. Write a creative, engaging story script.
+      You MUST return ONLY a valid JSON object. Do not wrap in markdown code blocks.
+      
+      Required JSON Structure:
+      {
+        "title": "string",
+        "style": "string",
+        "characterName": "string",
+        "characterDescription": "string",
+        "author": "string",
+        "dedication": "string",
+        "authorBio": "string",
+        "backCoverBlurb": "string",
+        "propManifest": [{"id": "string", "description": "string"}],
+        "castingSheet": [{"id": "Name", "description": "DETAILED VISUAL SPEC (e.g. 'A translucent white sheet ghost with glowing eyes, NO LEGS, NO HUMAN BODY')."}],
+        "pages": [
+          { 
+            "pageNumber": 1, 
+            "text": "story prose", 
+            "imagePrompt": "Action description only (e.g. 'Pouring tea')", 
+            "locationId": "UNIQUE_ID_FOR_ROOM (e.g. 'library', 'kitchen', 'garden')", 
+            "environmentDescription": "STATIC DESCRIPTION OF ROOM (e.g. 'High-arched gothic window, stone floor, cobwebs').", 
+            "stageDirections": "Details",
+            "charactersPresent": ["Name1", "Name2"]
+          }
+        ]
+      }
+      
+      CRITICAL VISUAL CONSISTENCY PROTOCOL:
+      1. LOCATION DNA: You must use 'locationId' to track settings. The 'environmentDescription' for a given 'locationId' MUST BE IDENTICAL on every page it appears. It must define the static physical architecture (walls, windows, floor) to prevent hallucination.
+      2. CHARACTER SPECS: In 'castingSheet', describe characters precisely. If a character is a ghost, specify "Translucent sheet ghost, NO LEGS, NO HUMAN BODY".
+      3. ACTION SPLIT: 'imagePrompt' is ONLY for the active movement (e.g., "Arthur pouring tea"). 'environmentDescription' is for the background context.
+      4. PROSE: 'text' field must contain ONLY prose.
+      `;
 
-  const schema: Schema = { 
-    type: Type.OBJECT, 
-    properties: { 
-      title: { type: Type.STRING }, 
-      style: { type: Type.STRING }, 
-      characterName: { type: Type.STRING }, 
-      characterDescription: { type: Type.STRING }, 
-      author: { type: Type.STRING }, 
-      dedication: { type: Type.STRING }, 
-      authorBio: { type: Type.STRING }, 
-      backCoverBlurb: { type: Type.STRING }, 
-      propManifest: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            id: { type: Type.STRING },
-            description: { type: Type.STRING }
-          },
-          required: ['id', 'description']
-        }
-      },
-      castingSheet: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            id: { type: Type.STRING },
-            description: { type: Type.STRING }
-          },
-          required: ['id', 'description']
-        }
-      },
-      pages: { 
-        type: Type.ARRAY, 
-        items: { 
-          type: Type.OBJECT, 
-          properties: { 
-            pageNumber: { type: Type.INTEGER }, 
-            text: { type: Type.STRING }, 
-            imagePrompt: { type: Type.STRING },
-            locationId: { type: Type.STRING },
-            environmentDescription: { type: Type.STRING },
-            stageDirections: { type: Type.STRING },
-            charactersPresent: { type: Type.ARRAY, items: { type: Type.STRING } }
-          },
-          required: ['pageNumber', 'text', 'imagePrompt', 'locationId', 'environmentDescription', 'stageDirections']
-        } 
-      } 
-    },
-    required: ['title', 'style', 'characterName', 'characterDescription', 'pages', 'propManifest', 'castingSheet']
-  };
-  return generateStructuredContent<StorybookData>(prompt, schema);
+      const prompt = `Story about: ${topic}. Style: ${style}. Character: ${charDesc || 'new'}.
+      Generate a 10-page story script following the JSON structure and CONSISTENCY PROTOCOLS.`;
+
+      try {
+        const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: { parts: [{ text: prompt }] },
+            config: { 
+                systemInstruction,
+                responseMimeType: 'application/json',
+                temperature: 0.7 
+            }
+        }), 3, 5000);
+
+        let raw = response.text || "{}";
+        if (raw.startsWith('```json')) raw = raw.replace(/^```json/, '').replace(/```$/, '');
+        if (raw.startsWith('```')) raw = raw.replace(/^```/, '').replace(/```$/, '');
+        
+        return JSON.parse(raw) as StorybookData;
+      } catch (error) { 
+          handleGeminiError(error); 
+          return {} as StorybookData; 
+      }
+  });
 };
 
 export const generateEmojiPuzzle = async (): Promise<EmojiPuzzle> => {

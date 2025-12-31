@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen, Sparkles, RefreshCw, ChevronLeft, ChevronRight, Download, Edit3, FileText, Smartphone, Save, User, Trash2, CheckCircle2, Settings, X, FileJson, Book, Image as ImageIcon, Music, Volume2, VolumeX, ToggleLeft, ToggleRight, PlusCircle, Users, Clock, MapPin, UserMinus } from 'lucide-react';
+import { BookOpen, Sparkles, RefreshCw, ChevronLeft, ChevronRight, Download, Edit3, FileText, Smartphone, Save, User, Trash2, CheckCircle2, Settings, X, FileJson, Book, Image as ImageIcon, Music, Volume2, VolumeX, ToggleLeft, ToggleRight, PlusCircle, Users, Clock, MapPin, UserMinus, AlertCircle, Lock } from 'lucide-react';
 import { generateStoryScript, generateImageWithGemini, generateBackgroundMusic, generateProImageWithGemini } from '../../services/geminiService';
 import { StorybookData, StoryPage, LoadingState, SavedCharacter } from '../../types';
 import jsPDF from 'jspdf';
@@ -37,6 +38,7 @@ const StorybookLargeTool: React.FC = () => {
   const [progressMsg, setProgressMsg] = useState('');
   const [bookData, setBookData] = useState<StorybookData | null>(null);
   const [viewIndex, setViewIndex] = useState(0);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Character Management State
   const [savedCharacters, setSavedCharacters] = useState<SavedCharacter[]>([]);
@@ -196,10 +198,24 @@ const StorybookLargeTool: React.FC = () => {
     return text.replace(/\[.*?\]/g, '').trim();
   };
 
+  // Helper function for Dynamic Typography Scaling
+  const getFontSizeForText = (textLength: number) => {
+    if (textLength < 300) return 'text-lg md:text-xl';
+    if (textLength < 500) return 'text-base md:text-lg';
+    return 'text-sm md:text-base';
+  };
+
+  const handleOpenKeySettings = async () => {
+    if ((window as any).aistudio) {
+        await (window as any).aistudio.openSelectKey();
+    }
+  };
+
   const handleGenerate = async (isExtending = false) => {
     if (!concept.trim() && !isExtending) return;
 
     setStatus('loading');
+    setErrorMessage('');
     if (isExtending) {
       setShowExtendModal(false);
     } else {
@@ -209,7 +225,7 @@ const StorybookLargeTool: React.FC = () => {
     }
 
     try {
-      setProgressMsg(isExtending ? 'Drafting story continuation...' : 'Drafting 10-page epic...');
+      setProgressMsg(isExtending ? 'Drafting story continuation (Soft Mode)...' : 'Drafting 10-page epic (Soft Mode)...');
       const styleDesc = STYLES.find(s => s.id === selectedStyle)?.desc || 'illustration';
       
       const characterDescs = selectedCharacterIds
@@ -261,28 +277,11 @@ const StorybookLargeTool: React.FC = () => {
         setBookData({ ...script, pages: placeholderPages });
       }
 
-      // VCP: Atomic Physical Labels Implementation
-      const castingInstructions = (script.castingSheet || [])
-        .map(c => `[SUBJECT: ID: ${c.id}, PHYSICAL DNA: ${c.description}, AGE LOCK: PRE-ADOLESCENT CHILD, DO NOT AGE UP, HEIGHT: 110cm, SCALE: 0.5x of adult subjects]`)
-        .join(' ');
-
-      // VCP: Wardrobe & Asset Enforcement Implementation
-      const wardrobeInstructions = (script.wardrobeManifest || [])
-        .map(w => `[WARDROBE ITEM: ${w.id}, DESCRIPTION: ${w.description}, ENFORCEMENT: SHIRT SLEEVES MUST BE VISIBLE]`)
-        .join(' ');
-
-      const propInstructions = (script.propManifest || [])
-        .map(p => `[ASSET: ${p.id}, DESCRIPTION: ${p.description}, SLOT: FIXED]`)
-        .join(' ');
-
-      let primaryAnchor = '';
-      let lastGeneratedImage = '';
-
-      const drawPage = async (idx: number, prompt: string, ref?: string | string[]) => {
+      const drawPage = async (idx: number, prompt: string, ref?: string) => {
          for (let attempt = 0; attempt < 3; attempt++) {
             try {
                setProgressMsg(`Illustrating Panel ${idx + 1}/${script.pages.length}...`);
-               return await generateProImageWithGemini(prompt, '1:1', '1K', ref);
+               return await generateImageWithGemini(prompt, '1:1', ref);
             } catch (e) {
                await new Promise(r => setTimeout(r, 7000));
             }
@@ -291,39 +290,27 @@ const StorybookLargeTool: React.FC = () => {
       };
 
       for (let i = 0; i < script.pages.length; i++) {
-          if (i > 0 || isExtending) await new Promise(resolve => setTimeout(resolve, 8500));
+          if (i > 0 || isExtending) await new Promise(resolve => setTimeout(resolve, 3000));
           
           const page = script.pages[i];
           const locId = page.locationId || 'default';
+          const currentReference = locationAnchorMap[locId];
 
-          // VCP: Subject Lockdown & Anatomical Invariance Implementation
+          // Use the simpler, effective prompt structure from the original architecture
           const pagePrompt = `
-            [PRIMARY SUBJECT LOCKDOWN]: ${castingInstructions}.
-            [WARDROBE ENFORCEMENT]: ${wardrobeInstructions}.
-            [PROPORTION LOCK]: ${castingInstructions}.
-            [ANATOMICAL INVARIANCE]: NEGATIVE CONSTRAINTS: Subject skin must remain warm human flesh tone; do not apply stone, skeletal, or translucent textures from the environment to the subject.
-            [GLOBAL ASSETS]: ${propInstructions}.
-            STYLE: ${script.style}. 
-            ENVIRONMENT: ${page.environmentDescription}.
-            SCENE: ${page.imagePrompt}. 
-            STAGE DIRECTIONS: ${page.stageDirections || 'None'}.
+            ${script.style} style illustration.
+            Character: ${script.characterDescription}.
+            Scene: ${page.imagePrompt}.
+            ${page.environmentDescription ? `Setting: ${page.environmentDescription}.` : ''}
+            ${page.stageDirections ? `Details: ${page.stageDirections}.` : ''}
+            Consistent character features. High resolution.
           `.replace(/\s+/g, ' ').trim();
 
-          // VCP: Multi-Reference Rolling Anchoring Implementation
-          const refsToUse: string[] = [];
-          if (primaryAnchor) refsToUse.push(primaryAnchor);
-          if (lastGeneratedImage) refsToUse.push(lastGeneratedImage);
-          if (isExtending && refsToUse.length === 0) {
-             const extRef = locationAnchorMap[locId] || Object.values(locationAnchorMap)[0];
-             if (extRef) refsToUse.push(extRef);
-          }
-
-          const imageUrl = await drawPage(i, pagePrompt, refsToUse.length > 0 ? refsToUse : undefined);
+          const imageUrl = await drawPage(i, pagePrompt, currentReference);
           
-          if (i === 0 && !isExtending && imageUrl) {
-             primaryAnchor = imageUrl;
+          if (!locationAnchorMap[locId] && imageUrl) {
+             locationAnchorMap[locId] = imageUrl;
           }
-          lastGeneratedImage = imageUrl;
           
           setBookData(prev => {
               if (!prev) return null;
@@ -335,8 +322,9 @@ const StorybookLargeTool: React.FC = () => {
       }
       
       setStatus('success');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setErrorMessage(e.message || "An error occurred while generating the story.");
       setStatus('error');
     }
   };
@@ -485,10 +473,11 @@ const StorybookLargeTool: React.FC = () => {
          <div className="flex-1 bg-[#fffbf0] p-6 md:p-12 flex flex-col justify-center relative overflow-y-auto">
             <div className="prose prose-slate max-w-none flex flex-col h-full">
                {pageIndex === 0 && <h2 className="text-2xl font-serif font-bold text-black mb-6 border-b border-indigo-900/10 pb-4">{bookData.title}</h2>}
+               {/* Applied Dynamic Typography Scaling class */}
                <textarea
                   value={page.text}
                   onChange={(e) => updatePageText(pageIndex, e.target.value)}
-                  className="flex-1 w-full bg-transparent text-lg md:text-xl font-serif leading-relaxed text-black whitespace-pre-wrap focus:outline-none resize-none border-none p-0 custom-scrollbar"
+                  className={`flex-1 w-full bg-transparent font-serif leading-relaxed text-black whitespace-pre-wrap focus:outline-none resize-none border-none p-0 custom-scrollbar ${getFontSizeForText(page.text.length)}`}
                />
             </div>
             <div className="absolute bottom-4 right-6 text-xs text-black font-mono">{pageIndex + 1}</div>
@@ -583,6 +572,20 @@ const StorybookLargeTool: React.FC = () => {
                    <textarea value={concept} onChange={(e) => setConcept(e.target.value)} placeholder="A grand 10-page adventure about..." className="w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none h-32" />
                 </div>
 
+                {errorMessage && (
+                  <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-xl flex items-center gap-3 mb-4">
+                     <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+                     <div className="flex-1">
+                        <p className="text-xs text-red-400 font-bold">{errorMessage}</p>
+                        {(errorMessage.includes('BILLING') || errorMessage.includes('QUOTA') || errorMessage.includes('billing')) && (
+                           <button onClick={handleOpenKeySettings} className="text-xs text-white underline mt-1 font-bold flex items-center gap-1 hover:text-red-200">
+                              <Lock className="w-3 h-3" /> Update API Key Settings
+                           </button>
+                        )}
+                     </div>
+                  </div>
+                )}
+
                 <button onClick={() => handleGenerate(false)} disabled={!concept.trim() || status === 'loading'} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-900/20">
                   {status === 'loading' ? <><RefreshCw className="animate-spin" /> {progressMsg}</> : <><Sparkles className="fill-current" /> Forge 10-Page Book</>}
                 </button>
@@ -605,7 +608,7 @@ const StorybookLargeTool: React.FC = () => {
                 <button onClick={handleGenerateMusic} disabled={generatingMusic} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors shadow-lg disabled:opacity-50">{generatingMusic ? <RefreshCw className="w-4 h-4 animate-spin"/> : <Music className="w-4 h-4"/>} Soundtrack</button>
                 <div className="h-8 w-px bg-slate-700 mx-2 hidden md:block"></div>
                 <button onClick={() => handleDownloadBook('portrait')} className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg border border-slate-700 hover:bg-indigo-600"><Smartphone className="w-4 h-4" /> PDF</button>
-                <button onClick={handleDownloadBook('landscape')} className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg border border-slate-700 hover:bg-indigo-600"><BookOpen className="w-4 h-4" /> Spread</button>
+                <button onClick={() => handleDownloadBook('landscape')} className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg border border-slate-700 hover:bg-indigo-600"><BookOpen className="w-4 h-4" /> Spread</button>
              </div>
           </div>
 
@@ -702,7 +705,7 @@ const StorybookLargeTool: React.FC = () => {
                <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
                   <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Title</label><input value={editData.title || ''} onChange={(e) => setEditData({...editData, title: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white outline-none" /></div>
                   <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Author</label><input value={editData.author || ''} onChange={(e) => setEditData({...editData, author: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white outline-none" /></div>
-                  <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full overflow-hidden bg-slate-800 border border-slate-700">{editData.authorImage ? <img src={editData.authorImage} className="w-full h-full object-cover"/> : <User className="w-6 h-6 text-slate-500 m-3"/>}</div><button onClick={() => authorImageRef.current?.click()} className="text-xs bg-slate-800 px-3 py-2 rounded text-slate-300">New Photo</button><input type="file" authorImageRef={authorImageRef} className="hidden" accept="image/*" onChange={handleAuthorImageUpload} /></div>
+                  <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-full overflow-hidden bg-slate-800 border border-slate-700">{editData.authorImage ? <img src={editData.authorImage} className="w-full h-full object-cover"/> : <User className="w-6 h-6 text-slate-500 m-3"/>}</div><button onClick={() => authorImageRef.current?.click()} className="text-xs bg-slate-800 px-3 py-2 rounded text-slate-300">New Photo</button><input type="file" ref={authorImageRef} className="hidden" accept="image/*" onChange={handleAuthorImageUpload} /></div>
                   <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Dedication</label><textarea value={editData.dedication || ''} onChange={(e) => setEditData({...editData, dedication: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white h-20 resize-none" /></div>
                   <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Blurb</label><textarea value={editData.backCoverBlurb || ''} onChange={(e) => setEditData({...editData, backCoverBlurb: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white h-24 resize-none" /></div>
                </div>
@@ -767,7 +770,7 @@ const StorybookLargeTool: React.FC = () => {
             <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl h-[80vh] flex flex-col shadow-2xl">
               <div className="p-6 border-b border-slate-800 flex justify-between items-center"><h3 className="text-xl font-bold text-white uppercase tracking-tighter">Casting Agency</h3><button onClick={() => setShowCharManager(false)} className="p-2 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button></div>
               <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                {savedCharacters.length === 0 ? (<div className="text-center text-slate-500 py-12"><User className="w-16 h-16 mx-auto mb-4 opacity-10" /><p>No actors in the database.</p></div>) : (<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{savedCharacters.map(char => (<div key={char.id} className={`bg-slate-950 border rounded-xl p-4 flex gap-4 relative group transition-all ${selectedCharacterIds.includes(char.id) ? 'border-indigo-500 ring-1 ring-indigo-500/30' : 'border-slate-800'}`} onClick={() => toggleCharacterSelection(char.id)}><div className="w-20 h-20 bg-slate-800 rounded-lg overflow-hidden flex-shrink-0">{char.previewImage ? <img src={char.previewImage} alt={char.name} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-800 flex items-center justify-center text-slate-600"><User className="w-8 h-8" /></div>}</div><div className="flex-1 min-w-0"><h4 className="font-bold text-white truncate">{char.name}</h4><p className="text-xs text-slate-500 mt-1 whitespace-pre-wrap">{char.description}</p></div><button onClick={(e) => handleDeleteCharacter(char.id, e)} className="absolute top-2 right-2 p-2 bg-red-900/50 text-red-400 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-900"><Trash2 className="w-3 h-3" /></button></div>))}</div>)}
+                {savedCharacters.length === 0 ? (<div className="text-center text-slate-500 py-12"><User className="w-16 h-16 mx-auto mb-4 opacity-10" /><p>No actors in the database.</p></div>) : (<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{savedCharacters.map(char => (<div key={char.id} className={`bg-slate-950 border rounded-xl p-4 flex gap-4 relative group transition-all ${selectedCharacterIds.includes(char.id) ? 'border-indigo-500 ring-1 ring-indigo-500/30' : 'border-slate-800'}`} onClick={() => toggleCharacterSelection(char.id)}><div className="w-20 h-20 bg-slate-800 rounded-lg overflow-hidden flex-shrink-0">{char.previewImage ? <img src={char.previewImage} alt={char.name} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-800 flex items-center justify-center text-slate-600"><User className="w-8 h-8" /></div>}</div><div className="flex-1 min-w-0"><h4 className="font-bold text-white truncate">{char.name}</h4><p className="text-xs text-slate-500 line-clamp-3 mt-1">{char.description}</p></div><button onClick={(e) => handleDeleteCharacter(char.id, e)} className="absolute top-2 right-2 p-2 bg-red-900/50 text-red-400 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-900"><Trash2 className="w-3 h-3" /></button></div>))}</div>)}
               </div>
               <div className="p-6 border-t border-slate-800 flex justify-end"><button onClick={() => setShowCharManager(false)} className="bg-indigo-600 text-white px-8 py-2 rounded-lg font-bold uppercase text-xs">Close Casting</button></div>
             </div>

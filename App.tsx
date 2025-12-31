@@ -376,7 +376,7 @@ const App: React.FC = () => {
                       <button
                         key={tool.id}
                         onClick={() => (tool as any).externalUrl ? setPendingExternalUrl((tool as any).externalUrl) : setCurrentTool(tool.id)}
-                        className="relative bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 p-5 rounded-2xl text-left transition-all hover:bg-white dark:hover:bg-slate-900 group"
+                        className="relative bg-slate-5 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 p-5 rounded-2xl text-left transition-all hover:bg-white dark:hover:bg-slate-900 group"
                       >
                         {tool.releaseDate && isToolNew(tool.releaseDate) && (
                           <div className="absolute top-2 right-2 bg-amber-500 text-slate-900 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse uppercase tracking-tighter z-20 ring-1 ring-amber-500/20">
