@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './app';
+/* Updated import to use the PascalCase filename 'App' to resolve naming conflicts with app.tsx */
+import App from './App';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
