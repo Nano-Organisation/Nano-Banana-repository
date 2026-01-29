@@ -1,59 +1,85 @@
+
 import React, { useState } from 'react';
-import { Lock, ArrowRight, ShieldCheck, AlertCircle, ShoppingCart, Sparkles, CheckCircle, Zap, RefreshCw, HelpCircle } from 'lucide-react';
+import { Lock, ArrowRight, ShieldCheck, AlertCircle, ShoppingCart, Sparkles, CheckCircle, Zap, RefreshCw, HelpCircle, Mail, KeyRound } from 'lucide-react';
 import ActivationGuide from './ActivationGuide';
+import { supabase, createInitialProfile } from '../utils/supabase';
 
 interface LoginGateProps {
   onLogin: () => void;
 }
 
-const MASTER_KEY = "digital-gentry-2025";
-
 const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
-  const [input, setInput] = useState('');
-  const [error, setError] = useState(false);
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [accessCode, setAccessCode] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [shake, setShake] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const code = input.trim();
-    if (!code || isValidating) return;
-
     setIsValidating(true);
-    setError(false);
+    setError(null);
 
-    if (code === MASTER_KEY) {
-      localStorage.setItem('nano_access_granted', 'true');
-      localStorage.setItem('is_admin_session', 'true');
-      onLogin();
-      return;
-    }
+    if (mode === 'login') {
+      // PRIMARY ACCESS: Your official list
+      const VALID_CODES = [
+        "digital-gentry-2025",
+        "digital-gentry-2025-p1",
+        "digital-gentry-2025-x9",
+        "dg-pro-suite-8821-990"
+      ];
 
-    try {
-      const response = await fetch('/api/validate-license', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
-      });
+      setTimeout(() => {
+        if (VALID_CODES.includes(accessCode.trim())) {
+          localStorage.setItem('nano_access_granted', 'true');
+          // Admin session flag lets the app know to bypass credit checks for you
+          if (accessCode.trim() === 'digital-gentry-2025') {
+            localStorage.setItem('is_admin_session', 'true');
+          }
+          onLogin();
+        } else {
+          setError("Invalid Access Code");
+          setShake(true);
+          setIsValidating(false);
+          setTimeout(() => setShake(false), 500);
+        }
+      }, 800);
+    } else {
+      // STEP B: Surgical Supabase Registration
+      if (!supabase) {
+        setError("Cloud Sync Unavailable: Supabase keys missing in this environment.");
+        setShake(true);
+        setIsValidating(false);
+        setTimeout(() => setShake(false), 500);
+        return;
+      }
 
-      const data = await response.json();
+      try {
+        const { data, error: authError } = await supabase.auth.signUp({
+          email,
+          password,
+        });
 
-      if (data.valid) {
-        localStorage.setItem('nano_access_granted', 'true');
-        localStorage.removeItem('is_admin_session');
-        onLogin();
-      } else {
-        setError(true);
+        if (authError) throw authError;
+
+        if (data.user) {
+          // Initialize the profile in your new Supabase table
+          const { error: profileError } = await createInitialProfile(data.user.id, email);
+          if (profileError) throw profileError;
+
+          localStorage.setItem('nano_access_granted', 'true');
+          localStorage.setItem('supabase_user_id', data.user.id);
+          onLogin();
+        }
+      } catch (err: any) {
+        setError(err.message || "Registration failed. Check connection.");
         setShake(true);
         setIsValidating(false);
         setTimeout(() => setShake(false), 500);
       }
-    } catch (err) {
-      setError(true);
-      setShake(true);
-      setIsValidating(false);
-      setTimeout(() => setShake(false), 500);
     }
   };
 
@@ -92,17 +118,22 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
             </div>
 
             <div className="space-y-4">
-               {[
-                 "Veo 3.1 Pro Video Engine",
-                 "Character Consistency Forge",
-                 "Real-time Multimodal Live AI",
-                 "Zero-Data Storage Security"
-               ].map((benefit, i) => (
-                 <div key={i} className="flex items-center gap-3 text-sm font-bold text-slate-300">
-                    <CheckCircle className="w-5 h-5 text-emerald-500" />
-                    {benefit}
-                 </div>
-               ))}
+               <div className="flex items-center gap-3 text-sm font-bold text-slate-300">
+                  <CheckCircle className="w-5 h-5 text-emerald-500" />
+                  Veo 3.1 Pro Video Engine
+               </div>
+               <div className="flex items-center gap-3 text-sm font-bold text-slate-300">
+                  <CheckCircle className="w-5 h-5 text-emerald-500" />
+                  Character Consistency Forge
+               </div>
+               <div className="flex items-center gap-3 text-sm font-bold text-slate-300">
+                  <CheckCircle className="w-5 h-5 text-emerald-500" />
+                  Real-time Multimodal Live AI
+               </div>
+               <div className="flex items-center gap-3 text-sm font-bold text-slate-300">
+                  <CheckCircle className="w-5 h-5 text-emerald-500" />
+                  Compute Unit (CU) Cloud Sync <span className="text-[10px] opacity-40 ml-1">(v3.1.0-PRO)</span>
+               </div>
             </div>
           </div>
 
@@ -134,71 +165,100 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
           </div>
 
           <div className="text-center space-y-2">
-            <h3 className="text-2xl font-black text-white uppercase tracking-tight text-center">License Portal</h3>
-            <p className="text-slate-500 text-sm text-center">Enter your unique access code below.</p>
+            <h3 className="text-2xl font-black text-white uppercase tracking-tight text-center">
+                {mode === 'login' ? 'License Portal' : 'Register Account'}
+            </h3>
+            <p className="text-slate-500 text-sm text-center">
+                {mode === 'login' ? 'Enter your unique access code below.' : 'Create a profile to sync credits across devices.'}
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
-            <div className="space-y-2">
+          <form onSubmit={handleSubmit} className="w-full max-sm space-y-4">
+            {mode === 'login' ? (
               <div className="relative">
-                 <input 
-                  type="password" 
-                  value={input}
+                <input 
+                  type="text" 
+                  value={accessCode}
                   onChange={(e) => {
-                    setInput(e.target.value);
-                    setError(false);
+                    setAccessCode(e.target.value);
+                    setError(null);
                   }}
                   disabled={isValidating}
                   placeholder="••••••••••••"
-                  className={`w-full bg-slate-950 border rounded-2xl px-4 py-5 text-center text-white text-lg tracking-widest placeholder-slate-800 focus:outline-none focus:ring-2 transition-all ${error ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:ring-amber-500/20'} ${isValidating ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  autoFocus
+                  className={`w-full bg-slate-950 border rounded-2xl px-4 py-4 text-white text-center text-lg font-mono focus:outline-none focus:ring-2 transition-all ${error ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:ring-amber-500/20'}`}
                 />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                  {isValidating ? (
-                    <RefreshCw className="w-4 h-4 text-amber-500 animate-spin" />
-                  ) : (
-                    <Zap className={`w-4 h-4 transition-colors ${input ? 'text-amber-500' : 'text-slate-800'}`} />
-                  )}
+                <Zap className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-800" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="relative">
+                   <input 
+                    type="email" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email Address"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-4 text-white text-sm focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  />
+                  <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-800" />
+                </div>
+                <div className="relative">
+                   <input 
+                    type="password" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Choose Password"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-4 text-white text-sm focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  />
+                  <KeyRound className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-800" />
                 </div>
               </div>
-              
-              {error && (
-                <div className="flex items-center justify-center gap-2 text-red-500 text-xs font-black uppercase tracking-widest animate-fade-in">
-                  <AlertCircle className="w-4 h-4" />
-                  Invalid or Expired License
-                </div>
-              )}
-            </div>
+            )}
+            
+            {error && (
+              <div className="flex items-center justify-center gap-2 text-red-500 text-[10px] font-black uppercase tracking-widest animate-fade-in text-center">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                {error}
+              </div>
+            )}
 
             <button 
               type="submit"
-              disabled={!input.trim() || isValidating}
-              className="w-full bg-white hover:bg-slate-100 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-black py-5 rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all transform active:scale-[0.98] uppercase tracking-widest text-sm"
+              disabled={isValidating}
+              className="w-full bg-white hover:bg-slate-100 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all transform active:scale-[0.98] uppercase tracking-widest text-xs"
             >
               {isValidating ? (
-                <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  Verifying...
-                </>
+                <RefreshCw className="w-5 h-5 animate-spin" />
               ) : (
                 <>
                   <ShieldCheck className="w-5 h-5" />
-                  Unlock Suite
+                  {mode === 'login' ? 'Unlock Suite' : 'Finalize Registration'}
                 </>
               )}
             </button>
           </form>
 
-          <button 
-            onClick={() => setShowGuide(true)}
-            className="flex items-center gap-2 text-[10px] font-black text-slate-600 hover:text-amber-500 transition-colors uppercase tracking-[0.2em]"
-          >
-            <HelpCircle className="w-3.5 h-3.5" />
-            Activation Instructions
-          </button>
+          <div className="flex flex-col items-center gap-4">
+              <button 
+                onClick={() => {
+                   setMode(mode === 'login' ? 'register' : 'login');
+                   setError(null);
+                }}
+                className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors"
+              >
+                {mode === 'login' ? "Want a persistent account? Register here" : "Return to License Portal"}
+              </button>
+
+              <button 
+                onClick={() => setShowGuide(true)}
+                className="flex items-center gap-2 text-[10px] font-black text-slate-600 hover:text-amber-500 transition-colors uppercase tracking-[0.2em]"
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                Activation Instructions
+              </button>
+          </div>
 
           <p className="text-[10px] text-slate-700 font-bold uppercase tracking-[0.3em] text-center mt-4">
-            Digital Gentry Secure Gateway v3.0<br/>
+            Digital Gentry Secure Gateway v3.1<br/>
             E2E Encrypted Session
           </p>
         </div>

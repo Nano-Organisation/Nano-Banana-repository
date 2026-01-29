@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Youtube, Download, RefreshCw, Zap, TrendingUp, Gamepad, Smile, Layout, Film, Monitor, Smartphone, Square, Image as ImageIcon, Lock, AlertTriangle, Clock } from 'lucide-react';
+import { Youtube, Download, RefreshCw, Zap, TrendingUp, Gamepad, Smile, Layout, Film, Monitor, Smartphone, Square, Image as ImageIcon, Lock, AlertTriangle, Clock, AtSign } from 'lucide-react';
 import { generateViralThumbnails, generateVideoWithGemini } from '../../services/geminiService';
 import { LoadingState } from '../../types';
 import { addWatermarkToImage } from '../../utils/watermark';
@@ -14,6 +14,7 @@ const STYLES = [
 
 const ThumbnailTool: React.FC = () => {
   const [prompt, setPrompt] = useState('');
+  const [customFooter, setCustomFooter] = useState(''); // New state for custom footer
   const [selectedStyleId, setSelectedStyleId] = useState(STYLES[4].id);
   const [mode, setMode] = useState<'image' | 'video'>('image');
   const [aspectRatio, setAspectRatio] = useState('16:9');
@@ -67,7 +68,13 @@ const ThumbnailTool: React.FC = () => {
     const onRetry = (msg: string) => setRetryMessage(msg);
 
     try {
-      const finalPrompt = `${prompt}. Style: ${selectedStyle.label} - ${selectedStyle.desc}`;
+      // Inject the footer text as a strict production instruction
+      const footerInstruction = customFooter.trim() 
+        ? `. PRODUCTION RULE: Place the following URL or Username in a small, clean footer at the bottom of the frame: "${customFooter.trim()}". Ensure 100% spelling accuracy.` 
+        : "";
+      
+      const finalPrompt = `${prompt}. Style: ${selectedStyle.label} - ${selectedStyle.desc}${footerInstruction}`;
+      
       if (mode === 'image') {
          const results = await generateViralThumbnails(finalPrompt, onRetry);
          setThumbnails(results);
@@ -94,7 +101,9 @@ const ThumbnailTool: React.FC = () => {
   };
 
   const handleDownloadImage = async (url: string, index: number) => {
-    const watermarked = await addWatermarkToImage(url);
+    // PASS THE CUSTOM FOOTER TEXT DIRECTLY TO THE WATERMARK HANDLER
+    // This ensures ONLY the user's custom text is burned into the final file.
+    const watermarked = await addWatermarkToImage(url, customFooter);
     const link = document.createElement('a');
     link.href = watermarked;
     link.download = `ai-thumbnail-${index + 1}.png`;
@@ -110,7 +119,7 @@ const ThumbnailTool: React.FC = () => {
         </h2>
         <div className="flex flex-col items-center gap-1">
            <p className="text-slate-600 dark:text-slate-400">Generate viral YouTube thumbnails or motion intros instantly.</p>
-           <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">Model: {mode === 'image' ? 'gemini-2.5-flash-image' : 'veo-3.1'}</span>
+           <span className="inline-block px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-mono text-slate-500 dark:text-slate-400">Model: gemini-2.5-flash-image</span>
         </div>
       </div>
 
@@ -135,8 +144,28 @@ const ThumbnailTool: React.FC = () => {
              </div>
           </div>
 
+          {/* New Footer Text Input Box */}
+          <div className="space-y-2">
+             <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                   <AtSign className="w-3.5 h-3.5" /> Branding / Footer Text (Optional)
+                </label>
+                <span className={`text-[10px] font-bold ${customFooter.length > 35 ? 'text-red-500' : 'text-slate-600'}`}>
+                   {customFooter.length}/40
+                </span>
+             </div>
+             <input 
+                type="text" 
+                maxLength={40}
+                value={customFooter} 
+                onChange={(e) => setCustomFooter(e.target.value)} 
+                placeholder="e.g. @yourname or yourwebsite.com" 
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-red-500 transition-all text-sm"
+             />
+          </div>
+
           <div className="flex flex-col md:flex-row gap-4">
-             <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={mode === 'image' ? "Video topic..." : "Motion prompt..."} className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500" onKeyDown={(e) => e.key === 'Enter' && handleGenerate()} />
+             <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={mode === 'image' ? "Main video topic..." : "Motion prompt..."} className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500" onKeyDown={(e) => e.key === 'Enter' && handleGenerate()} />
              <button onClick={handleGenerate} disabled={!prompt || status === 'loading'} className={`${mode === 'image' ? 'bg-red-600 hover:bg-red-700' : 'bg-rose-600 hover:bg-rose-700'} disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold px-8 py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg whitespace-nowrap min-w-[180px]`}>{status === 'loading' ? (<RefreshCw className="animate-spin" />) : (mode === 'image' ? <Zap className="fill-current" /> : <Film className="fill-current" />)}{mode === 'image' ? 'Generate 5 Variants' : 'Generate Video'}</button>
           </div>
           {mode === 'video' && !hasKey && (<div className="flex items-center justify-center gap-2 text-amber-500 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20 cursor-pointer hover:bg-amber-500/20 transition-colors" onClick={handleSelectKey}><Lock className="w-4 h-4" /><span className="text-sm font-medium">Paid API Key required for Video Generation</span></div>)}
@@ -150,8 +179,10 @@ const ThumbnailTool: React.FC = () => {
                   <p className={`${mode === 'image' ? 'text-red-400' : 'text-rose-400'} animate-pulse font-bold`}>{mode === 'image' ? 'Designing viral clickbait...' : 'Rendering motion clip...'}</p>
                   {retryMessage && (
                     <div className="flex items-center justify-center gap-2 text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20 animate-fade-in mx-auto w-fit">
-                      <Clock className="w-3 h-3" />
-                      <span className="text-[10px] font-black uppercase tracking-wider">{retryMessage}</span>
+                      <div className="flex items-center gap-1.5">
+                         <Clock className="w-3 h-3" />
+                         <span className="text-[10px] font-black uppercase tracking-wider">{retryMessage}</span>
+                      </div>
                     </div>
                   )}
                 </div>
