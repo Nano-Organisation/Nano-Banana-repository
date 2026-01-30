@@ -1,9 +1,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Updated to match the specific Vercel environment variable names provided in screenshots
-const supabaseUrl = process.env.NEXT_PUBLIC_STORAGE_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_STORAGE_SUPABASE_ANON_KEY;
+// Prioritize Vite-compatible keys (VITE_...), fall back to Next.js style keys if necessary
+const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_STORAGE_SUPABASE_URL;
+const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_STORAGE_SUPABASE_ANON_KEY;
 
 // Only initialize if keys are present to avoid "supabaseUrl is required" error
 export const supabase = (supabaseUrl && supabaseAnonKey) 
