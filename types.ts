@@ -1,6 +1,7 @@
 
 export enum ToolId {
   Dashboard = 'DASHBOARD',
+  UserProfile = 'USER_PROFILE', // Added for User Dashboard
   ImageEditor = 'IMAGE_EDITOR',
   ImageGenerator = 'IMAGE_GENERATOR',
   VisualQA = 'VISUAL_QA',

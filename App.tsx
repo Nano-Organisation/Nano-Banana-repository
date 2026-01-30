@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types.ts';
 // Fix: Using explicit .tsx extensions in imports to resolve module resolution issues in the browser environment.
 import Layout from './components/Layout.tsx';
 import LoginGate from './components/LoginGate.tsx';
+import UserDashboard from './components/UserDashboard.tsx';
 import ImageEditor from './components/tools/ImageEditor.tsx';
 import ImageGenerator from './components/tools/ImageGenerator.tsx';
 import VisualQA from './components/tools/VisualQA.tsx';
@@ -240,6 +242,7 @@ const App: React.FC = () => {
 
   const renderTool = () => {
     switch (currentTool) {
+      case ToolId.UserProfile: return <UserDashboard />;
       case ToolId.Chat: return <ChatInterface />;
       case ToolId.VideoCaptioner: return <CaptionCreator />;
       case ToolId.NurseryRhymes: return <NurseryRhymesTool />;
@@ -377,7 +380,7 @@ const App: React.FC = () => {
                       <button
                         key={tool.id}
                         onClick={() => (tool as any).externalUrl ? setPendingExternalUrl((tool as any).externalUrl) : setCurrentTool(tool.id)}
-                        className="relative bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 p-5 rounded-2xl text-left transition-all hover:bg-white dark:hover:bg-slate-900 group"
+                        className="relative bg-slate-5 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 p-5 rounded-2xl text-left transition-all hover:bg-white dark:hover:bg-slate-900 group"
                       >
                         {tool.releaseDate && isToolNew(tool.releaseDate) && (
                           <div className="absolute top-2 right-2 bg-amber-500 text-slate-900 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse uppercase tracking-tighter z-20 ring-1 ring-amber-500/20">
@@ -458,6 +461,7 @@ const App: React.FC = () => {
       onBack={currentTool !== ToolId.Dashboard ? () => setCurrentTool(ToolId.Dashboard) : undefined}
       title={currentTool !== ToolId.Dashboard ? TOOLS.find(t => t.id === currentTool)?.title : undefined}
       onGoHome={() => setCurrentTool(ToolId.Dashboard)}
+      onProfileClick={() => setCurrentTool(ToolId.UserProfile)}
     >
       {renderTool()}
       {pendingExternalUrl && (

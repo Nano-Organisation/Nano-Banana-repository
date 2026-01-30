@@ -1,5 +1,6 @@
+
 import React, { ReactNode, useState } from 'react';
-import { Sparkles, ArrowLeft, MessageSquarePlus, Settings, Bug } from 'lucide-react';
+import { Sparkles, ArrowLeft, MessageSquarePlus, Settings, Bug, User } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import ThemeSwitcher from './ThemeSwitcher';
 
@@ -8,9 +9,10 @@ interface LayoutProps {
   onBack?: () => void;
   title?: string;
   onGoHome?: () => void;
+  onProfileClick?: () => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome }) => {
+const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome, onProfileClick }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleReportBug = () => {
@@ -52,6 +54,15 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome }) =>
           <div className="flex items-center gap-3">
              <ThemeSwitcher />
              <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-1"></div>
+             {onProfileClick && (
+               <button 
+                 onClick={onProfileClick}
+                 className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                 title="User Profile"
+               >
+                 <User className="w-5 h-5" />
+               </button>
+             )}
              <button 
                onClick={() => setIsSettingsOpen(true)}
                className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
