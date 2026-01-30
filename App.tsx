@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types.ts';
-// Fix: Explicitly using .tsx extensions for imports to ensure browser module resolution works correctly as per project requirements.
+// Fix: Using explicit .tsx extensions in imports to resolve module resolution issues in the browser environment.
 import Layout from './components/Layout.tsx';
 import LoginGate from './components/LoginGate.tsx';
 import ImageEditor from './components/tools/ImageEditor.tsx';
@@ -369,4 +369,116 @@ const App: React.FC = () => {
                       placeholder="Search utility tools..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl py-3 pl-10 pr-10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-50
+                      className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl py-3 pl-10 pr-10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                   />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                   {filteredTools.map((tool) => (
+                      <button
+                        key={tool.id}
+                        onClick={() => (tool as any).externalUrl ? setPendingExternalUrl((tool as any).externalUrl) : setCurrentTool(tool.id)}
+                        className="relative bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 p-5 rounded-2xl text-left transition-all hover:bg-white dark:hover:bg-slate-900 group"
+                      >
+                        {tool.releaseDate && isToolNew(tool.releaseDate) && (
+                          <div className="absolute top-2 right-2 bg-amber-500 text-slate-900 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse uppercase tracking-tighter z-20 ring-1 ring-amber-500/20">
+                            New
+                          </div>
+                        )}
+                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center mb-4 opacity-80 group-hover:opacity-100`}>
+                           <tool.icon className="w-5 h-5 text-white" />
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">{tool.title}</h4>
+                        <p className="text-[10px] text-slate-500 leading-tight line-clamp-2">{tool.description}</p>
+                      </button>
+                   ))}
+                </div>
+             </div>
+           )}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (showActivationGuide) {
+     return <ActivationGuide onBack={() => setShowActivationGuide(false)} />;
+  }
+  if (isAuthenticated === null) return <div className="min-h-screen bg-slate-950" />;
+  if (isAuthenticated === false) return <LoginGate onLogin={() => setIsAuthenticated(true)} />;
+  if (hasSelectedKey === false) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center space-y-8 animate-fade-in relative">
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-amber-500/10 rounded-full blur-[120px]"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-500/10 rounded-full blur-[120px]"></div>
+        </div>
+        <div className="bg-amber-500 p-8 rounded-[3rem] shadow-2xl shadow-amber-900/30 ring-8 ring-amber-500/10 relative z-10">
+          <Key className="w-16 h-16 text-slate-900" />
+        </div>
+        <div className="max-w-lg space-y-4 relative z-10">
+          <h1 className="text-5xl font-black text-white uppercase tracking-tighter">AI PRO UNLOCK</h1>
+          <p className="text-slate-400 text-sm leading-relaxed font-medium uppercase tracking-widest">
+            License Verified. Phase 2: Compute Connectivity.
+          </p>
+          <p className="text-slate-500 text-xs leading-relaxed max-md mx-auto">
+            To power the suite's high-compute tasks, connect your personal Google Gemini API key.
+          </p>
+        </div>
+        <div className="flex flex-col gap-5 w-full max-w-xs relative z-10">
+          <button 
+            onClick={handleOpenSelectKey}
+            className="bg-white hover:bg-slate-100 text-slate-950 font-black px-10 py-5 rounded-2xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3 text-lg uppercase tracking-widest"
+          >
+            Connect API Key
+          </button>
+          <button 
+            onClick={() => setShowActivationGuide(true)}
+            className="flex items-center justify-center gap-2 text-[10px] font-black text-slate-600 hover:text-amber-500 transition-colors uppercase tracking-[0.2em] mt-4"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            Activation Instructions
+          </button>
+          <div className="space-y-4 pt-4">
+             <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex items-start gap-3 text-left">
+                <CreditCard className="w-5 h-5 text-amber-500 shrink-0" />
+                <div className="space-y-1">
+                   <p className="text-[10px] font-black text-white uppercase">Billing Information</p>
+                   <p className="text-[10px] text-slate-500 leading-tight">Users must select an API key from a paid GCP project to enable Pro features.</p>
+                </div>
+             </div>
+             <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-500 hover:text-amber-400 font-bold uppercase tracking-widest underline underline-offset-8 transition-colors text-center block">
+               Setup Billing & Key Guide
+             </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <Layout 
+      onBack={currentTool !== ToolId.Dashboard ? () => setCurrentTool(ToolId.Dashboard) : undefined}
+      title={currentTool !== ToolId.Dashboard ? TOOLS.find(t => t.id === currentTool)?.title : undefined}
+      onGoHome={() => setCurrentTool(ToolId.Dashboard)}
+    >
+      {renderTool()}
+      {pendingExternalUrl && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 w-full max-sm rounded-2xl shadow-2xl p-6 space-y-6 text-center transform scale-100 transition-all">
+            <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border-slate-500/20">
+              <Shield className="w-8 h-8 text-amber-500" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-white">External Link Warning</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">You are about to leave Digital Gentry AI. <br /> Proceed to <span className="text-amber-400 font-medium">{new URL(pendingExternalUrl).hostname}</span>?</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setPendingExternalUrl(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl transition-colors border border-slate-700">Cancel</button>
+              <button onClick={confirmExternalNavigation} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-amber-900/20">Proceed</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Layout>
+  );
+};
+
+export default App;
