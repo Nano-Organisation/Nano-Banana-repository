@@ -97,10 +97,16 @@ const UserDashboard: React.FC = () => {
             Member ID: <span className="font-mono text-xs opacity-70">{localStorage.getItem('supabase_user_id') || 'Local-Session'}</span>
           </p>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-end gap-3">
            <div className={`px-4 py-2 rounded-xl border font-bold text-sm flex items-center gap-2 ${isAdmin ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>
               <Star className="w-4 h-4" /> {profile?.tier || (isAdmin ? 'Administrator' : 'Free Tier')}
            </div>
+           <button 
+              onClick={() => window.open('https://billing.stripe.com/p/login/example', '_blank')}
+              className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 uppercase tracking-wider transition-colors"
+           >
+              Manage Subscription
+           </button>
         </div>
       </div>
 

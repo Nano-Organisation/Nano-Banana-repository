@@ -153,11 +153,7 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
           </div>
 
           <div className="pt-8 border-t border-slate-800">
-             <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Premium Plan</p>
-                   <h4 className="text-white font-bold">Monthly Access</h4>
-                </div>
+             <div className="flex items-center justify-center">
                 <button 
                   onClick={() => setShowPricing(true)}
                   className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-6 py-3 rounded-xl font-black text-sm transition-all flex items-center gap-2 group shadow-lg shadow-amber-500/20"

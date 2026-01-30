@@ -227,6 +227,14 @@ const App: React.FC = () => {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('nano_access_granted');
+    localStorage.removeItem('is_admin_session');
+    localStorage.removeItem('supabase_user_id');
+    setIsAuthenticated(false);
+    setHasSelectedKey(null);
+  };
+
   const confirmExternalNavigation = () => {
     if (pendingExternalUrl) {
       window.open(pendingExternalUrl, '_blank', 'noopener,noreferrer');
@@ -462,6 +470,7 @@ const App: React.FC = () => {
       title={currentTool !== ToolId.Dashboard ? TOOLS.find(t => t.id === currentTool)?.title : undefined}
       onGoHome={() => setCurrentTool(ToolId.Dashboard)}
       onProfileClick={() => setCurrentTool(ToolId.UserProfile)}
+      onLogout={handleLogout}
     >
       {renderTool()}
       {pendingExternalUrl && (
