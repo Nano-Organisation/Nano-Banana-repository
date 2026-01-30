@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 // Fix: Use explicit .tsx extension to resolve module resolution issues in the browser.
-import App from './app.tsx';
+import App from './App.tsx';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

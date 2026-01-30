@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { X, Check, Star, Zap, Shield } from 'lucide-react';
+import { X, Check, Star, Zap, Shield, Video, Image, MessageSquare } from 'lucide-react';
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -36,7 +36,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="p-6 md:p-10 overflow-y-auto">
+        <div className="p-6 md:p-10 overflow-y-auto custom-scrollbar">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Standard Tier */}
@@ -111,8 +111,52 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
                 Get Pro Access
               </button>
             </div>
-
           </div>
+
+          {/* Credit Usage Guide */}
+          <div className="mt-10 pt-10 border-t border-slate-800">
+            <h4 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6 text-center">Credit Usage Guide</h4>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Video Card */}
+              <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 shrink-0">
+                  <Video className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-white font-bold text-sm">Video Generation</p>
+                  <p className="text-slate-500 text-xs font-mono font-bold">50 Credits</p>
+                </div>
+              </div>
+
+              {/* Image Card */}
+              <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500 shrink-0">
+                  <Image className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-white font-bold text-sm">High-Res Image</p>
+                  <p className="text-slate-500 text-xs font-mono font-bold">5 Credits</p>
+                </div>
+              </div>
+
+              {/* Chat Card */}
+              <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-500 shrink-0">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-white font-bold text-sm">Chat Session</p>
+                  <p className="text-slate-500 text-xs font-mono font-bold">1 Credit</p>
+                </div>
+              </div>
+            </div>
+            
+            <p className="text-center text-slate-600 text-[10px] mt-6 uppercase tracking-wider font-bold">
+              Credits roll over • Calculated based on compute usage
+            </p>
+          </div>
+
         </div>
       </div>
     </div>
