@@ -15,6 +15,42 @@ export const getAiClient = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
+// --- API PROXY HELPER ---
+const API_ENDPOINT = '/api/generate-content';
+const getUserId = () => localStorage.getItem('supabase_user_id');
+
+// Generic Proxy Caller
+const callProxy = async (payload: any): Promise<any> => {
+  const userId = getUserId();
+  const response = await fetch(API_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, ...payload })
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Server Error: ${response.statusText}`);
+  }
+  return await response.json();
+};
+
+// Specific helper for text/image generation
+const generateContentProxy = async (model: string, contents: any, config?: any) => {
+    return callProxy({ model, contents, config });
+};
+
+// Specific helper for video generation
+const generateVideoProxy = async (model: string, prompt: string, config: any, image?: any) => {
+    return callProxy({ model, prompt, config, image });
+};
+
+// Specific helper for Polling via Proxy
+const pollOperationProxy = async (operationName: string) => {
+    return callProxy({ action: 'poll', operationName });
+};
+// ------------------------
+
 class TaskQueue {
   private queue: (() => Promise<void>)[] = [];
   private activeCount = 0;
@@ -74,8 +110,8 @@ export const withRetry = async <T>(
       const status = error.status || error.response?.status || error?.error?.code || (error?.message?.includes('429') ? 429 : null);
       const message = (error?.message || (typeof error === 'string' ? error : JSON.stringify(error)) || "").toLowerCase();
       
-      const isHardError = message.includes('billing') || message.includes('plan') || message.includes('project has no active billing');
-      if (isHardError) throw error;
+      // Handle credit/billing errors from proxy immediately
+      if (message.includes('insufficient credits') || message.includes('billing')) throw error;
 
       const isOverloaded = status === 503 || message.includes('overloaded') || message.includes('503') || message.includes('unavailable');
       const isRateLimit = status === 429 || message.includes('429') || message.includes('resource_exhausted') || message.includes('too many requests');
@@ -101,38 +137,41 @@ export const handleGeminiError = (error: any) => {
   else { try { rawMsg = JSON.stringify(error); } catch (e) { rawMsg = String(error); } }
   const msg = rawMsg.toLowerCase();
   
+  if (msg.includes('insufficient credits')) {
+     throw new Error("CREDIT_ERROR: Insufficient credits. Please upgrade your plan.");
+  }
   if (msg.includes('billing') || msg.includes('plan') || msg.includes('no active billing')) {
-     throw new Error("BILLING_ERROR: Your project has no active billing. Please select a paid GCP project.");
+     throw new Error("BILLING_ERROR: System configuration error. Please check server keys.");
   }
   if (msg.includes('429') || msg.includes('quota') || msg.includes('resource_exhausted')) {
-     throw new Error("QUOTA_ERROR: Gemini API quota exceeded.");
+     throw new Error("QUOTA_ERROR: Usage limit exceeded. Please try again later.");
   }
   if (msg.includes('503') || msg.includes('overloaded')) {
      throw new Error("SERVER_OVERLOAD: AI server is under heavy load.");
   }
   if (msg.includes('requested entity was not found')) {
-     throw new Error("CONNECTION_ERROR: Requested entity was not found. Please refresh your API key.");
+     throw new Error("CONNECTION_ERROR: Model not found or key invalid.");
   }
   throw new Error(rawMsg || "An unexpected error occurred.");
 };
 
 export const generateTextWithGemini = async (prompt: string, systemInstruction?: string, onRetry?: (msg: string) => void): Promise<string> => {
   return standardQueue.run(async () => {
-    const ai = getAiClient();
     try {
-      const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-        config: { systemInstruction, temperature: 0.5 }
-      }), 5, 3000, onRetry);
-      return response.text || "";
+      const response = await withRetry(() => generateContentProxy(
+        'gemini-3-flash-preview',
+        prompt,
+        { systemInstruction, temperature: 0.5 }
+      ), 5, 3000, onRetry);
+      
+      // Handle Proxy JSON object vs SDK object
+      return response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || "";
     } catch (error) { handleGeminiError(error); return ""; }
   });
 };
 
 export const generateImageWithGemini = async (prompt: string, aspectRatio: string = '1:1', referenceImage?: string, onRetry?: (msg: string) => void): Promise<string> => {
   return standardQueue.run(async () => {
-    const ai = getAiClient();
     const finalPrompt = `${prompt}. SPELLING PROTOCOL: Any and all visible text, signs, or labels MUST be spelled with 100% accuracy.`;
     const attemptGeneration = async (includeRefImage: boolean): Promise<string | null> => {
       try {
@@ -143,11 +182,13 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
           parts.push({ inlineData: { mimeType, data: base64Data } });
         }
         parts.push({ text: finalPrompt });
-        const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-          model: 'gemini-2.5-flash-image',
-          contents: { parts },
-          config: { imageConfig: { aspectRatio: aspectRatio as any } }
-        }), 3, 4000, onRetry);
+        
+        const response = await withRetry(() => generateContentProxy(
+          'gemini-2.5-flash-image',
+          { parts },
+          { imageConfig: { aspectRatio: aspectRatio as any } }
+        ), 3, 4000, onRetry);
+
         const imgData = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData)?.inlineData?.data;
         return imgData ? `data:image/png;base64,${imgData}` : null;
       } catch (e) { const msg = (e?.message || "").toLowerCase(); if (msg.includes('429') || msg.includes('quota')) throw e; return null; }
@@ -168,7 +209,6 @@ export const generateProImageWithGemini = async (
   onRetry?: (msg: string) => void
 ): Promise<string> => {
   return videoQueue.run(async () => {
-    const ai = getAiClient();
     try {
       const parts: any[] = [];
       if (referenceImage) {
@@ -178,17 +218,17 @@ export const generateProImageWithGemini = async (
       }
       parts.push({ text: prompt });
 
-      const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-        model: 'gemini-3-pro-image-preview',
-        contents: { parts },
-        config: { 
+      const response = await withRetry(() => generateContentProxy(
+        'gemini-3-pro-image-preview',
+        { parts },
+        { 
           imageConfig: { 
             imageSize: size as any, 
             aspectRatio: aspectRatio as any 
           },
           temperature: 0.4 
         }
-      }), 5, 5000, onRetry);
+      ), 5, 5000, onRetry);
 
       const imagePart = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
       if (!imagePart) throw new Error("No image returned from Pro model.");
@@ -197,36 +237,53 @@ export const generateProImageWithGemini = async (
   });
 };
 
+// UPDATED: Now uses Proxy for generation AND polling
 export const generateVideoWithGemini = async (prompt: string, aspectRatio: string = '16:9', imageBase64?: string | string[], onRetry?: (msg: string) => void): Promise<string> => {
   return videoQueue.run(async () => {
-    const ai = getAiClient();
     const startOp = async () => {
       const config: any = { numberOfVideos: 1, resolution: '720p', aspectRatio: aspectRatio as any };
+      let model = 'veo-3.1-fast-generate-preview';
+      let image: any = undefined;
+
       if (imageBase64) {
         if (Array.isArray(imageBase64)) {
+          // Multi-image not supported in fast-preview, switch to gen-preview
+          model = 'veo-3.1-generate-preview';
           config.referenceImages = imageBase64.slice(0, 3).map(img => ({
             image: { imageBytes: img.split(',')[1], mimeType: img.split(';')[0].split(':')[1] },
             referenceType: VideoGenerationReferenceType.ASSET
           }));
-          return await ai.models.generateVideos({ model: 'veo-3.1-generate-preview', prompt, config });
         } else {
-          return await ai.models.generateVideos({ model: 'veo-3.1-fast-generate-preview', prompt, image: { imageBytes: imageBase64.split(',')[1], mimeType: imageBase64.split(';')[0].split(':')[1] }, config });
+          image = { imageBytes: imageBase64.split(',')[1], mimeType: imageBase64.split(';')[0].split(':')[1] };
         }
       }
-      return await ai.models.generateVideos({ model: 'veo-3.1-fast-generate-preview', prompt, config });
+      // Call Proxy to initiate (Deducts credits)
+      return await generateVideoProxy(model, prompt, config, image);
     };
+
     try {
+      // 1. Start Operation via Proxy
       let operation: any = await withRetry(() => startOp(), 5, 8000, onRetry);
+      
+      // 2. Poll Operation via Proxy
       while (!(operation as any).done) {
         await new Promise(r => setTimeout(r, 12000));
         if (!operation || !(operation as any).name) break;
-        const polledOp = await ai.operations.getVideosOperation({ operation: operation as any });
+        
+        // Use proxy to poll (no auth needed on client)
+        const polledOp = await pollOperationProxy((operation as any).name);
+        
         if (!polledOp) throw new Error("Video tracker lost.");
         operation = polledOp;
       }
+
       if ((operation as any).error) throw new Error((operation as any).error.message);
       const generatedVideos = (operation as any).response?.generatedVideos;
       if (!generatedVideos || generatedVideos.length === 0) throw new Error("Safety Block: Content filtered.");
+      
+      // Return URL with Key (since the fetch happens client side eventually for the blob)
+      // Note: If using Proxy completely, we might hide the key even here, but for now we append it
+      // so the existing components can fetch the blob.
       const link = generatedVideos[0]?.video?.uri;
       return `${link}&key=${getApiKey()}`;
     } catch (error) { handleGeminiError(error); return ""; }
@@ -235,29 +292,26 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
 
 export const generateAdvancedVideo = async (prompt: string, aspectRatio: string = '16:9', imageBase64?: string, onRetry?: (msg: string) => void): Promise<{ uri: string, video: any }> => {
   return videoQueue.run(async () => {
-    const ai = getAiClient();
     const startOp = async () => {
       const config: any = { numberOfVideos: 1, resolution: '720p', aspectRatio: aspectRatio as any };
+      let image: any = undefined;
       if (imageBase64) {
-          return await ai.models.generateVideos({ 
-            model: 'veo-3.1-fast-generate-preview', 
-            prompt, 
-            image: { imageBytes: imageBase64.split(',')[1], mimeType: imageBase64.split(';')[0].split(':')[1] }, 
-            config 
-          });
+          image = { imageBytes: imageBase64.split(',')[1], mimeType: imageBase64.split(';')[0].split(':')[1] };
       }
-      return await ai.models.generateVideos({ model: 'veo-3.1-fast-generate-preview', prompt, config });
+      return await generateVideoProxy('veo-3.1-fast-generate-preview', prompt, config, image);
     };
 
     try {
       let operation: any = await withRetry(() => startOp(), 5, 8000, onRetry);
+      
       while (!(operation as any).done) {
         await new Promise(r => setTimeout(r, 10000));
         if (!operation || !(operation as any).name) break;
-        const polledOp = await ai.operations.getVideosOperation({ operation: operation as any });
+        const polledOp = await pollOperationProxy((operation as any).name);
         if (!polledOp) throw new Error("Video tracker lost.");
         operation = polledOp;
       }
+
       if ((operation as any).error) throw new Error((operation as any).error.message);
       const generatedVideos = (operation as any).response?.generatedVideos;
       if (!generatedVideos || generatedVideos.length === 0) throw new Error("Safety Block: Content filtered.");
@@ -269,6 +323,13 @@ export const generateAdvancedVideo = async (prompt: string, aspectRatio: string 
 };
 
 export const extendVideo = async (prompt: string, previousVideo: any, onRetry?: (msg: string) => void): Promise<{ uri: string, video: any }> => {
+  // Extending technically sends the previous video asset. 
+  // This is complex to proxy if the asset is large/complex.
+  // For now, we will fallback to client-side logic for EXTENSION only, or implement a basic pass-through.
+  // Given the complexity of serializing the `video` object correctly for the proxy without the SDK types on server,
+  // we will leave this specific function utilizing the client key for now, OR try to map it.
+  // Strategy: Let's stick to client-side for Extension for safety, but main generation is proxied.
+  
   return videoQueue.run(async () => {
     const ai = getAiClient();
     const startOp = async () => {
@@ -305,14 +366,15 @@ export const extendVideo = async (prompt: string, previousVideo: any, onRetry?: 
 
 export const editImageWithGemini = async (image: string, prompt: string): Promise<string> => {
   return standardQueue.run(async () => {
-    const ai = getAiClient();
     try {
       const base64Data = image.split(',')[1];
       const mimeType = image.split(';')[0].split(':')[1];
-      const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: { parts: [{ inlineData: { data: base64Data, mimeType }}, { text: prompt }] },
-      }));
+      
+      const response = await withRetry(() => generateContentProxy(
+        'gemini-2.5-flash-image',
+        { parts: [{ inlineData: { data: base64Data, mimeType }}, { text: prompt }] }
+      ));
+
       const imgData = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData)?.inlineData?.data;
       return imgData ? `data:image/png;base64,${imgData}` : "";
     } catch (error) { handleGeminiError(error); return ""; }
@@ -342,15 +404,15 @@ export const generateViralThumbnails = async (topic: string, onRetry?: (msg: str
 
 export const analyzeImageWithGemini = async (image: string, prompt: string): Promise<string> => {
   return standardQueue.run(async () => {
-    const ai = getAiClient();
     try {
       const base64Data = image.split(',')[1];
       const mimeType = image.split(';')[0].split(':')[1];
-      const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: { parts: [{ inlineData: { data: base64Data, mimeType }}, { text: prompt }] },
-      }));
-      return response.text || "";
+      
+      const response = await withRetry(() => generateContentProxy(
+        'gemini-3-flash-preview',
+        { parts: [{ inlineData: { data: base64Data, mimeType }}, { text: prompt }] }
+      ));
+      return response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || "";
     } catch (error) { handleGeminiError(error); return ""; }
   });
 };
@@ -360,6 +422,7 @@ export const generateImagePrompt = async (image: string, platform: string): Prom
 };
 
 export const createChatSession = (systemInstruction?: string): Chat => {
+  // Chat requires stateful connection, keeping client-side for now
   return getAiClient().chats.create({ model: 'gemini-3-flash-preview', config: { systemInstruction } });
 };
 
@@ -369,14 +432,15 @@ export const createThinkingChatSession = (): Chat => {
 
 export const generateSpeechWithGemini = async (text: string, voice: string, speed = 1.0, pitch = 0, speakers?: any[]): Promise<string> => {
   return standardQueue.run(async () => {
-    const ai = getAiClient();
     try {
       const speechConfig = speakers ? { multiSpeakerVoiceConfig: { speakerVoiceConfigs: speakers.map(s => ({ speaker: s.speaker, voiceConfig: { prebuiltVoiceConfig: { voiceName: s.voice }} })) } } : { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } };
-      const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview-tts',
-        contents: { parts: [{ text }] },
-        config: { responseModalities: [Modality.AUDIO], speechConfig }
-      }));
+      
+      const response = await withRetry(() => generateContentProxy(
+        'gemini-2.5-flash-preview-tts',
+        { parts: [{ text }] },
+        { responseModalities: [Modality.AUDIO], speechConfig }
+      ));
+
       const base64Pcm = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
       if (!base64Pcm) return "";
       const pcmBinary = atob(base64Pcm);
@@ -396,13 +460,12 @@ export const generateSpeechWithGemini = async (text: string, voice: string, spee
 
 export const transcribeMediaWithGemini = async (mediaData: string, mimeType: string): Promise<string> => {
   return standardQueue.run(async () => {
-    const ai = getAiClient();
     try {
-      const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: { parts: [{ inlineData: { mimeType, data: mediaData.split(',')[1] } }, { text: "Transcribe verbatim." }] }
-      }));
-      return response.text || "";
+      const response = await withRetry(() => generateContentProxy(
+        'gemini-3-flash-preview',
+        { parts: [{ inlineData: { mimeType, data: mediaData.split(',')[1] } }, { text: "Transcribe verbatim." }] }
+      ));
+      return response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || "";
     } catch (error) { handleGeminiError(error); return ""; }
   });
 };
@@ -413,7 +476,6 @@ export const generateBackgroundMusic = async (title: string, style: string): Pro
 
 const generateStructuredContent = async <T>(prompt: string, schema: Schema, model = 'gemini-3-flash-preview', images?: string | string[]): Promise<T> => {
   return standardQueue.run(async () => {
-    const ai = getAiClient();
     try {
       const parts: any[] = [];
       if (images) {
@@ -423,26 +485,34 @@ const generateStructuredContent = async <T>(prompt: string, schema: Schema, mode
         });
       }
       parts.push({ text: prompt });
-      const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-        model, contents: { parts }, config: { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.2 }
-      }), 5, 2000); 
-      return JSON.parse(response.text || "{}") as T;
+      
+      const response = await withRetry(() => generateContentProxy(
+        model, 
+        { parts }, 
+        { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.2 }
+      ), 5, 2000);
+
+      const text = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      return JSON.parse(text) as T;
     } catch (error) { handleGeminiError(error); return {} as T; }
   });
 };
 
+// ... (Rest of structured content functions like generateStoryScript etc remain same but use generateStructuredContent which uses generateContentProxy)
+// I will include the rest of the file content for completeness.
+
 export const generateStoryScript = async (topic: string, style: string, charDesc?: string): Promise<StorybookData> => {
   return standardQueue.run(async () => {
-      const ai = getAiClient();
       const systemInstruction = `Professional children's book author. Return valid JSON only. Structure: { title, style, characterName, characterDescription, author, dedication, authorBio, backCoverBlurb, propManifest, castingSheet, pages: [{ pageNumber, text, imagePrompt, locationId, environmentDescription, stageDirections, charactersPresent }] }`;
       const prompt = `Story about: ${topic}. Style: ${style}. Character: ${charDesc || 'new'}. Generate 10 substantial pages.`;
       try {
-        const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: { parts: [{ text: prompt }] },
-            config: { systemInstruction, responseMimeType: 'application/json', temperature: 0.7 }
-        }), 3, 5000);
-        let raw = response.text || "{}";
+        const response = await withRetry(() => generateContentProxy(
+          'gemini-3-flash-preview',
+          { parts: [{ text: prompt }] },
+          { systemInstruction, responseMimeType: 'application/json', temperature: 0.7 }
+        ), 3, 5000);
+        
+        let raw = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
         if (raw.startsWith('```json')) raw = raw.replace(/^```json/, '').replace(/```$/, '');
         if (raw.startsWith('```')) raw = raw.replace(/^```/, '').replace(/```$/, '');
         return JSON.parse(raw) as StorybookData;
@@ -511,7 +581,11 @@ export const generateRiddleContent = async (topic: string): Promise<RiddleData> 
 };
 
 export const generateUiCode = async (prompt: string, device: string, style: string, image?: string): Promise<string> => {
-  return generateTextWithGemini(`Generate functional React/Tailwind code for a ${device} ${style} UI based on: ${prompt}.`, undefined);
+  const inputPrompt = `Generate functional React/Tailwind code for a ${device} ${style} UI based on: ${prompt}.`;
+  if (image) {
+     return analyzeImageWithGemini(image, inputPrompt);
+  }
+  return generateTextWithGemini(inputPrompt, undefined);
 };
 
 export const generateAffirmationPlan = async (topic: string, tone: string): Promise<AffirmationPlan> => {
