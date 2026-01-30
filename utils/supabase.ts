@@ -27,7 +27,7 @@ export const createInitialProfile = async (userId: string, email: string) => {
   const { error } = await supabase
     .from('profiles')
     .insert([
-      { id: userId, email: email, credit_balance: 500 }
+      { id: userId, email: email, credit_balance: 0 }
     ]);
   
   return { error };

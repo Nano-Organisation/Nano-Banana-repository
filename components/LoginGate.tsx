@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Lock, ArrowRight, ShieldCheck, AlertCircle, ShoppingCart, Sparkles, CheckCircle, Zap, RefreshCw, Mail, KeyRound, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { supabase, createInitialProfile } from '../utils/supabase';
@@ -9,7 +8,8 @@ interface LoginGateProps {
 }
 
 const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
-  const [mode, setMode] = useState<'license' | 'login' | 'register'>('license');
+  // Default to 'login' view instead of 'license'
+  const [mode, setMode] = useState<'license' | 'login' | 'register'>('login');
   const [accessCode, setAccessCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,6 +19,21 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
   const [shake, setShake] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
+  
+  // Magic Click State for Admin Access
+  const [magicCount, setMagicCount] = useState(0);
+
+  const handleMagicClick = () => {
+    setMagicCount(prev => {
+      const newCount = prev + 1;
+      if (newCount >= 5) {
+        setMode('license');
+        setMagicCount(0); // Reset after triggering
+        return 0;
+      }
+      return newCount;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,8 +65,26 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
         }
       }, 800);
     } else {
+      // 1. Validate Inputs (Empty Fields)
+      if (!email.trim() || !password.trim() || (mode === 'register' && !confirmPassword.trim())) {
+        setError("Please enter your email and password.");
+        setShake(true);
+        setIsValidating(false);
+        setTimeout(() => setShake(false), 500);
+        return;
+      }
+
+      if (mode === 'register' && password !== confirmPassword) {
+        setError("Passwords do not match.");
+        setShake(true);
+        setIsValidating(false);
+        setTimeout(() => setShake(false), 500);
+        return;
+      }
+
+      // 2. Check Database Connection
       if (!supabase) {
-        setError("Cloud Sync Unavailable: Supabase keys missing.");
+        setError("System configuration error.");
         setShake(true);
         setIsValidating(false);
         setTimeout(() => setShake(false), 500);
@@ -60,10 +93,6 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
 
       try {
         if (mode === 'register') {
-          if (password !== confirmPassword) {
-            throw new Error("Passwords do not match.");
-          }
-
           const { data, error: authError } = await supabase.auth.signUp({
             email,
             password,
@@ -94,7 +123,7 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
           }
         }
       } catch (err: any) {
-        setError(err.message || "Authentication failed. Check credentials.");
+        setError(err.message || "Invalid email or password.");
         setShake(true);
         setIsValidating(false);
         setTimeout(() => setShake(false), 500);
@@ -171,8 +200,11 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
           p-8 lg:p-12 flex flex-col items-center justify-center space-y-8 transition-transform duration-100
           ${shake ? 'translate-x-[-4px]' : ''}
         `}>
-          <div className="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center border border-slate-700 shadow-inner group transition-all text-amber-500">
-            <Lock className="w-10 h-10 group-hover:scale-110 transition-transform" />
+          <div 
+            onClick={handleMagicClick}
+            className="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center border border-slate-700 shadow-inner group transition-all text-amber-500 cursor-pointer active:scale-95 select-none"
+          >
+            <Lock className={`w-10 h-10 transition-transform ${magicCount > 0 ? 'scale-90 text-amber-400' : 'group-hover:scale-110'}`} />
           </div>
 
           <div className="text-center space-y-2">
@@ -186,7 +218,7 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
 
           <form onSubmit={handleSubmit} className="w-full max-sm space-y-4">
             {mode === 'license' ? (
-              <div className="relative">
+              <div className="relative animate-fade-in">
                 <input 
                   type="text" 
                   value={accessCode}
@@ -201,7 +233,7 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
                 <Zap className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-800" />
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 animate-fade-in">
                 <div className="relative">
                    <input 
                     type="email" 
@@ -269,28 +301,29 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
           </form>
 
           <div className="flex flex-col items-center gap-4 w-full">
-              {mode === 'license' ? (
-                <div className="grid grid-cols-2 gap-4 w-full">
-                   <button 
-                      onClick={() => { setMode('login'); setError(null); }}
-                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
-                   >
-                      <LogIn className="w-4 h-4" /> Login
-                   </button>
-                   <button 
-                      onClick={() => { setMode('register'); setError(null); }}
-                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
-                   >
-                      <UserPlus className="w-4 h-4" /> Register
-                   </button>
-                </div>
-              ) : (
-                <button 
-                  onClick={() => { setMode('license'); setError(null); }}
-                  className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors"
-                >
-                  Return to License Portal
-                </button>
+              {mode === 'login' && (
+                 <button 
+                    onClick={() => { setMode('register'); setError(null); }}
+                    className="text-slate-400 hover:text-white text-sm font-bold flex items-center gap-2 transition-colors"
+                 >
+                    Don't have an account? <span className="text-amber-500 hover:underline">Register</span>
+                 </button>
+              )}
+              {mode === 'register' && (
+                 <button 
+                    onClick={() => { setMode('login'); setError(null); }}
+                    className="text-slate-400 hover:text-white text-sm font-bold flex items-center gap-2 transition-colors"
+                 >
+                    Already have an account? <span className="text-amber-500 hover:underline">Sign In</span>
+                 </button>
+              )}
+              {mode === 'license' && (
+                 <button 
+                    onClick={() => { setMode('login'); setError(null); }}
+                    className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors flex items-center gap-2"
+                 >
+                    <ArrowRight className="w-3 h-3 rotate-180" /> Back to Login
+                 </button>
               )}
           </div>
 
