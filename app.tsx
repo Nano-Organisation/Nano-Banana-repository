@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types.ts';
 // Fix: Using explicit .tsx extensions in imports to resolve module resolution issues in the browser environment.
 import Layout from './components/Layout.tsx';
 import LoginGate from './components/LoginGate.tsx';
+import UserDashboard from './components/UserDashboard.tsx';
 import ImageEditor from './components/tools/ImageEditor.tsx';
 import ImageGenerator from './components/tools/ImageGenerator.tsx';
 import VisualQA from './components/tools/VisualQA.tsx';
@@ -225,6 +227,14 @@ const App: React.FC = () => {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('nano_access_granted');
+    localStorage.removeItem('is_admin_session');
+    localStorage.removeItem('supabase_user_id');
+    setIsAuthenticated(false);
+    setHasSelectedKey(null);
+  };
+
   const confirmExternalNavigation = () => {
     if (pendingExternalUrl) {
       window.open(pendingExternalUrl, '_blank', 'noopener,noreferrer');
@@ -240,6 +250,7 @@ const App: React.FC = () => {
 
   const renderTool = () => {
     switch (currentTool) {
+      case ToolId.UserProfile: return <UserDashboard />;
       case ToolId.Chat: return <ChatInterface />;
       case ToolId.VideoCaptioner: return <CaptionCreator />;
       case ToolId.NurseryRhymes: return <NurseryRhymesTool />;
@@ -458,6 +469,8 @@ const App: React.FC = () => {
       onBack={currentTool !== ToolId.Dashboard ? () => setCurrentTool(ToolId.Dashboard) : undefined}
       title={currentTool !== ToolId.Dashboard ? TOOLS.find(t => t.id === currentTool)?.title : undefined}
       onGoHome={() => setCurrentTool(ToolId.Dashboard)}
+      onProfileClick={() => setCurrentTool(ToolId.UserProfile)}
+      onLogout={handleLogout}
     >
       {renderTool()}
       {pendingExternalUrl && (

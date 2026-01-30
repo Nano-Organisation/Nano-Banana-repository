@@ -1,6 +1,6 @@
 
 import React, { ReactNode, useState } from 'react';
-import { Sparkles, ArrowLeft, MessageSquarePlus, Settings, Bug, User } from 'lucide-react';
+import { Sparkles, ArrowLeft, MessageSquarePlus, Settings, Bug, User, LogOut } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import ThemeSwitcher from './ThemeSwitcher';
 
@@ -10,9 +10,10 @@ interface LayoutProps {
   title?: string;
   onGoHome?: () => void;
   onProfileClick?: () => void;
+  onLogout?: () => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome, onProfileClick }) => {
+const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome, onProfileClick, onLogout }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleReportBug = () => {
@@ -61,6 +62,15 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome, onPr
                  title="User Profile"
                >
                  <User className="w-5 h-5" />
+               </button>
+             )}
+             {onLogout && (
+               <button 
+                 onClick={onLogout}
+                 className="p-2 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                 title="Sign Out"
+               >
+                 <LogOut className="w-5 h-5" />
                </button>
              )}
              <button 
