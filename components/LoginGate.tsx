@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { Lock, ArrowRight, ShieldCheck, AlertCircle, ShoppingCart, Sparkles, CheckCircle, Zap, RefreshCw, Mail, KeyRound, LogIn, UserPlus } from 'lucide-react';
+import { Lock, ArrowRight, ShieldCheck, AlertCircle, ShoppingCart, Sparkles, CheckCircle, Zap, RefreshCw, Mail, KeyRound, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { supabase, createInitialProfile } from '../utils/supabase';
+import PricingModal from './PricingModal';
 
 interface LoginGateProps {
   onLogin: () => void;
@@ -12,9 +13,12 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
   const [accessCode, setAccessCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shake, setShake] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [showPricing, setShowPricing] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +60,10 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
 
       try {
         if (mode === 'register') {
+          if (password !== confirmPassword) {
+            throw new Error("Passwords do not match.");
+          }
+
           const { data, error: authError } = await supabase.auth.signUp({
             email,
             password,
@@ -151,7 +159,7 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
                    <h4 className="text-white font-bold">Monthly Access</h4>
                 </div>
                 <button 
-                  onClick={() => window.open('https://buy.stripe.com/dRmeVe0jL1mL6qc4sqdIA00', '_blank')}
+                  onClick={() => setShowPricing(true)}
                   className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-6 py-3 rounded-xl font-black text-sm transition-all flex items-center gap-2 group shadow-lg shadow-amber-500/20"
                 >
                   <ShoppingCart className="w-4 h-4" />
@@ -210,14 +218,34 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
                 </div>
                 <div className="relative">
                    <input 
-                    type="password" 
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-4 text-white text-sm focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-4 text-white text-sm focus:outline-none focus:ring-1 focus:ring-sky-500 pr-12"
                   />
-                  <KeyRound className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-800" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-800 hover:text-white transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
+                {mode === 'register' && (
+                  <div className="relative animate-fade-in">
+                     <input 
+                      type={showPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm Password"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-4 text-white text-sm focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-800">
+                        <KeyRound className="w-4 h-4" />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             
@@ -276,6 +304,7 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
           </p>
         </div>
       </div>
+      <PricingModal isOpen={showPricing} onClose={() => setShowPricing(false)} />
     </div>
   );
 };

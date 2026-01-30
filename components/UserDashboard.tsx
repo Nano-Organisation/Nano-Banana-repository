@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { User, CreditCard, Activity, ShieldCheck, Zap, Clock, Coins, Star } from 'lucide-react';
 import { getUserProfile } from '../utils/supabase';
+import PricingModal from './PricingModal';
 
 interface ActivityItem {
   id: string;
@@ -15,6 +16,7 @@ const UserDashboard: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activityLog, setActivityLog] = useState<ActivityItem[]>([]);
+  const [showPricing, setShowPricing] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -140,7 +142,7 @@ const UserDashboard: React.FC = () => {
            <h3 className="text-white font-bold text-lg mb-1">Need more power?</h3>
            <p className="text-indigo-100 text-xs mb-4 opacity-80">Upgrade your plan to unlock higher limits.</p>
            <button 
-             onClick={() => window.open('https://buy.stripe.com/dRmeVe0jL1mL6qc4sqdIA00', '_blank')}
+             onClick={() => setShowPricing(true)}
              className="bg-white text-indigo-900 font-black px-6 py-3 rounded-xl text-xs uppercase tracking-widest hover:bg-indigo-50 transition-colors w-full"
            >
               Get Credits
@@ -179,6 +181,7 @@ const UserDashboard: React.FC = () => {
             )}
          </div>
       </div>
+      <PricingModal isOpen={showPricing} onClose={() => setShowPricing(false)} />
     </div>
   );
 };
