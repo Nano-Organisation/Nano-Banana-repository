@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
-import { Lock, ArrowRight, ShieldCheck, AlertCircle, ShoppingCart, Sparkles, CheckCircle, Zap, RefreshCw, HelpCircle, Mail, KeyRound, LogIn, UserPlus } from 'lucide-react';
-import ActivationGuide from './ActivationGuide';
+import { Lock, ArrowRight, ShieldCheck, AlertCircle, ShoppingCart, Sparkles, CheckCircle, Zap, RefreshCw, Mail, KeyRound, LogIn, UserPlus } from 'lucide-react';
 import { supabase, createInitialProfile } from '../utils/supabase';
 
 interface LoginGateProps {
@@ -16,7 +15,6 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
   const [error, setError] = useState<string | null>(null);
   const [shake, setShake] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
-  const [showGuide, setShowGuide] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,10 +93,6 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
       }
     }
   };
-
-  if (showGuide) {
-    return <ActivationGuide onBack={() => setShowGuide(false)} />;
-  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
@@ -274,14 +268,6 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
                   Return to License Portal
                 </button>
               )}
-
-              <button 
-                onClick={() => setShowGuide(true)}
-                className="flex items-center gap-2 text-[10px] font-black text-slate-600 hover:text-amber-500 transition-colors uppercase tracking-[0.2em]"
-              >
-                <HelpCircle className="w-3.5 h-3.5" />
-                Activation Instructions
-              </button>
           </div>
 
           <p className="text-[10px] text-slate-700 font-bold uppercase tracking-[0.3em] text-center mt-4">
