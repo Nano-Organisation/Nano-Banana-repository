@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Lock, ArrowRight, ShieldCheck, AlertCircle, ShoppingCart, Sparkles, CheckCircle, Zap, RefreshCw, HelpCircle, Mail, KeyRound } from 'lucide-react';
+import { Lock, ArrowRight, ShieldCheck, AlertCircle, ShoppingCart, Sparkles, CheckCircle, Zap, RefreshCw, HelpCircle, Mail, KeyRound, LogIn, UserPlus } from 'lucide-react';
 import ActivationGuide from './ActivationGuide';
 import { supabase, createInitialProfile } from '../utils/supabase';
 
@@ -9,7 +9,7 @@ interface LoginGateProps {
 }
 
 const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'license' | 'login' | 'register'>('license');
   const [accessCode, setAccessCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,7 +23,7 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
     setIsValidating(true);
     setError(null);
 
-    if (mode === 'login') {
+    if (mode === 'license') {
       // PRIMARY ACCESS: Your official list
       const VALID_CODES = [
         "digital-gentry-2025",
@@ -48,9 +48,8 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
         }
       }, 800);
     } else {
-      // STEP B: Surgical Supabase Registration
       if (!supabase) {
-        setError("Cloud Sync Unavailable: Supabase keys missing in this environment.");
+        setError("Cloud Sync Unavailable: Supabase keys missing.");
         setShake(true);
         setIsValidating(false);
         setTimeout(() => setShake(false), 500);
@@ -58,24 +57,38 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
       }
 
       try {
-        const { data, error: authError } = await supabase.auth.signUp({
-          email,
-          password,
-        });
+        if (mode === 'register') {
+          const { data, error: authError } = await supabase.auth.signUp({
+            email,
+            password,
+          });
 
-        if (authError) throw authError;
+          if (authError) throw authError;
 
-        if (data.user) {
-          // Initialize the profile in your new Supabase table
-          const { error: profileError } = await createInitialProfile(data.user.id, email);
-          if (profileError) throw profileError;
+          if (data.user) {
+            const { error: profileError } = await createInitialProfile(data.user.id, email);
+            if (profileError) throw profileError;
 
-          localStorage.setItem('nano_access_granted', 'true');
-          localStorage.setItem('supabase_user_id', data.user.id);
-          onLogin();
+            localStorage.setItem('nano_access_granted', 'true');
+            localStorage.setItem('supabase_user_id', data.user.id);
+            onLogin();
+          }
+        } else if (mode === 'login') {
+          const { data, error: authError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+          if (authError) throw authError;
+
+          if (data.user) {
+            localStorage.setItem('nano_access_granted', 'true');
+            localStorage.setItem('supabase_user_id', data.user.id);
+            onLogin();
+          }
         }
       } catch (err: any) {
-        setError(err.message || "Registration failed. Check connection.");
+        setError(err.message || "Authentication failed. Check credentials.");
         setShake(true);
         setIsValidating(false);
         setTimeout(() => setShake(false), 500);
@@ -166,15 +179,15 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
 
           <div className="text-center space-y-2">
             <h3 className="text-2xl font-black text-white uppercase tracking-tight text-center">
-                {mode === 'login' ? 'License Portal' : 'Register Account'}
+                {mode === 'license' ? 'License Portal' : mode === 'register' ? 'Register Account' : 'Member Login'}
             </h3>
             <p className="text-slate-500 text-sm text-center">
-                {mode === 'login' ? 'Enter your unique access code below.' : 'Create a profile to sync credits across devices.'}
+                {mode === 'license' ? 'Enter your unique access code below.' : mode === 'register' ? 'Create a profile to sync credits.' : 'Welcome back to Digital Gentry.'}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="w-full max-sm space-y-4">
-            {mode === 'login' ? (
+            {mode === 'license' ? (
               <div className="relative">
                 <input 
                   type="text" 
@@ -206,7 +219,7 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
                     type="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Choose Password"
+                    placeholder="Password"
                     className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-4 text-white text-sm focus:outline-none focus:ring-1 focus:ring-sky-500"
                   />
                   <KeyRound className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-800" />
@@ -231,22 +244,36 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
               ) : (
                 <>
                   <ShieldCheck className="w-5 h-5" />
-                  {mode === 'login' ? 'Unlock Suite' : 'Finalize Registration'}
+                  {mode === 'license' ? 'Unlock Suite' : mode === 'register' ? 'Finalize Registration' : 'Sign In'}
                 </>
               )}
             </button>
           </form>
 
-          <div className="flex flex-col items-center gap-4">
-              <button 
-                onClick={() => {
-                   setMode(mode === 'login' ? 'register' : 'login');
-                   setError(null);
-                }}
-                className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors"
-              >
-                {mode === 'login' ? "Want a persistent account? Register here" : "Return to License Portal"}
-              </button>
+          <div className="flex flex-col items-center gap-4 w-full">
+              {mode === 'license' ? (
+                <div className="grid grid-cols-2 gap-4 w-full">
+                   <button 
+                      onClick={() => { setMode('login'); setError(null); }}
+                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
+                   >
+                      <LogIn className="w-4 h-4" /> Login
+                   </button>
+                   <button 
+                      onClick={() => { setMode('register'); setError(null); }}
+                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
+                   >
+                      <UserPlus className="w-4 h-4" /> Register
+                   </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => { setMode('license'); setError(null); }}
+                  className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors"
+                >
+                  Return to License Portal
+                </button>
+              )}
 
               <button 
                 onClick={() => setShowGuide(true)}
