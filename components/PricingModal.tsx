@@ -10,11 +10,12 @@ interface PricingModalProps {
 const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
-  const STRIPE_LINK = 'https://buy.stripe.com/dRmeVe0jL1mL6qc4sqdIA00';
-
   const handleSelect = (tier: string) => {
-    // Currently using the same link for both, as requested.
-    window.open(STRIPE_LINK, '_blank');
+    if (tier === 'standard') {
+      window.open('https://buy.stripe.com/eVqbJ2feFd5tg0M7ECdIA01', '_blank');
+    } else {
+      window.open('https://buy.stripe.com/14A14ofeFd5t01Ogb8dIA02', '_blank');
+    }
     onClose();
   };
 
