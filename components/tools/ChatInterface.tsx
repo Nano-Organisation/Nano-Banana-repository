@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageSquare, User, Bot, RefreshCw, Mic, MicOff, ThumbsUp, ThumbsDown, Trash2, BrainCircuit, Sparkles } from 'lucide-react';
-import { Chat } from "@google/genai";
-import { createChatSession, createThinkingChatSession } from '../../services/geminiService';
+import { sendChatToProxy } from '../../services/geminiService';
 import { ChatMessage, LoadingState } from '../../types';
 
 const ChatInterface: React.FC = () => {
@@ -14,23 +13,15 @@ const ChatInterface: React.FC = () => {
   // Thinking Mode State
   const [isThinkingMode, setIsThinkingMode] = useState(false);
   
-  const chatSessionRef = useRef<Chat | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
   // Initialize Session (Standard or Thinking)
-  const initSession = (thinking: boolean) => {
-    if (thinking) {
-       chatSessionRef.current = createThinkingChatSession();
-    } else {
-       chatSessionRef.current = createChatSession();
-    }
-  };
+  // Note: We no longer create a client-side "Chat" object because that bypasses billing.
+  // We manage history locally and send it to the proxy.
 
-  // Effect 1: Handle Session Switching (Thinking Mode vs Standard)
   useEffect(() => {
-    initSession(isThinkingMode);
-    
+    // Reset messages when switching modes to ensure clean state
     setMessages([
       { 
         role: 'model', 
@@ -88,24 +79,36 @@ const ChatInterface: React.FC = () => {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!inputValue.trim() || !chatSessionRef.current || status === 'loading') return;
+    if (!inputValue.trim() || status === 'loading') return;
 
     const userText = inputValue.trim();
     setInputValue('');
     setStatus('loading');
 
     // Optimistically add user message
-    setMessages(prev => [...prev, { role: 'user', text: userText }]);
+    const newMessages = [...messages, { role: 'user', text: userText }];
+    setMessages(newMessages);
 
     try {
-      const response = await chatSessionRef.current.sendMessage({ message: userText });
-      const modelText = response.text || "I didn't have a response for that.";
+      // Convert internal ChatMessage format to Gemini API format
+      const historyForApi = newMessages.map(m => ({
+        role: m.role,
+        parts: [{ text: m.text }]
+      }));
+
+      // Use the PROXY helper to ensure billing is triggered
+      const model = isThinkingMode ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+      const systemPrompt = isThinkingMode ? 'You are a deep reasoning AI.' : 'You are a helpful assistant.';
+      
+      const responseText = await sendChatToProxy(historyForApi as any, model, systemPrompt);
+      const modelText = responseText || "I didn't have a response for that.";
       
       setMessages(prev => [...prev, { role: 'model', text: modelText, isThinking: isThinkingMode }]);
       setStatus('idle');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chat Error:", error);
-      setMessages(prev => [...prev, { role: 'model', text: "Sorry, I encountered an error. Please try again." }]);
+      const msg = error.message || "Sorry, I encountered an error. Please try again.";
+      setMessages(prev => [...prev, { role: 'model', text: `Error: ${msg}` }]);
       setStatus('error');
     }
   };
@@ -118,7 +121,6 @@ const ChatInterface: React.FC = () => {
   };
 
   const handleClear = () => {
-    initSession(isThinkingMode);
     setMessages([{ 
       role: 'model', 
       text: isThinkingMode 

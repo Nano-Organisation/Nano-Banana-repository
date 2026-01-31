@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Bot, Mic, MicOff, Image as ImageIcon, Send, RefreshCw, Settings, Trash2, User, Camera, X } from 'lucide-react';
-import { Chat } from "@google/genai";
-import { createChatSession } from '../../services/geminiService';
+import { sendChatToProxy } from '../../services/geminiService'; // Updated import
 import { ChatMessage, LoadingState } from '../../types';
 import { runFileSecurityChecks } from '../../utils/security';
 
@@ -29,7 +28,6 @@ const AssistantCreator: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [inputImage, setInputImage] = useState<string | null>(null);
   
-  const chatSessionRef = useRef<Chat | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,18 +63,6 @@ const AssistantCreator: React.FC = () => {
   const handleCreate = () => {
     if (!config.name || !config.instructions) return;
     
-    const systemPrompt = `
-      You are a custom AI assistant named "${config.name}".
-      ROLE: ${config.role}
-      TONE: ${config.tone}
-      
-      SPECIFIC INSTRUCTIONS:
-      ${config.instructions}
-      
-      Always stay in character.
-    `;
-
-    chatSessionRef.current = createChatSession(systemPrompt);
     setMessages([{ role: 'model', text: `Hello! I am ${config.name}. How can I assist you today?` }]);
     setMode('chat');
   };
@@ -106,7 +92,7 @@ const AssistantCreator: React.FC = () => {
   };
 
   const handleSend = async () => {
-    if ((!inputValue.trim() && !inputImage) || !chatSessionRef.current || status === 'loading') return;
+    if ((!inputValue.trim() && !inputImage) || status === 'loading') return;
 
     const userText = inputValue.trim();
     const currentImage = inputImage; 
@@ -115,31 +101,53 @@ const AssistantCreator: React.FC = () => {
     setInputImage(null);
     setStatus('loading');
 
-    setMessages(prev => [...prev, { 
+    // Optimistically update UI
+    const newMessages = [...messages, { 
       role: 'user', 
       text: userText, 
       image: currentImage || undefined 
-    }]);
+    }];
+    setMessages(newMessages);
 
     try {
-      let response;
-      if (currentImage) {
-        const base64Data = currentImage.split(',')[1];
-        const parts = [
-           { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
-           { text: userText || "Analyze this image." }
-        ];
-        response = await chatSessionRef.current.sendMessage({ message: parts as any });
-      } else {
-        response = await chatSessionRef.current.sendMessage({ message: userText });
-      }
+      // Build history for API
+      // Cast to any to bypass potential text-only type restriction on sendChatToProxy if it exists,
+      // as the underlying proxy handles multimodal content correctly.
+      const history = newMessages.map(m => {
+          const parts: any[] = [];
+          if (m.image) {
+               const base64Data = m.image.split(',')[1];
+               const mimeType = m.image.split(';')[0].split(':')[1];
+               parts.push({ inlineData: { mimeType, data: base64Data } });
+          }
+          if (m.text) {
+              parts.push({ text: m.text });
+          } else if (m.image && !m.text) {
+              parts.push({ text: "Analyze this image." });
+          }
+          return { role: m.role, parts };
+      });
 
-      const modelText = response.text || "I didn't have a response for that.";
+      const systemPrompt = `
+        You are a custom AI assistant named "${config.name}".
+        ROLE: ${config.role}
+        TONE: ${config.tone}
+        
+        SPECIFIC INSTRUCTIONS:
+        ${config.instructions}
+        
+        Always stay in character.
+      `;
+
+      const responseText = await sendChatToProxy(history as any, 'gemini-3-flash-preview', systemPrompt);
+      const modelText = responseText || "I didn't have a response for that.";
+      
       setMessages(prev => [...prev, { role: 'model', text: modelText }]);
       setStatus('idle');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Assistant Chat Error:", error);
-      setMessages(prev => [...prev, { role: 'model', text: "Sorry, I encountered an error." }]);
+      const msg = error.message || "Sorry, I encountered an error.";
+      setMessages(prev => [...prev, { role: 'model', text: `Error: ${msg}` }]);
       setStatus('error');
     }
   };
@@ -291,7 +299,6 @@ const AssistantCreator: React.FC = () => {
             <button 
               onClick={() => {
                 setMessages([]);
-                chatSessionRef.current = null;
                 handleCreate(); 
               }}
               className="p-3 text-slate-400 hover:text-white hover:bg-slate-900 rounded-xl transition-colors mb-[2px]"

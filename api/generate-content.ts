@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 
@@ -33,6 +32,17 @@ export default async function handler(req: Request) {
     const body = await req.json();
     const { userId, model, action, operationName, ...rest } = body;
 
+    // CRITICAL: Strict User ID Enforcement
+    // If we don't have a userId, we cannot bill. 
+    // In a real app, you might decode a JWT here. 
+    // For this implementation, we require the ID string to be present.
+    if (!userId) {
+       return new Response(JSON.stringify({ error: "Unauthorized: Missing User ID. Please login or reset your session." }), { 
+         status: 401,
+         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+       });
+    }
+
     if (!process.env.API_KEY) {
        throw new Error("Server API_KEY configuration missing");
     }
@@ -58,7 +68,7 @@ export default async function handler(req: Request) {
     if (model?.includes('veo') || model?.includes('video')) cost = 50;
 
     // 2. Validate Credits
-    if (userId && supabaseUrl && supabaseKey) {
+    if (supabaseUrl && supabaseKey) {
       const supabase = createClient(supabaseUrl, supabaseKey);
       
       const { data: profile, error: profileError } = await supabase
@@ -67,26 +77,31 @@ export default async function handler(req: Request) {
         .eq('id', userId)
         .single();
 
-      if (!profileError && profile) {
-        // Admin Bypass (Optional: if you have an admin flag in DB, check it here. 
-        // For now, we assume all users pay credits)
-        
-        if (profile.credit_balance < cost) {
-           return new Response(JSON.stringify({ error: `Insufficient credits. This task requires ${cost} credits.` }), { 
-             status: 402,
+      if (profileError || !profile) {
+         // Fail securely if we can't verify credits
+         return new Response(JSON.stringify({ error: "Authentication Error: User profile not found." }), { 
+             status: 403,
              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-           });
-        }
+         });
+      }
 
-        // Deduct Credits
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ credit_balance: profile.credit_balance - cost })
-          .eq('id', userId);
-          
-        if (updateError) {
-            console.error("Failed to deduct credits:", updateError);
-        }
+      if (profile.credit_balance < cost) {
+          return new Response(JSON.stringify({ error: `Insufficient credits. This task requires ${cost} credits.` }), { 
+            status: 402,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+      }
+
+      // Deduct Credits
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ credit_balance: profile.credit_balance - cost })
+        .eq('id', userId);
+        
+      if (updateError) {
+          console.error("Failed to deduct credits:", updateError);
+          // Optional: Return error to prevent free usage on DB fail? 
+          // For now, log it. Strict mode would be `throw updateError`.
       }
     }
 
@@ -97,10 +112,12 @@ export default async function handler(req: Request) {
         // Video Generation
         // Pass 'prompt', 'config', etc. directly from 'rest'
         // The Service sends: { prompt, config, image?, ... } inside 'rest'
-        response = await ai.models.generateVideos({
+        const videoOp = await ai.models.generateVideos({
             model,
             ...rest
         });
+        // Explicitly map the operation name to a plain object for JSON serialization
+        response = { name: videoOp.name };
     } else {
         // Text/Image Generation
         // Service sends: { contents, config } inside 'rest'
@@ -108,6 +125,9 @@ export default async function handler(req: Request) {
             model,
             ...rest
         });
+        
+        // Fix: Explicitly return the name if it's an operation (for long running tasks that aren't VEO)
+        // However, standard generateContent returns the result immediately.
     }
 
     return new Response(JSON.stringify(response), {

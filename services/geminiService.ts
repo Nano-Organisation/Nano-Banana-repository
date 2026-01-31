@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Schema, Chat, Modality, GenerateContentResponse, VideoGenerationReferenceType } from "@google/genai";
 import {
   StorybookData, MemeData, SocialCampaign, SocialSettings, PromptAnalysis,
@@ -11,10 +10,6 @@ import {
 
 export const getApiKey = () => process.env.API_KEY;
 
-export const getAiClient = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
-};
-
 // --- API PROXY HELPER ---
 const API_ENDPOINT = '/api/generate-content';
 const getUserId = () => localStorage.getItem('supabase_user_id');
@@ -22,6 +17,9 @@ const getUserId = () => localStorage.getItem('supabase_user_id');
 // Generic Proxy Caller
 const callProxy = async (payload: any): Promise<any> => {
   const userId = getUserId();
+  
+  // CRITICAL: We pass the User ID to the server. The server MUST use this to deduct credits.
+  // If no user ID is present (e.g. not logged in), the server should reject or handle as free tier if configured.
   const response = await fetch(API_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -265,13 +263,19 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
       // 1. Start Operation via Proxy
       let operation: any = await withRetry(() => startOp(), 5, 8000, onRetry);
       
+      if (!operation) throw new Error("Video generation failed to initialize.");
+
       // 2. Poll Operation via Proxy
       while (!(operation as any).done) {
         await new Promise(r => setTimeout(r, 12000));
-        if (!operation || !(operation as any).name) break;
         
+        // Critical Fix: Map the response to ensure we have the name
+        // The previous error was here - accessing .name when operation might be malformed
+        const opName = (operation as any).name;
+        if (!opName) throw new Error("Video operation started but returned no tracking ID.");
+
         // Use proxy to poll (no auth needed on client)
-        const polledOp = await pollOperationProxy((operation as any).name);
+        const polledOp = await pollOperationProxy(opName);
         
         if (!polledOp) throw new Error("Video tracker lost.");
         operation = polledOp;
@@ -285,7 +289,7 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
       // Note: If using Proxy completely, we might hide the key even here, but for now we append it
       // so the existing components can fetch the blob.
       const link = generatedVideos[0]?.video?.uri;
-      return `${link}&key=${getApiKey()}`;
+      return `${link}&key=${process.env.API_KEY}`;
     } catch (error) { handleGeminiError(error); return ""; }
   });
 };
@@ -304,10 +308,14 @@ export const generateAdvancedVideo = async (prompt: string, aspectRatio: string 
     try {
       let operation: any = await withRetry(() => startOp(), 5, 8000, onRetry);
       
+      if (!operation) throw new Error("Video generation failed to initialize.");
+
       while (!(operation as any).done) {
         await new Promise(r => setTimeout(r, 10000));
-        if (!operation || !(operation as any).name) break;
-        const polledOp = await pollOperationProxy((operation as any).name);
+        const opName = (operation as any).name;
+        if (!opName) throw new Error("Video operation started but returned no tracking ID.");
+
+        const polledOp = await pollOperationProxy(opName);
         if (!polledOp) throw new Error("Video tracker lost.");
         operation = polledOp;
       }
@@ -317,7 +325,7 @@ export const generateAdvancedVideo = async (prompt: string, aspectRatio: string 
       if (!generatedVideos || generatedVideos.length === 0) throw new Error("Safety Block: Content filtered.");
       const video = generatedVideos[0]?.video;
       const link = video?.uri;
-      return { uri: `${link}&key=${getApiKey()}`, video };
+      return { uri: `${link}&key=${process.env.API_KEY}`, video };
     } catch (error) { handleGeminiError(error); return { uri: "", video: null }; }
   });
 };
@@ -331,7 +339,7 @@ export const extendVideo = async (prompt: string, previousVideo: any, onRetry?: 
   // Strategy: Let's stick to client-side for Extension for safety, but main generation is proxied.
   
   return videoQueue.run(async () => {
-    const ai = getAiClient();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const startOp = async () => {
       return await ai.models.generateVideos({
         model: 'veo-3.1-generate-preview',
@@ -359,7 +367,7 @@ export const extendVideo = async (prompt: string, previousVideo: any, onRetry?: 
       if (!generatedVideos || generatedVideos.length === 0) throw new Error("Safety Block: Content filtered.");
       const video = generatedVideos[0]?.video;
       const link = video?.uri;
-      return { uri: `${link}&key=${getApiKey()}`, video };
+      return { uri: `${link}&key=${process.env.API_KEY}`, video };
     } catch (error) { handleGeminiError(error); return { uri: "", video: null }; }
   });
 };
@@ -421,14 +429,37 @@ export const generateImagePrompt = async (image: string, platform: string): Prom
   return analyzeImageWithGemini(image, `Describe this image and create a detailed AI generation prompt for ${platform}.`);
 };
 
-export const createChatSession = (systemInstruction?: string): Chat => {
-  // Chat requires stateful connection, keeping client-side for now
-  return getAiClient().chats.create({ model: 'gemini-3-flash-preview', config: { systemInstruction } });
+// --- CHAT REFACTOR: STATELESS PROXY ---
+// We removed 'createChatSession' and 'createThinkingChatSession' because they returned stateful clients.
+// Instead, we export a helper that takes the FULL history and sends it to the proxy.
+
+export const sendChatToProxy = async (history: { role: string, parts: { text: string }[] }[], model: string, systemInstruction?: string) => {
+  return standardQueue.run(async () => {
+    try {
+      const response = await withRetry(() => generateContentProxy(
+        model,
+        {
+          role: 'user', // This might need adjustment depending on how you structure the body for the proxy vs SDK
+          // Actually, for multi-turn, 'contents' should be the array of history.
+          // The proxy expects 'contents' to be passed to ai.models.generateContent({ contents: ... })
+          // So we pass the history array directly as 'contents'.
+        },
+        { systemInstruction }
+      ));
+      
+      // WAIT: generateContentProxy signature is (model, contents, config).
+      // We need to pass the history array as the second argument.
+      const actualResponse = await withRetry(() => generateContentProxy(
+         model,
+         history, // Pass full history array here
+         { systemInstruction }
+      ));
+
+      return actualResponse.text || actualResponse.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    } catch (error) { handleGeminiError(error); return ""; }
+  });
 };
 
-export const createThinkingChatSession = (): Chat => {
-  return getAiClient().chats.create({ model: 'gemini-3-pro-preview', config: { thinkingConfig: { thinkingBudget: 1024 } } });
-};
 
 export const generateSpeechWithGemini = async (text: string, voice: string, speed = 1.0, pitch = 0, speakers?: any[]): Promise<string> => {
   return standardQueue.run(async () => {

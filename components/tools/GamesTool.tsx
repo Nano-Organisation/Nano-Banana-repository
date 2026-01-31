@@ -5,9 +5,8 @@ import {
   RefreshCcw, Smile, BookOpen, Clock, Heart, Trophy, Play, 
   CaseUpper, CheckCircle, XCircle, UserCheck, Search, Lightbulb
 } from 'lucide-react';
-import { Chat } from "@google/genai";
 import { 
-  createChatSession, 
+  sendChatToProxy, 
   generateEmojiPuzzle, 
   generateWordPuzzle,
   generateTwoTruthsPuzzle,
@@ -99,8 +98,6 @@ const GAMES: GameMode[] = [
     initialMessage: "I possess no voice, yet I speak to all. I have leaves, but I am not a tree. What am I? (Type your answer!)"
   }
 ];
-
-// ... (Sub-components EmojiChallenge, WordChallenge, TwoTruthsChallenge, RiddleChallenge remain unchanged, they will be updated in the full file content if I were to output it all, but for brevity I will focus on the GamesTool export and main render which contains "Nano Games" text)
 
 // --- Emoji Challenge Sub-Component ---
 const EmojiChallenge: React.FC<{ onExit: () => void }> = ({ onExit }) => {
@@ -669,7 +666,6 @@ const GamesTool: React.FC = () => {
   const [status, setStatus] = useState<LoadingState>('idle');
   const [subMode, setSubMode] = useState<'chat' | 'challenge'>('chat'); 
   
-  const chatSessionRef = useRef<Chat | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -680,28 +676,32 @@ const GamesTool: React.FC = () => {
     setActiveGame(game);
     setSubMode('chat'); // Reset submode
     setMessages([{ role: 'model', text: game.initialMessage }]);
-    chatSessionRef.current = createChatSession(game.systemPrompt);
   };
 
   const exitGame = () => {
     setActiveGame(null);
     setMessages([]);
-    chatSessionRef.current = null;
     setSubMode('chat');
   };
 
   const handleSend = async () => {
-    if (!inputValue.trim() || !chatSessionRef.current || status === 'loading') return;
+    if (!inputValue.trim() || !activeGame || status === 'loading') return;
 
     const userText = inputValue.trim();
     setInputValue('');
     setStatus('loading');
 
-    setMessages(prev => [...prev, { role: 'user', text: userText }]);
+    const newMessages = [...messages, { role: 'user', text: userText }];
+    setMessages(newMessages);
 
     try {
-      const response = await chatSessionRef.current.sendMessage({ message: userText });
-      const modelText = response.text || "The game master is silent...";
+      const history = newMessages.map(m => ({
+        role: m.role,
+        parts: [{ text: m.text }]
+      }));
+
+      const responseText = await sendChatToProxy(history as any, 'gemini-3-flash-preview', activeGame.systemPrompt);
+      const modelText = responseText || "The game master is silent...";
       
       setMessages(prev => [...prev, { role: 'model', text: modelText }]);
       setStatus('idle');
