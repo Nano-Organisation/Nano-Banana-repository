@@ -34,9 +34,6 @@ export default async function handler(req: Request) {
     const { userId, model, action, operationName, ...rest } = body;
 
     // CRITICAL: Strict User ID Enforcement
-    // If we don't have a userId, we cannot bill. 
-    // In a real app, you might decode a JWT here. 
-    // For this implementation, we require the ID string to be present.
     if (!userId) {
        return new Response(JSON.stringify({ error: "Unauthorized: Missing User ID. Please login or reset your session." }), { 
          status: 401,
@@ -52,8 +49,6 @@ export default async function handler(req: Request) {
 
     // --- HANDLE POLLING (No credit cost) ---
     if (action === 'poll' && operationName) {
-        // operationName is a string like "projects/.../operations/..."
-        // The SDK expects { name: string }
         const operation = await ai.operations.getVideosOperation({ name: operationName });
         return new Response(JSON.stringify(operation), {
             status: 200,
@@ -79,7 +74,6 @@ export default async function handler(req: Request) {
         .single();
 
       if (profileError || !profile) {
-         // Fail securely if we can't verify credits
          return new Response(JSON.stringify({ error: "Authentication Error: User profile not found." }), { 
              status: 403,
              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -101,8 +95,6 @@ export default async function handler(req: Request) {
         
       if (updateError) {
           console.error("Failed to deduct credits:", updateError);
-          // Optional: Return error to prevent free usage on DB fail? 
-          // For now, log it. Strict mode would be `throw updateError`.
       }
     }
 
@@ -111,24 +103,30 @@ export default async function handler(req: Request) {
 
     if (model?.includes('veo')) {
         // Video Generation
-        // Pass 'prompt', 'config', etc. directly from 'rest'
-        // The Service sends: { prompt, config, image?, ... } inside 'rest'
-        const videoOp = await ai.models.generateVideos({
-            model,
-            ...rest
-        });
-        // Explicitly map the operation name to a plain object for JSON serialization
-        response = { name: videoOp.name };
+        let videoOp;
+        try {
+            videoOp = await ai.models.generateVideos({
+                model,
+                ...rest
+            });
+        } catch (sdkError: any) {
+            console.error("Google GenAI SDK Error:", sdkError);
+            throw new Error(`SDK Execution Failed: ${sdkError.message}`);
+        }
+        
+        // Defensive check: Ensure videoOp exists
+        if (!videoOp) {
+            throw new Error("Video generation request failed to return an operation object.");
+        }
+        
+        // Use optional chaining (?.) to prevent 'reading name of undefined' crash
+        response = { name: videoOp?.name };
     } else {
         // Text/Image Generation
-        // Service sends: { contents, config } inside 'rest'
         response = await ai.models.generateContent({
             model,
             ...rest
         });
-        
-        // Fix: Explicitly return the name if it's an operation (for long running tasks that aren't VEO)
-        // However, standard generateContent returns the result immediately.
     }
 
     return new Response(JSON.stringify(response), {
