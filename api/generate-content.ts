@@ -7,7 +7,8 @@ export const config = {
 
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_STORAGE_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+// Fix: Added STORAGE_SUPABASE_SERVICE_ROLE_KEY to match the specific Vercel environment variable name provided in the screenshot
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.STORAGE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 export default async function handler(req: Request) {
   const corsHeaders = {
