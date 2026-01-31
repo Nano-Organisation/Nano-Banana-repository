@@ -1,8 +1,8 @@
-
 import React, { ReactNode, useState } from 'react';
-import { Sparkles, ArrowLeft, MessageSquarePlus, Settings, Bug, User, LogOut } from 'lucide-react';
+import { Sparkles, ArrowLeft, MessageSquarePlus, Bug, User, LogOut, CreditCard } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import ThemeSwitcher from './ThemeSwitcher';
+import PricingModal from './PricingModal';
 
 interface LayoutProps {
   children: ReactNode;
@@ -15,6 +15,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome, onProfileClick, onLogout }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
 
   const handleReportBug = () => {
     window.location.href = "mailto:contact-us@thedigitalgentry.co.uk?subject=AI Suite: Bug Report";
@@ -73,16 +74,13 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome, onPr
                  <LogOut className="w-5 h-5" />
                </button>
              )}
-             <button 
-               onClick={() => setIsSettingsOpen(true)}
-               className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
-               title="Settings & API Key"
+             <button
+               onClick={() => setIsPricingOpen(true)}
+               className="ml-2 flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-900 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-lg shadow-amber-500/20"
              >
-               <Settings className="w-5 h-5" />
+               <CreditCard className="w-3 h-3" />
+               Buy Credits
              </button>
-             <div className="hidden sm:block text-slate-400 dark:text-slate-500 text-sm font-medium border-l border-slate-200 dark:border-slate-800 pl-4 ml-2">
-               Powered by Gemini 3
-             </div>
           </div>
         </div>
       </header>
@@ -116,6 +114,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome, onPr
       </footer>
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
     </div>
   );
 };

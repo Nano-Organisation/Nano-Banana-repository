@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types.ts';
 // Fix: Using explicit .tsx extensions in imports to resolve module resolution issues in the browser environment.
@@ -105,60 +104,60 @@ const SHADOW_COLORS: Record<string, string> = {
 
 const TOOLS = [
   { id: ToolId.Chat, title: "AI Chat", description: "Conversational AI assistant for general queries.", icon: MessageSquare, color: "green", gradient: "from-green-500 to-emerald-600" },
-  { id: ToolId.VideoCaptioner, title: "AI Captions", description: "Auto-generate viral timed captions with emojis and animations.", icon: LucideType, color: "blue", gradient: "from-blue-500 to-indigo-600" },
-  { id: ToolId.NurseryRhymes, title: "AI Nursery Rhymes", description: "Visualize classic nursery rhymes with beautiful AI art.", icon: Music, color: "pink", gradient: "from-pink-400 to-rose-500" },
-  { id: ToolId.StyleEngine, title: "AI Style Forge", description: "Create, name, and reuse your own visual recipes for consistent art.", icon: FlaskConical, color: "indigo", gradient: "from-indigo-600 to-violet-700" },
-  { id: ToolId.ImagesToMovie, title: "AI Images to movie", description: "Turn a collection of photos into a cinematic movie sequence.", icon: Clapperboard, color: "amber", gradient: "from-amber-400 to-orange-600" },
-  { id: ToolId.BabyDebates, title: "AI Baby Debates", description: "Generate talking baby videos of famous people with scripts.", icon: Users, color: "sky", gradient: "from-sky-400 to-blue-600" },
-  { id: ToolId.BabyVisionTransformer, title: "AI Baby Transformer", description: "Turn YouTube Shorts characters into baby versions.", icon: Stars, color: "pink", gradient: "from-pink-500 to-rose-600" },
-  { id: ToolId.ComicStrip, title: "AI Comic Strip", description: "Turn photos into 4-panel comic narratives.", icon: Grid, color: "yellow", gradient: "from-yellow-500 to-orange-500" },
-  { id: ToolId.AIMimicry, title: "AI Mimicry", description: "Intricate video mimicry with hallucination modes.", icon: CopyIcon, color: "fuchsia", gradient: "from-fuchsia-600 to-purple-700" },
-  { id: ToolId.CalendarCreator, title: "AI Calendar", description: "Design custom calendars with unique themes like Claymation.", icon: Calendar, color: "indigo", gradient: "from-indigo-500 to-blue-600" },
-  { id: ToolId.LinkedInCarousel, title: "AI Carousel", description: "Create viral LinkedIn carousels from any topic.", icon: GalleryHorizontal, color: "blue", gradient: "from-blue-600 to-sky-600" },
-  { id: ToolId.DesignCritic, title: "AI Design Critic", description: "Get brutal or constructive feedback on your UI/UX.", icon: AlertCircle, color: "red", gradient: "from-red-500 to-rose-600" },
-  { id: ToolId.AI360, title: "AI 360", description: "3D-GEN Orchestrator for structured 3D prompts.", icon: Box, color: "blue", gradient: "from-blue-600 to-indigo-700" },
-  { id: ToolId.AetherEdit, title: "AI AetherEdit", description: "AI-Powered Video & Sound Editor with real-time effects.", icon: Clapperboard, color: "cyan", gradient: "from-cyan-500 to-blue-600" },
-  { id: ToolId.Learner, title: "AI Learner", description: "Summarize papers and turn them into podcasts.", icon: BookOpen, color: "emerald", gradient: "from-emerald-500 to-green-600" },
-  { id: ToolId.CommercialReview, title: "AI Commercial", description: "Analyze research papers for market viability.", icon: DollarSign, color: "blue", gradient: "from-blue-600 to-indigo-700" },
-  { id: ToolId.MeetingBooker, title: "AI Meet", description: "Book meetings without storing any data.", icon: CalendarCheck, color: "cyan", gradient: "from-cyan-500 to-sky-600" },
-  { id: ToolId.BabyNames, title: "AI Names", description: "Suggest or invent names with deep lineage.", icon: Baby, color: "pink", gradient: "from-pink-400 to-rose-500" },
-  { id: ToolId.LiveNotetaker, title: "AI Note Taker", description: "Live dictation with auto-summarization.", icon: ClipboardList, color: "teal", gradient: "from-teal-500 to-cyan-600" },
-  { id: ToolId.BrandCollateral, title: "AI Brand", description: "Generate complete brand kits and logos.", icon: Briefcase, color: "orange", gradient: "from-orange-500 to-amber-600" },
-  { id: ToolId.UGCAds, title: "AI UGC", description: "Create viral scripts for TikTok and Reels.", icon: Video, color: "pink", gradient: "from-pink-500 to-rose-600" },
-  { id: ToolId.Cipher, title: "AI Cipher", description: "Learn encryption and play code-breaking games.", icon: Lock, color: "sky", gradient: "from-sky-500 to-indigo-600" },
-  { id: ToolId.Magic, title: "AI Magic", description: "Create dancing text effects and hidden secret messages.", icon: Wand2, color: "indigo", gradient: "from-indigo-500 to-purple-600" },
-  { id: ToolId.VideoGenerator, title: "AI Video", description: "Pro-grade video generation powered by Veo.", icon: Video, color: "red", gradient: "from-red-600 to-rose-700" },
-  { id: ToolId.Copywriter, title: "AI Copy", description: "Professional copywriter for blogs, ads, and emails.", icon: Pen, color: "emerald", gradient: "from-emerald-500 to-teal-600" },
-  { id: ToolId.AffirmationGenerator, title: "AI Affirmations", description: "Generate a weekly affirmation plan for positivity.", icon: Heart, color: "teal", gradient: "from-teal-500 to-emerald-600" },
-  { id: ToolId.Heritage, title: "AI Heritage", description: "Design coats of arms, signet rings, and authentic tartan.", icon: Shield, color: "amber", gradient: "from-amber-600 to-orange-700" },
-  { id: ToolId.AudioTranscriber, title: "AI Media Scribe", description: "Accurately transcribe audio and video files to text.", icon: FileAudio, color: "sky", gradient: "from-sky-500 to-blue-600" },
-  { id: ToolId.SoundFX, title: "AI FX", description: "Generate sound effects and audio-visualizers.", icon: Radio, color: "rose", gradient: "from-rose-500 to-red-600" },
-  { id: ToolId.MockupDesigner, title: "AI Mockup", description: "Create high-fidelity UI designs for apps & websites.", icon: LayoutIcon, color: "fuchsia", gradient: "from-fuchsia-500 to-purple-600" },
-  { id: ToolId.Poetry, title: "AI Poetry", description: "Generate poetry in any style, from Haiku to Sonnet.", icon: Feather, color: "fuchsia", gradient: "from-fuchsia-500 to-pink-600" },
-  { id: ToolId.DailyJoke, title: "AI Jokes", description: "Get your unique AI-generated joke of the day.", icon: Laugh, color: "yellow", gradient: "from-yellow-400 to-amber-500" },
-  { id: ToolId.Quotes, title: "AI Quotes", description: "Find inspiration with famous quotes on any topic.", icon: Quote, color: "cyan", gradient: "from-cyan-500 to-blue-500" },
-  { id: ToolId.Connections, title: "AI Connections", description: "Discover surprising links between famous people.", icon: Network, color: "violet", gradient: "from-violet-500 to-purple-600" },
-  { id: ToolId.WealthCalculator, title: "AI Wealth Path", description: "Analyze how the rich got rich and how to emulate them.", icon: DollarSign, color: "green", gradient: "from-green-600 to-emerald-700" },
-  { id: ToolId.ImageToPrompt, title: "AI Vision", description: "Convert images to text descriptions or prompts.", icon: Scan, color: "fuchsia", gradient: "from-pink-500 to-purple-600" },
-  { id: ToolId.QuizGenerator, title: "AI Quiz", description: "Generate quizzes on any topic instantly.", icon: FileQuestion, color: "indigo", gradient: "from-indigo-500 to-blue-600" },
-  { id: ToolId.RiddleGenerator, title: "AI Riddle", description: "Generate clever riddles on any subject.", icon: Lightbulb, color: "amber", gradient: "from-amber-400 to-orange-500" },
-  { id: ToolId.Podcast, title: "AI Cast", description: "Generate multi-speaker audio podcasts from any topic.", icon: Mic2, color: "indigo", gradient: "from-indigo-500 to-violet-600" },
-  { id: ToolId.Studio, title: "AI Studio", description: "Create professional YouTube Intros and Outros.", icon: MonitorPlay, color: "red", gradient: "from-red-600 to-rose-600" },
-  { id: ToolId.AssistantCreator, title: "AI Assistant", description: "Create your own custom AI assistant.", icon: UserPlus, color: "cyan", gradient: "from-cyan-500 to-blue-600" },
-  { id: ToolId.ListCreator, title: "AI Lists", description: "Generate helpful checklists with visuals.", icon: ListChecks, color: "lime", gradient: "from-lime-500 to-green-600" },
-  { id: ToolId.Academy, title: "AI Academy", description: "Infinite daily prompt engineering tips.", icon: BookMarked, color: "teal", gradient: "from-teal-500 to-emerald-600" },
-  { id: ToolId.PromptTrainer, title: "AI Prompt Trainer", description: "Optimize prompts for ChatGPT, Claude, Midjourney & more.", icon: Brain, color: "pink", gradient: "from-pink-500 to-fuchsia-600" },
-  { id: ToolId.Live, title: "AI Live", description: "Real-time voice conversation with Gemini.", icon: Activity, color: "indigo", gradient: "from-indigo-500 to-violet-600" },
-  { id: ToolId.Social, title: "AI Social", description: "Multi-platform social media campaign generator.", icon: Share2, color: "blue", gradient: "from-blue-500 to-cyan-600" },
-  { id: ToolId.Meme, title: "AI Meme", description: "Instant meme generator from topics.", icon: Laugh, color: "yellow", gradient: "from-yellow-400 to-amber-500" },
-  { id: ToolId.Storybook, title: "AI Storybook", description: "Create illustrated books, comics, and fairy tales.", icon: BookOpen, color: "amber", gradient: "from-amber-500 to-yellow-600" },
-  { id: ToolId.StorybookLarge, title: "AI Storybook Large", description: "Create high-quality large illustrated stories.", icon: BookOpen, color: "orange", gradient: "from-orange-500 to-red-600" },
-  { id: ToolId.YouTubeThumbnail, title: "AI Thumbnails", description: "Generate 5 viral-style YouTube thumbnails at once.", icon: Youtube, color: "red", gradient: "from-red-600 to-orange-600" },
+  { id: ToolId.VideoCaptioner, title: "AI Captions", description: "Auto-generate viral timed captions with emojis and animations.", icon: LucideType, color: "blue", gradient: "from-blue-500 to-indigo-600", releaseDate: '2025-12-21' },
+  { id: ToolId.NurseryRhymes, title: "AI Nursery Rhymes", description: "Visualize classic nursery rhymes with beautiful AI art.", icon: Music, color: "pink", gradient: "from-pink-400 to-rose-500", releaseDate: '2025-12-20' },
+  { id: ToolId.StyleEngine, title: "AI Style Forge", description: "Create, name, and reuse your own visual recipes for consistent art.", icon: FlaskConical, color: "indigo", gradient: "from-indigo-600 to-violet-700", releaseDate: '2025-12-19' },
+  { id: ToolId.ImagesToMovie, title: "AI Images to movie", description: "Turn a collection of photos into a cinematic movie sequence.", icon: Clapperboard, color: "amber", gradient: "from-amber-400 to-orange-600", releaseDate: '2025-12-18' },
+  { id: ToolId.BabyDebates, title: "AI Baby Debates", description: "Generate talking baby videos of famous people with scripts.", icon: Users, color: "sky", gradient: "from-sky-400 to-blue-600", releaseDate: '2025-12-17' },
+  { id: ToolId.BabyVisionTransformer, title: "AI Baby Transformer", description: "Turn YouTube Shorts characters into baby versions.", icon: Stars, color: "pink", gradient: "from-pink-500 to-rose-600", releaseDate: '2025-12-16' },
+  { id: ToolId.ComicStrip, title: "AI Comic Strip", description: "Turn photos into 4-panel comic narratives.", icon: Grid, color: "yellow", gradient: "from-yellow-500 to-orange-500", releaseDate: '2025-12-15' },
+  { id: ToolId.AIMimicry, title: "AI Mimicry", description: "Intricate video mimicry with hallucination modes.", icon: CopyIcon, color: "fuchsia", gradient: "from-fuchsia-600 to-purple-700", releaseDate: '2025-12-13' },
+  { id: ToolId.CalendarCreator, title: "AI Calendar", description: "Design custom calendars with unique themes like Claymation.", icon: Calendar, color: "indigo", gradient: "from-indigo-500 to-blue-600", releaseDate: '2025-12-12' },
+  { id: ToolId.LinkedInCarousel, title: "AI Carousel", description: "Create viral LinkedIn carousels from any topic.", icon: GalleryHorizontal, color: "blue", gradient: "from-blue-600 to-sky-600", releaseDate: '2025-12-11' },
+  { id: ToolId.DesignCritic, title: "AI Design Critic", description: "Get brutal or constructive feedback on your UI/UX.", icon: AlertCircle, color: "red", gradient: "from-red-500 to-rose-600", releaseDate: '2025-12-14' },
+  { id: ToolId.AI360, title: "AI 360", description: "3D-GEN Orchestrator for structured 3D prompts.", icon: Box, color: "blue", gradient: "from-blue-600 to-indigo-700", releaseDate: '2025-12-10' },
+  { id: ToolId.AetherEdit, title: "AI AetherEdit", description: "AI-Powered Video & Sound Editor with real-time effects.", icon: Clapperboard, color: "cyan", gradient: "from-cyan-500 to-blue-600", releaseDate: '2025-12-10' },
+  { id: ToolId.Learner, title: "AI Learner", description: "Summarize papers and turn them into podcasts.", icon: BookOpen, color: "emerald", gradient: "from-emerald-500 to-green-600", releaseDate: '2025-12-09' },
+  { id: ToolId.CommercialReview, title: "AI Commercial", description: "Analyze research papers for market viability.", icon: DollarSign, color: "blue", gradient: "from-blue-600 to-indigo-700", releaseDate: '2025-12-09' },
+  { id: ToolId.MeetingBooker, title: "AI Meet", description: "Book meetings without storing any data.", icon: CalendarCheck, color: "cyan", gradient: "from-cyan-500 to-sky-600", releaseDate: '2025-12-09' },
+  { id: ToolId.BabyNames, title: "AI Names", description: "Suggest or invent names with deep lineage.", icon: Baby, color: "pink", gradient: "from-pink-400 to-rose-500", releaseDate: '2025-12-09' },
+  { id: ToolId.LiveNotetaker, title: "AI Note Taker", description: "Live dictation with auto-summarization.", icon: ClipboardList, color: "teal", gradient: "from-teal-500 to-cyan-600", releaseDate: '2025-12-07' },
+  { id: ToolId.BrandCollateral, title: "AI Brand", description: "Generate complete brand kits and logos.", icon: Briefcase, color: "orange", gradient: "from-orange-500 to-amber-600", releaseDate: '2025-12-07' },
+  { id: ToolId.UGCAds, title: "AI UGC", description: "Create viral scripts for TikTok and Reels.", icon: Video, color: "pink", gradient: "from-pink-500 to-rose-600", releaseDate: '2025-12-07' },
+  { id: ToolId.Cipher, title: "AI Cipher", description: "Learn encryption and play code-breaking games.", icon: Lock, color: "sky", gradient: "from-sky-500 to-indigo-600", releaseDate: '2025-12-07' },
+  { id: ToolId.Magic, title: "AI Magic", description: "Create dancing text effects and hidden secret messages.", icon: Wand2, color: "indigo", gradient: "from-indigo-500 to-purple-600", releaseDate: '2025-12-07' },
+  { id: ToolId.VideoGenerator, title: "AI Video", description: "Pro-grade video generation powered by Veo.", icon: Video, color: "red", gradient: "from-red-600 to-rose-700", releaseDate: '2025-12-07' },
+  { id: ToolId.Copywriter, title: "AI Copy", description: "Professional copywriter for blogs, ads, and emails.", icon: Pen, color: "emerald", gradient: "from-emerald-500 to-teal-600", releaseDate: '2025-12-07' },
+  { id: ToolId.AffirmationGenerator, title: "AI Affirmations", description: "Generate a weekly affirmation plan for positivity.", icon: Heart, color: "teal", gradient: "from-teal-500 to-emerald-600", releaseDate: '2025-12-07' },
+  { id: ToolId.Heritage, title: "AI Heritage", description: "Design coats of arms, signet rings, and authentic tartan.", icon: Shield, color: "amber", gradient: "from-amber-600 to-orange-700", releaseDate: '2025-12-07' },
+  { id: ToolId.AudioTranscriber, title: "AI Media Scribe", description: "Accurately transcribe audio and video files to text.", icon: FileAudio, color: "sky", gradient: "from-sky-500 to-blue-600", releaseDate: '2025-12-07' },
+  { id: ToolId.SoundFX, title: "AI FX", description: "Generate sound effects and audio-visualizers.", icon: Radio, color: "rose", gradient: "from-rose-500 to-red-600", releaseDate: '2025-12-06' },
+  { id: ToolId.MockupDesigner, title: "AI Mockup", description: "Create high-fidelity UI designs for apps & websites.", icon: LayoutIcon, color: "fuchsia", gradient: "from-fuchsia-500 to-purple-600", releaseDate: '2025-12-07' },
+  { id: ToolId.Poetry, title: "AI Poetry", description: "Generate poetry in any style, from Haiku to Sonnet.", icon: Feather, color: "fuchsia", gradient: "from-fuchsia-500 to-pink-600", releaseDate: '2025-12-08' },
+  { id: ToolId.DailyJoke, title: "AI Jokes", description: "Get your unique AI-generated joke of the day.", icon: Laugh, color: "yellow", gradient: "from-yellow-400 to-amber-500", releaseDate: '2025-12-08' },
+  { id: ToolId.Quotes, title: "AI Quotes", description: "Find inspiration with famous quotes on any topic.", icon: Quote, color: "cyan", gradient: "from-cyan-500 to-blue-500", releaseDate: '2025-12-08' },
+  { id: ToolId.Connections, title: "AI Connections", description: "Discover surprising links between famous people.", icon: Network, color: "violet", gradient: "from-violet-500 to-purple-600", releaseDate: '2025-12-08' },
+  { id: ToolId.WealthCalculator, title: "AI Wealth Path", description: "Analyze how the rich got rich and how to emulate them.", icon: DollarSign, color: "green", gradient: "from-green-600 to-emerald-700", releaseDate: '2025-12-08' },
+  { id: ToolId.ImageToPrompt, title: "AI Vision", description: "Convert images to text descriptions or prompts.", icon: Scan, color: "fuchsia", gradient: "from-pink-500 to-purple-600", releaseDate: '2025-12-06' },
+  { id: ToolId.QuizGenerator, title: "AI Quiz", description: "Generate quizzes on any topic instantly.", icon: FileQuestion, color: "indigo", gradient: "from-indigo-500 to-blue-600", releaseDate: '2025-12-06' },
+  { id: ToolId.RiddleGenerator, title: "AI Riddle", description: "Generate clever riddles on any subject.", icon: Lightbulb, color: "amber", gradient: "from-amber-400 to-orange-500", releaseDate: '2025-12-06' },
+  { id: ToolId.Podcast, title: "AI Cast", description: "Generate multi-speaker audio podcasts from any topic.", icon: Mic2, color: "indigo", gradient: "from-indigo-500 to-violet-600", releaseDate: '2025-12-05' },
+  { id: ToolId.Studio, title: "AI Studio", description: "Create professional YouTube Intros and Outros.", icon: MonitorPlay, color: "red", gradient: "from-red-600 to-rose-600", releaseDate: '2025-12-08' },
+  { id: ToolId.AssistantCreator, title: "AI Assistant", description: "Create your own custom AI assistant.", icon: UserPlus, color: "cyan", gradient: "from-cyan-500 to-blue-600", releaseDate: '2025-12-05' },
+  { id: ToolId.ListCreator, title: "AI Lists", description: "Generate helpful checklists with visuals.", icon: ListChecks, color: "lime", gradient: "from-lime-500 to-green-600", releaseDate: '2025-12-05' },
+  { id: ToolId.Academy, title: "AI Academy", description: "Infinite daily prompt engineering tips.", icon: BookMarked, color: "teal", gradient: "from-teal-500 to-emerald-600", releaseDate: '2025-12-05' },
+  { id: ToolId.PromptTrainer, title: "AI Prompt Trainer", description: "Optimize prompts for ChatGPT, Claude, Midjourney & more.", icon: Brain, color: "pink", gradient: "from-pink-500 to-fuchsia-600", releaseDate: '2025-12-05' },
+  { id: ToolId.Live, title: "AI Live", description: "Real-time voice conversation with Gemini.", icon: Activity, color: "indigo", gradient: "from-indigo-500 to-violet-600", releaseDate: '2025-12-05' },
+  { id: ToolId.Social, title: "AI Social", description: "Multi-platform social media campaign generator.", icon: Share2, color: "blue", gradient: "from-blue-500 to-cyan-600", releaseDate: '2025-12-04' },
+  { id: ToolId.Meme, title: "AI Meme", description: "Instant meme generator from topics.", icon: Laugh, color: "yellow", gradient: "from-yellow-400 to-amber-500", releaseDate: '2025-12-04' },
+  { id: ToolId.Storybook, title: "AI Storybook", description: "Create illustrated books, comics, and fairy tales.", icon: BookOpen, color: "amber", gradient: "from-amber-500 to-yellow-600", releaseDate: '2025-12-04' },
+  { id: ToolId.StorybookLarge, title: "AI Storybook Large", description: "Create high-quality large illustrated stories.", icon: BookOpen, color: "orange", gradient: "from-orange-500 to-red-600", releaseDate: '2025-12-22' },
+  { id: ToolId.YouTubeThumbnail, title: "AI Thumbnails", description: "Generate 5 viral-style YouTube thumbnails at once.", icon: Youtube, color: "red", gradient: "from-red-600 to-orange-600", releaseDate: '2025-12-04' },
   { id: ToolId.GAMES, title: "AI Games", description: "Interactive AI adventures, mysteries, and trivia.", icon: Gamepad2, color: "orange", gradient: "from-orange-500 to-red-600" },
-  { id: ToolId.Pinterest, title: "AI Pinterest", description: "Generate viral-worthy, vertical images tailored for Pinterest.", icon: Pin, color: "red", gradient: "from-red-500 to-rose-600" },
+  { id: ToolId.Pinterest, title: "AI Pinterest", description: "Generate viral-worthy, vertical images tailored for Pinterest.", icon: Pin, color: "red", gradient: "from-red-500 to-rose-600", releaseDate: '2025-12-04' },
   { id: ToolId.Tutor, title: "AI Tutor", description: "Expert guidance on using popular AI platforms.", icon: GraduationCap, color: "indigo", gradient: "from-indigo-500 to-violet-600" },
-  { id: ToolId.GifGenerator, title: "AI GIF", description: "Generate animated GIFs using Veo.", icon: Film, color: "rose", gradient: "from-rose-500 to-pink-600" },
-  { id: ToolId.SoundGenerator, title: "AI Speech", description: "Convert text to lifelike speech.", icon: Volume2, color: "sky", gradient: "from-sky-500 to-blue-600" },
+  { id: ToolId.GifGenerator, title: "AI GIF", description: "Generate animated GIFs using Veo.", icon: Film, color: "rose", gradient: "from-rose-500 to-pink-600", releaseDate: '2025-12-04' },
+  { id: ToolId.SoundGenerator, title: "AI Speech", description: "Convert text to lifelike speech.", icon: Volume2, color: "sky", gradient: "from-sky-500 to-blue-600", releaseDate: '2025-12-04' },
   { id: ToolId.ImageEditor, title: "AI Edit", description: "Edit images using natural language prompts.", icon: ImageIcon, color: "amber", gradient: "from-amber-500 to-orange-600" },
   { id: ToolId.BackgroundRemover, title: "AI Remove", description: "Instantly remove backgrounds from images.", icon: Eraser, color: "rose", gradient: "from-rose-500 to-pink-600" },
   { id: ToolId.ImageGenerator, title: "AI Create", description: "Generate high-quality images from text.", icon: Palette, color: "purple", gradient: "from-purple-500 to-indigo-600" },
@@ -168,9 +167,9 @@ const TOOLS = [
   { id: ToolId.Summarizer, title: "AI Sum", description: "Intelligent text summarization.", icon: FileText, color: "emerald", gradient: "from-emerald-500 to-teal-600" },
   { id: ToolId.StoryTeller, title: "AI Tales", description: "Creative story and content generation.", icon: Feather, color: "pink", gradient: "from-pink-500 to-rose-600" },
   { id: ToolId.CodeAssistant, title: "AI Dev", description: "Code generation, prototyping, and security auditing.", icon: Terminal, color: "cyan", gradient: "from-cyan-500 to-sky-600" },
-  { id: ToolId.AutomationHub, title: "AI Automate", description: "Browser extension builder and Excel automation.", icon: Bot, color: "violet", gradient: "from-violet-500 to-purple-600" },
+  { id: ToolId.AutomationHub, title: "AI Automate", description: "Browser extension builder and Excel automation.", icon: Bot, color: "violet", gradient: "from-violet-500 to-purple-600", releaseDate: '2025-12-04' },
   { id: ToolId.SecurityBox, title: "AI Security Box", description: "Access the external Security Hub.", icon: Shield, color: "slate", gradient: "from-slate-700 to-slate-900", externalUrl: "https://sec-hub.online" }
-].map(tool => ({ ...tool, releaseDate: '2026-01-31' }));
+];
 
 const flagshipTools = TOOLS.filter(t => [
   ToolId.VideoGenerator,
@@ -183,16 +182,11 @@ const flagshipTools = TOOLS.filter(t => [
 
 const isToolNew = (releaseDate?: string) => {
   if (!releaseDate) return false;
-  const oneDay = 24 * 60 * 60 * 1000;
   const release = new Date(releaseDate);
   const now = new Date();
-  
-  // Set times to midnight to compare just dates
-  release.setHours(0,0,0,0);
-  now.setHours(0,0,0,0);
-  
-  // Logic: Is the tool within the last 30 days?
-  const diffDays = Math.round(Math.abs((now.getTime() - release.getTime()) / oneDay));
+  if (release > now) return true;
+  const diffTime = Math.abs(now.getTime() - release.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   return diffDays <= 30;
 };
 
@@ -205,6 +199,10 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); 
   const [hasSelectedKey, setHasSelectedKey] = useState<boolean | null>(null);
   const [showActivationGuide, setShowActivationGuide] = useState(false);
+  
+  // New state for Freemium Access Gate
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  const [pendingTool, setPendingTool] = useState<ToolId | null>(null);
 
   useEffect(() => {
     const hasAccess = localStorage.getItem('nano_access_granted');
@@ -238,12 +236,23 @@ const App: React.FC = () => {
     localStorage.removeItem('supabase_user_id');
     setIsAuthenticated(false);
     setHasSelectedKey(null);
+    setShowAuthGate(false);
+    setPendingTool(null);
   };
 
   const confirmExternalNavigation = () => {
     if (pendingExternalUrl) {
       window.open(pendingExternalUrl, '_blank', 'noopener,noreferrer');
       setPendingExternalUrl(null);
+    }
+  };
+
+  const handleToolAccess = (toolId: ToolId) => {
+    if (isAuthenticated) {
+      setCurrentTool(toolId);
+    } else {
+      setPendingTool(toolId);
+      setShowAuthGate(true);
     }
   };
 
@@ -339,7 +348,7 @@ const App: React.FC = () => {
         {flagshipTools.map((tool) => (
           <button
             key={tool.id}
-            onClick={() => setCurrentTool(tool.id)}
+            onClick={() => handleToolAccess(tool.id)}
             onMouseEnter={() => setHoveredTool(tool.id)}
             onMouseLeave={() => setHoveredTool(null)}
             className="group relative bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 text-left transition-all hover:-translate-y-2 hover:border-amber-500/50 overflow-hidden shadow-xl"
@@ -392,7 +401,7 @@ const App: React.FC = () => {
                    {filteredTools.map((tool) => (
                       <button
                         key={tool.id}
-                        onClick={() => (tool as any).externalUrl ? setPendingExternalUrl((tool as any).externalUrl) : setCurrentTool(tool.id)}
+                        onClick={() => (tool as any).externalUrl ? setPendingExternalUrl((tool as any).externalUrl) : handleToolAccess(tool.id)}
                         className="relative bg-slate-5 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 p-5 rounded-2xl text-left transition-all hover:bg-white dark:hover:bg-slate-900 group"
                       >
                         {tool.releaseDate && isToolNew(tool.releaseDate) && (
@@ -419,8 +428,10 @@ const App: React.FC = () => {
      return <ActivationGuide onBack={() => setShowActivationGuide(false)} />;
   }
   if (isAuthenticated === null) return <div className="min-h-screen bg-slate-950" />;
-  if (isAuthenticated === false) return <LoginGate onLogin={() => setIsAuthenticated(true)} />;
-  if (hasSelectedKey === false) {
+  // Removed strict blocking. Now accessible unless AuthGate is triggered.
+  // if (isAuthenticated === false) return <LoginGate onLogin={() => setIsAuthenticated(true)} />;
+  
+  if (isAuthenticated && hasSelectedKey === false) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center space-y-8 animate-fade-in relative">
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
@@ -493,6 +504,26 @@ const App: React.FC = () => {
               <button onClick={confirmExternalNavigation} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-amber-900/20">Proceed</button>
             </div>
           </div>
+        </div>
+      )}
+      {showAuthGate && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-sm overflow-y-auto animate-fade-in">
+          <div className="absolute top-4 right-4 z-[110]">
+            <button 
+              onClick={() => { setShowAuthGate(false); setPendingTool(null); }}
+              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-full transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          <LoginGate onLogin={() => {
+            setIsAuthenticated(true);
+            setShowAuthGate(false);
+            if (pendingTool) {
+              setCurrentTool(pendingTool);
+              setPendingTool(null);
+            }
+          }} />
         </div>
       )}
     </Layout>
