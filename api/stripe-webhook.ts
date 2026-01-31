@@ -1,3 +1,5 @@
+import { createClient } from "@supabase/supabase-js";
+
 export const config = {
   runtime: 'edge',
 };
@@ -22,6 +24,16 @@ export default async function handler(req: Request) {
     return new Response(JSON.stringify({ error: 'Server Configuration Error' }), { status: 500 });
   }
 
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_STORAGE_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.STORAGE_SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error("Missing Supabase configuration");
+    return new Response(JSON.stringify({ error: 'Server Configuration Error' }), { status: 500 });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
   try {
     const payload = await req.json();
     const eventType = payload.type;
@@ -33,6 +45,23 @@ export default async function handler(req: Request) {
 
       if (!customerEmail) {
         return new Response(JSON.stringify({ error: 'No customer email found' }), { status: 400 });
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('credit_balance')
+        .eq('email', customerEmail)
+        .single();
+
+      if (profile) {
+        const new_balance = (profile.credit_balance || 0) + 500;
+        await supabase
+          .from('profiles')
+          .update({ credit_balance: new_balance })
+          .eq('email', customerEmail);
+        console.log("Credits added for:", customerEmail);
+      } else {
+        console.warn("User not found for credits:", customerEmail);
       }
 
       // Send the email via Resend

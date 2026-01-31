@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-// Fix: Use correct casing for App import to match file system (app.tsx)
-import App from './app.tsx';
+// Fix: Use correct casing for App import to match file system (App.tsx)
+import App from './App.tsx';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
