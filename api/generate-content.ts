@@ -62,7 +62,7 @@ export default async function handler(req: Request) {
     if (model?.includes('veo') || model?.includes('video')) cost = 50;
 
     // 3. CHECK BALANCE (Read-Only)
-    // We check if they *can* pay, but we don't charge yet.
+    // We check if they *can* pay, but we DO NOT charge yet.
     if (supabaseUrl && supabaseKey) {
       const supabase = createClient(supabaseUrl, supabaseKey);
       
@@ -87,8 +87,7 @@ export default async function handler(req: Request) {
       }
     }
 
-    // 4. EXECUTE MODEL CALL
-    // If this fails, the code jumps to catch{}, and credits are NEVER deducted.
+    // 4. EXECUTE MODEL CALL (The risky part)
     let response;
 
     if (model?.includes('veo')) {
@@ -100,17 +99,20 @@ export default async function handler(req: Request) {
             });
         } catch (sdkError: any) {
             console.error("Google GenAI SDK Error:", sdkError);
-            // Re-throw to skip billing and hit the main error handler
+            // If SDK fails, we throw here. Code jumps to 'catch'. Credits are NOT deducted.
             throw new Error(`SDK Execution Failed: ${sdkError.message}`);
         }
         
-        if (!videoOp) {
-            throw new Error("Video generation failed to return an operation object.");
+        // CRITICAL FIX: The Guard Clause
+        // If Veo returns undefined or a partial object without a name, we stop.
+        if (!videoOp || !videoOp.name) {
+            throw new Error("Video generation failed: No operation returned from provider.");
         }
         
-        // Map safely
+        // Safe to access .name now
         response = { name: videoOp.name };
     } else {
+        // Standard text/image generation
         response = await ai.models.generateContent({
             model,
             ...rest
@@ -118,11 +120,11 @@ export default async function handler(req: Request) {
     }
 
     // 5. DEDUCT CREDITS (Only reached if Step 4 succeeded)
+    // Because we are here, we know the AI call worked and we have a valid response.
     if (supabaseUrl && supabaseKey) {
       const supabase = createClient(supabaseUrl, supabaseKey);
       
-      // Re-fetch current balance to ensure atomic update logic if needed, 
-      // or just decrement safely using rpc if available (but simple update is fine for this scope)
+      // Re-fetch to ensure we don't go negative in a race condition (optional but safe)
       const { data: currentProfile } = await supabase.from('profiles').select('credit_balance').eq('id', userId).single();
       
       if (currentProfile) {
@@ -133,7 +135,6 @@ export default async function handler(req: Request) {
             
           if (updateError) {
               console.error("CRITICAL: Failed to deduct credits after successful generation:", updateError);
-              // In production, you might log this to an audit queue for manual reconciliation.
           }
       }
     }

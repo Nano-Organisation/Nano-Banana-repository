@@ -18,8 +18,6 @@ const getUserId = () => localStorage.getItem('supabase_user_id');
 const callProxy = async (payload: any): Promise<any> => {
   const userId = getUserId();
   
-  // CRITICAL: We pass the User ID to the server. The server MUST use this to deduct credits.
-  // If no user ID is present (e.g. not logged in), the server should reject or handle as free tier if configured.
   const response = await fetch(API_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
