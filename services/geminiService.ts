@@ -255,7 +255,7 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
           image = { imageBytes: imageBase64.split(',')[1], mimeType: imageBase64.split(';')[0].split(':')[1] };
         }
       }
-      // Call Proxy to initiate (Deducts credits)
+      // Call Proxy to initiate
       return await generateVideoProxy(model, prompt, config, image);
     };
 
@@ -263,7 +263,10 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
       // 1. Start Operation via Proxy
       let operation: any = await withRetry(() => startOp(), 5, 8000, onRetry);
       
-      if (!operation) throw new Error("Video generation failed to initialize.");
+      // Fix: Strictly check if operation exists and has a name before access
+      if (!operation || !operation.name) {
+         throw new Error("Video generation failed to initialize (No Operation ID returned).");
+      }
 
       // 2. Poll Operation via Proxy
       while (!(operation as any).done) {
@@ -286,8 +289,6 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
       if (!generatedVideos || generatedVideos.length === 0) throw new Error("Safety Block: Content filtered.");
       
       // Return URL with Key (since the fetch happens client side eventually for the blob)
-      // Note: If using Proxy completely, we might hide the key even here, but for now we append it
-      // so the existing components can fetch the blob.
       const link = generatedVideos[0]?.video?.uri;
       return `${link}&key=${process.env.API_KEY}`;
     } catch (error) { handleGeminiError(error); return ""; }
@@ -308,7 +309,10 @@ export const generateAdvancedVideo = async (prompt: string, aspectRatio: string 
     try {
       let operation: any = await withRetry(() => startOp(), 5, 8000, onRetry);
       
-      if (!operation) throw new Error("Video generation failed to initialize.");
+      // Fix: Strictly check before access
+      if (!operation || !operation.name) {
+         throw new Error("Video generation failed to initialize (No Operation ID).");
+      }
 
       while (!(operation as any).done) {
         await new Promise(r => setTimeout(r, 10000));
@@ -334,8 +338,6 @@ export const extendVideo = async (prompt: string, previousVideo: any, onRetry?: 
   // Extending technically sends the previous video asset. 
   // This is complex to proxy if the asset is large/complex.
   // For now, we will fallback to client-side logic for EXTENSION only, or implement a basic pass-through.
-  // Given the complexity of serializing the `video` object correctly for the proxy without the SDK types on server,
-  // we will leave this specific function utilizing the client key for now, OR try to map it.
   // Strategy: Let's stick to client-side for Extension for safety, but main generation is proxied.
   
   return videoQueue.run(async () => {
@@ -355,6 +357,10 @@ export const extendVideo = async (prompt: string, previousVideo: any, onRetry?: 
 
     try {
       let operation: any = await withRetry(() => startOp(), 5, 8000, onRetry);
+      
+      // Fix: Defensive check
+      if (!operation) throw new Error("Video extension failed to initialize.");
+
       while (!(operation as any).done) {
         await new Promise(r => setTimeout(r, 10000));
         if (!operation || !(operation as any).name) break;
@@ -430,28 +436,12 @@ export const generateImagePrompt = async (image: string, platform: string): Prom
 };
 
 // --- CHAT REFACTOR: STATELESS PROXY ---
-// We removed 'createChatSession' and 'createThinkingChatSession' because they returned stateful clients.
-// Instead, we export a helper that takes the FULL history and sends it to the proxy.
-
 export const sendChatToProxy = async (history: { role: string, parts: { text: string }[] }[], model: string, systemInstruction?: string) => {
   return standardQueue.run(async () => {
     try {
-      const response = await withRetry(() => generateContentProxy(
-        model,
-        {
-          role: 'user', // This might need adjustment depending on how you structure the body for the proxy vs SDK
-          // Actually, for multi-turn, 'contents' should be the array of history.
-          // The proxy expects 'contents' to be passed to ai.models.generateContent({ contents: ... })
-          // So we pass the history array directly as 'contents'.
-        },
-        { systemInstruction }
-      ));
-      
-      // WAIT: generateContentProxy signature is (model, contents, config).
-      // We need to pass the history array as the second argument.
       const actualResponse = await withRetry(() => generateContentProxy(
          model,
-         history, // Pass full history array here
+         { contents: history }, 
          { systemInstruction }
       ));
 
@@ -577,7 +567,7 @@ export const generateMemeConcept = async (topic: string): Promise<MemeData> => {
 };
 
 export const generateSocialCampaign = async (topic: string, settings: SocialSettings): Promise<SocialCampaign> => {
-  const schema: Schema = { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, linkedin: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } }, twitter: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } } }, required: ['topic'] };
+  const schema: Schema = { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, linkedin: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } }, twitter: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } }, instagram: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING }, hashtags: { type: Type.STRING } } }, facebook: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } }, tiktok: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } }, youtube_shorts: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } }, threads: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } }, pinterest: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } } }, required: ['topic'] };
   return generateStructuredContent<SocialCampaign>(`Generate a social campaign for: ${topic}. Tone: ${settings.tone}`, schema);
 };
 

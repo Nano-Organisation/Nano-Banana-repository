@@ -7,7 +7,6 @@ export const config = {
 
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_STORAGE_SUPABASE_URL;
-// Fix: Added STORAGE_SUPABASE_SERVICE_ROLE_KEY to match the specific Vercel environment variable name provided in the screenshot
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.STORAGE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 export default async function handler(req: Request) {
@@ -29,13 +28,12 @@ export default async function handler(req: Request) {
   }
 
   try {
-    // We now accept 'action', 'operationName', and spread other params
     const body = await req.json();
     const { userId, model, action, operationName, ...rest } = body;
 
-    // CRITICAL: Strict User ID Enforcement
+    // 1. Strict User ID Enforcement
     if (!userId) {
-       return new Response(JSON.stringify({ error: "Unauthorized: Missing User ID. Please login or reset your session." }), { 
+       return new Response(JSON.stringify({ error: "Unauthorized: Missing User ID." }), { 
          status: 401,
          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
        });
@@ -56,14 +54,15 @@ export default async function handler(req: Request) {
         });
     }
 
-    // --- HANDLE GENERATION (Credit Check Required) ---
+    // --- HANDLE GENERATION (Credit Check & Deduct) ---
     
-    // 1. Calculate Cost
-    let cost = 1; // Default Text
+    // 2. Calculate Cost
+    let cost = 1;
     if (model?.includes('image')) cost = 5;
     if (model?.includes('veo') || model?.includes('video')) cost = 50;
 
-    // 2. Validate Credits
+    // 3. CHECK BALANCE (Read-Only)
+    // We check if they *can* pay, but we don't charge yet.
     if (supabaseUrl && supabaseKey) {
       const supabase = createClient(supabaseUrl, supabaseKey);
       
@@ -86,23 +85,13 @@ export default async function handler(req: Request) {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
       }
-
-      // Deduct Credits
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ credit_balance: profile.credit_balance - cost })
-        .eq('id', userId);
-        
-      if (updateError) {
-          console.error("Failed to deduct credits:", updateError);
-      }
     }
 
-    // 3. Execute Model Call
+    // 4. EXECUTE MODEL CALL
+    // If this fails, the code jumps to catch{}, and credits are NEVER deducted.
     let response;
 
     if (model?.includes('veo')) {
-        // Video Generation
         let videoOp;
         try {
             videoOp = await ai.models.generateVideos({
@@ -111,22 +100,42 @@ export default async function handler(req: Request) {
             });
         } catch (sdkError: any) {
             console.error("Google GenAI SDK Error:", sdkError);
+            // Re-throw to skip billing and hit the main error handler
             throw new Error(`SDK Execution Failed: ${sdkError.message}`);
         }
         
-        // Defensive check: Ensure videoOp exists
         if (!videoOp) {
-            throw new Error("Video generation request failed to return an operation object.");
+            throw new Error("Video generation failed to return an operation object.");
         }
         
-        // Use optional chaining (?.) to prevent 'reading name of undefined' crash
-        response = { name: videoOp?.name };
+        // Map safely
+        response = { name: videoOp.name };
     } else {
-        // Text/Image Generation
         response = await ai.models.generateContent({
             model,
             ...rest
         });
+    }
+
+    // 5. DEDUCT CREDITS (Only reached if Step 4 succeeded)
+    if (supabaseUrl && supabaseKey) {
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      // Re-fetch current balance to ensure atomic update logic if needed, 
+      // or just decrement safely using rpc if available (but simple update is fine for this scope)
+      const { data: currentProfile } = await supabase.from('profiles').select('credit_balance').eq('id', userId).single();
+      
+      if (currentProfile) {
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ credit_balance: currentProfile.credit_balance - cost })
+            .eq('id', userId);
+            
+          if (updateError) {
+              console.error("CRITICAL: Failed to deduct credits after successful generation:", updateError);
+              // In production, you might log this to an audit queue for manual reconciliation.
+          }
+      }
     }
 
     return new Response(JSON.stringify(response), {
