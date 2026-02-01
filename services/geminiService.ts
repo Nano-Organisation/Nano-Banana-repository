@@ -1,4 +1,11 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, Modality } from "@google/genai";
+import { 
+  EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, MemeData, 
+  SocialCampaign, PromptAnalysis, DailyTip, HelpfulList, PodcastScript, 
+  QuizData, RiddleData, AffirmationPlan, BrandIdentity, UGCScript, 
+  WealthAnalysis, LearnerBrief, CommercialAnalysis, BabyName, AI360Response, 
+  CarouselData, DreamAnalysis, PetProfile, StorybookData, BabyDebateScript
+} from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -314,7 +321,7 @@ export const generateSpeechWithGemini = async (text: string, voiceName: string =
         model,
         contents: [{ parts: [{ text }] }],
         config: {
-            responseModalities: [Modality.AUDIO], // Fix: Use enum or 'AUDIO' string if enum not available in this context
+            responseModalities: [Modality.AUDIO], 
             speechConfig
         }
     });
@@ -341,11 +348,11 @@ async function generateJSON<T>(prompt: string, schema: any): Promise<T> {
             responseSchema: schema
         }
     });
-    return JSON.parse(response.text || "{}");
+    return JSON.parse(response.text || "{}") as T;
 }
 
-export const generateEmojiPuzzle = async () => {
-    return generateJSON("Generate an emoji puzzle.", {
+export const generateEmojiPuzzle = async (): Promise<EmojiPuzzle> => {
+    return generateJSON<EmojiPuzzle>("Generate an emoji puzzle.", {
         type: Type.OBJECT,
         properties: {
             emojis: { type: Type.STRING },
@@ -356,8 +363,8 @@ export const generateEmojiPuzzle = async () => {
     });
 };
 
-export const generateWordPuzzle = async () => {
-    return generateJSON("Generate a word puzzle.", {
+export const generateWordPuzzle = async (): Promise<WordPuzzle> => {
+    return generateJSON<WordPuzzle>("Generate a word puzzle.", {
         type: Type.OBJECT,
         properties: {
             word: { type: Type.STRING },
@@ -368,8 +375,8 @@ export const generateWordPuzzle = async () => {
     });
 };
 
-export const generateTwoTruthsPuzzle = async () => {
-    return generateJSON("Generate two truths and a lie.", {
+export const generateTwoTruthsPuzzle = async (): Promise<TwoTruthsPuzzle> => {
+    return generateJSON<TwoTruthsPuzzle>("Generate two truths and a lie.", {
         type: Type.OBJECT,
         properties: {
             topic: { type: Type.STRING },
@@ -390,8 +397,8 @@ export const generateTwoTruthsPuzzle = async () => {
     });
 };
 
-export const generateRiddlePuzzle = async () => {
-    return generateJSON("Generate a riddle.", {
+export const generateRiddlePuzzle = async (): Promise<RiddlePuzzle> => {
+    return generateJSON<RiddlePuzzle>("Generate a riddle.", {
         type: Type.OBJECT,
         properties: {
             question: { type: Type.STRING },
@@ -403,8 +410,8 @@ export const generateRiddlePuzzle = async () => {
     });
 };
 
-export const generateMemeConcept = async (topic: string) => {
-    return generateJSON(`Generate a meme concept about ${topic}.`, {
+export const generateMemeConcept = async (topic: string): Promise<MemeData> => {
+    return generateJSON<MemeData>(`Generate a meme concept about ${topic}.`, {
         type: Type.OBJECT,
         properties: {
             topText: { type: Type.STRING },
@@ -415,21 +422,25 @@ export const generateMemeConcept = async (topic: string) => {
     });
 };
 
-export const generateSocialCampaign = async (topic: string, settings: any) => {
-    return generateJSON(`Generate social media campaign for ${topic}. Settings: ${JSON.stringify(settings)}`, {
+export const generateSocialCampaign = async (topic: string, settings: any): Promise<SocialCampaign> => {
+    return generateJSON<SocialCampaign>(`Generate social media campaign for ${topic}. Settings: ${JSON.stringify(settings)}`, {
         type: Type.OBJECT,
         properties: {
             topic: { type: Type.STRING },
             linkedin: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } },
             twitter: { type: Type.OBJECT, properties: { text: { type: Type.ARRAY, items: { type: Type.STRING } }, imagePrompt: { type: Type.STRING } } },
             instagram: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING }, hashtags: { type: Type.STRING } } },
-            // Add other platforms...
+            facebook: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } },
+            tiktok: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } },
+            youtube_shorts: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } },
+            threads: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } },
+            pinterest: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, imagePrompt: { type: Type.STRING } } }
         }
     });
 };
 
-export const analyzePrompt = async (prompt: string, platform: string) => {
-    return generateJSON(`Analyze this prompt for ${platform}: ${prompt}`, {
+export const analyzePrompt = async (prompt: string, platform: string): Promise<PromptAnalysis> => {
+    return generateJSON<PromptAnalysis>(`Analyze this prompt for ${platform}: ${prompt}`, {
         type: Type.OBJECT,
         properties: {
             score: { type: Type.NUMBER },
@@ -443,8 +454,8 @@ export const analyzePrompt = async (prompt: string, platform: string) => {
     });
 };
 
-export const generateDailyTip = async (day: number) => {
-    return generateJSON(`Generate daily tip for day ${day}`, {
+export const generateDailyTip = async (day: number): Promise<DailyTip> => {
+    return generateJSON<DailyTip>(`Generate daily tip for day ${day}`, {
         type: Type.OBJECT,
         properties: {
             dayIndex: { type: Type.NUMBER },
@@ -456,8 +467,8 @@ export const generateDailyTip = async (day: number) => {
     });
 };
 
-export const generateHelpfulList = async (topic: string) => {
-    return generateJSON(`Generate a checklist for ${topic}`, {
+export const generateHelpfulList = async (topic: string): Promise<HelpfulList> => {
+    return generateJSON<HelpfulList>(`Generate a checklist for ${topic}`, {
         type: Type.OBJECT,
         properties: {
             title: { type: Type.STRING },
@@ -468,8 +479,8 @@ export const generateHelpfulList = async (topic: string) => {
     });
 };
 
-export const generatePodcastScript = async (topic: string, host: string, guest: string) => {
-    return generateJSON(`Podcast script on ${topic} with ${host} and ${guest}`, {
+export const generatePodcastScript = async (topic: string, host: string, guest: string): Promise<PodcastScript> => {
+    return generateJSON<PodcastScript>(`Podcast script on ${topic} with ${host} and ${guest}`, {
         type: Type.OBJECT,
         properties: {
             title: { type: Type.STRING },
@@ -479,8 +490,8 @@ export const generatePodcastScript = async (topic: string, host: string, guest: 
     });
 };
 
-export const generateQuiz = async (topic: string, count: number, difficulty: string) => {
-    return generateJSON(`Generate ${count} ${difficulty} quiz questions about ${topic}`, {
+export const generateQuiz = async (topic: string, count: number, difficulty: string): Promise<QuizData> => {
+    return generateJSON<QuizData>(`Generate ${count} ${difficulty} quiz questions about ${topic}`, {
         type: Type.OBJECT,
         properties: {
             topic: { type: Type.STRING },
@@ -501,8 +512,8 @@ export const generateQuiz = async (topic: string, count: number, difficulty: str
     });
 };
 
-export const generateRiddleContent = async (topic: string) => {
-    return generateJSON(`Riddle about ${topic}`, {
+export const generateRiddleContent = async (topic: string): Promise<RiddleData> => {
+    return generateJSON<RiddleData>(`Riddle about ${topic}`, {
         type: Type.OBJECT,
         properties: {
             riddle: { type: Type.STRING },
@@ -537,8 +548,8 @@ export const generateUiCode = async (prompt: string, device: string, style: stri
     return response.text || "";
 };
 
-export const generateAffirmationPlan = async (topic: string, tone: string) => {
-    return generateJSON(`Affirmation plan for ${topic}, tone: ${tone}`, {
+export const generateAffirmationPlan = async (topic: string, tone: string): Promise<AffirmationPlan> => {
+    return generateJSON<AffirmationPlan>(`Affirmation plan for ${topic}, tone: ${tone}`, {
         type: Type.OBJECT,
         properties: {
             topic: { type: Type.STRING },
@@ -561,8 +572,8 @@ export const generateHiddenMessage = async (secret: string, cover: string) => {
     return generateTextWithGemini(`Hide the message "${secret}" inside a text about "${cover}". Mark hidden words with {{}}. Example: {{Hidden}} text.`);
 };
 
-export const generateBrandIdentity = async (name: string, industry: string, vibe: string, personality: string, colors: string, fonts: string) => {
-    return generateJSON(`Brand identity for ${name} in ${industry}. Vibe: ${vibe}, Personality: ${personality}. Prefs: ${colors}, ${fonts}`, {
+export const generateBrandIdentity = async (name: string, industry: string, vibe: string, personality: string, colors: string, fonts: string): Promise<BrandIdentity> => {
+    return generateJSON<BrandIdentity>(`Brand identity for ${name} in ${industry}. Vibe: ${vibe}, Personality: ${personality}. Prefs: ${colors}, ${fonts}`, {
         type: Type.OBJECT,
         properties: {
             companyName: { type: Type.STRING },
@@ -582,8 +593,8 @@ export const generateBrandIdentity = async (name: string, industry: string, vibe
 export const regenerateBrandPalette = async (current: any) => generateBrandIdentity(current.companyName, "same", "different colors", "same", "", "");
 export const regenerateBrandTypography = async (current: any) => generateBrandIdentity(current.companyName, "same", "different fonts", "same", "", "");
 
-export const generateUGCScript = async (product: string, audience: string, pain: string) => {
-    return generateJSON(`UGC script for ${product}, audience ${audience}, pain point ${pain}`, {
+export const generateUGCScript = async (product: string, audience: string, pain: string): Promise<UGCScript> => {
+    return generateJSON<UGCScript>(`UGC script for ${product}, audience ${audience}, pain point ${pain}`, {
         type: Type.OBJECT,
         properties: {
             title: { type: Type.STRING },
@@ -610,8 +621,8 @@ export const generateDailyJoke = async (day: number) => generateTextWithGemini(`
 export const generateQuote = async (category: string) => generateTextWithGemini(`Give me an inspiring quote about ${category}`);
 export const generateConnectionFact = async (person: string) => generateTextWithGemini(`Tell me a surprising connection fact about ${person}`);
 
-export const analyzeWealthPath = async (name: string) => {
-    return generateJSON(`Analyze wealth path of ${name}`, {
+export const analyzeWealthPath = async (name: string): Promise<WealthAnalysis> => {
+    return generateJSON<WealthAnalysis>(`Analyze wealth path of ${name}`, {
         type: Type.OBJECT,
         properties: {
             personName: { type: Type.STRING },
@@ -625,8 +636,8 @@ export const analyzeWealthPath = async (name: string) => {
     });
 };
 
-export const generateLearnerBrief = async (text: string) => {
-    return generateJSON(`Summarize text and create podcast script`, {
+export const generateLearnerBrief = async (text: string): Promise<LearnerBrief> => {
+    return generateJSON<LearnerBrief>(`Summarize text and create podcast script`, {
         type: Type.OBJECT,
         properties: {
             summary: { type: Type.STRING },
@@ -635,8 +646,8 @@ export const generateLearnerBrief = async (text: string) => {
     });
 };
 
-export const analyzePaperCommercial = async (text: string) => {
-    return generateJSON(`Analyze commercial viability of this paper`, {
+export const analyzePaperCommercial = async (text: string): Promise<CommercialAnalysis> => {
+    return generateJSON<CommercialAnalysis>(`Analyze commercial viability of this paper`, {
         type: Type.OBJECT,
         properties: {
             title: { type: Type.STRING },
@@ -649,8 +660,8 @@ export const analyzePaperCommercial = async (text: string) => {
     });
 };
 
-export const generateBabyNames = async (gender: string, style: string, origin: string, invent: boolean) => {
-    return generateJSON(`Generate ${invent ? 'invented' : 'existing'} baby names. Gender: ${gender}, Style: ${style}, Origin: ${origin}`, {
+export const generateBabyNames = async (gender: string, style: string, origin: string, invent: boolean): Promise<BabyName[]> => {
+    return generateJSON<BabyName[]>(`Generate ${invent ? 'invented' : 'existing'} baby names. Gender: ${gender}, Style: ${style}, Origin: ${origin}`, {
         type: Type.ARRAY,
         items: {
             type: Type.OBJECT,
@@ -666,7 +677,7 @@ export const generateBabyNames = async (gender: string, style: string, origin: s
     });
 };
 
-export const generate3DOrchestration = async (input: string, image?: string) => {
+export const generate3DOrchestration = async (input: string, image?: string): Promise<AI360Response> => {
     let contents: any[] = [{ text: `Orchestrate 3D generation for: ${input}` }];
     if (image) {
         const data = image.split(',')[1];
@@ -692,11 +703,11 @@ export const generate3DOrchestration = async (input: string, image?: string) => 
             }
         }
     });
-    return JSON.parse(response.text || "{}");
+    return JSON.parse(response.text || "{}") as AI360Response;
 };
 
-export const generateCarouselContent = async (topic: string, count: number, handle: string) => {
-    return generateJSON(`Generate a ${count} slide carousel about ${topic} for ${handle}`, {
+export const generateCarouselContent = async (topic: string, count: number, handle: string): Promise<CarouselData> => {
+    return generateJSON<CarouselData>(`Generate a ${count} slide carousel about ${topic} for ${handle}`, {
         type: Type.OBJECT,
         properties: {
             topic: { type: Type.STRING },
@@ -720,8 +731,8 @@ export const generateCalendarThemeImage = async (month: string, year: number, st
     return generateImageWithGemini(`Calendar illustration for ${month} ${year} in ${style} style.`, '16:9');
 };
 
-export const analyzeDream = async (text: string) => {
-    return generateJSON(`Analyze this dream: ${text}`, {
+export const analyzeDream = async (text: string): Promise<DreamAnalysis> => {
+    return generateJSON<DreamAnalysis>(`Analyze this dream: ${text}`, {
         type: Type.OBJECT,
         properties: {
             interpretation: { type: Type.STRING },
@@ -731,7 +742,7 @@ export const analyzeDream = async (text: string) => {
     });
 };
 
-export const analyzePetProfile = async (image: string) => {
+export const analyzePetProfile = async (image: string): Promise<PetProfile> => {
     const data = image.split(',')[1];
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -753,10 +764,10 @@ export const analyzePetProfile = async (image: string) => {
             }
         }
     });
-    return JSON.parse(response.text || "{}");
+    return JSON.parse(response.text || "{}") as PetProfile;
 };
 
-export const generateComicScriptFromImages = async (images: string[], topic: string) => {
+export const generateComicScriptFromImages = async (images: string[], topic: string): Promise<StorybookData> => {
     const parts: any[] = images.map(img => ({ inlineData: { mimeType: 'image/png', data: img.split(',')[1] } }));
     parts.push({ text: `Create a comic script about ${topic} using these characters.` });
     
@@ -795,7 +806,7 @@ export const generateComicScriptFromImages = async (images: string[], topic: str
             }
         }
     });
-    return JSON.parse(response.text || "{}");
+    return JSON.parse(response.text || "{}") as StorybookData;
 };
 
 export const analyzeVideoCharacters = async (frame: string) => {
@@ -813,8 +824,8 @@ export const generateBabyTransformation = async (frame: string, analysis: any) =
     return generateVideoWithGemini(`Transform these characters into babies: ${JSON.stringify(analysis)}`, '16:9', frame);
 };
 
-export const generateBabyDebateScript = async (topic: string, participants: any[]) => {
-    return generateJSON(`Baby debate script on ${topic} with participants: ${JSON.stringify(participants)}`, {
+export const generateBabyDebateScript = async (topic: string, participants: any[]): Promise<BabyDebateScript> => {
+    return generateJSON<BabyDebateScript>(`Baby debate script on ${topic} with participants: ${JSON.stringify(participants)}`, {
         type: Type.OBJECT,
         properties: {
             topic: { type: Type.STRING },
@@ -845,8 +856,8 @@ export const analyzeSlideshow = async (images: string[]) => {
     return generateTextWithGemini(`Analyze this sequence of ${images.length} images for a slideshow.`);
 };
 
-export const generateStoryScript = async (concept: string, style: string, characters?: string) => {
-    return generateJSON(`Story script about ${concept}. Style: ${style}. Characters: ${characters}`, {
+export const generateStoryScript = async (concept: string, style: string, characters?: string): Promise<StorybookData> => {
+    return generateJSON<StorybookData>(`Story script about ${concept}. Style: ${style}. Characters: ${characters}`, {
         type: Type.OBJECT,
         properties: {
             title: { type: Type.STRING },
@@ -889,5 +900,3 @@ export const generateBackgroundMusic = async (theme: string, style: string) => {
     const url = await generateVideoWithGemini(`Music generation: ${theme}. Style: ${style}. Audio only focus.`, '16:9');
     return url; // Returns video URL which contains the audio
 };
-
-import { Modality } from "@google/genai";

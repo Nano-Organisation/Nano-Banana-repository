@@ -106,10 +106,10 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
               </ul>
 
               <button 
-                onClick={() => handleSelect('pro')}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-4 rounded-xl transition-all shadow-lg shadow-indigo-900/20 uppercase tracking-widest"
+                disabled
+                className="w-full bg-slate-800 text-slate-500 font-black py-4 rounded-xl transition-all shadow-none uppercase tracking-widest cursor-not-allowed border border-slate-700"
               >
-                Get Premium
+                Temporarily Unavailable
               </button>
             </div>
           </div>
@@ -165,3 +165,4 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
 };
 
 export default PricingModal;
+    
