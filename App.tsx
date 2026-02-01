@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types.ts';
-// Fix: Using explicit .tsx extensions in imports to resolve module resolution issues in the browser environment.
 import Layout from './components/Layout.tsx';
 import LoginGate from './components/LoginGate.tsx';
 import UserDashboard from './components/UserDashboard.tsx';
@@ -485,6 +484,8 @@ const App: React.FC = () => {
       onGoHome={() => setCurrentTool(ToolId.Dashboard)}
       onProfileClick={() => setCurrentTool(ToolId.UserProfile)}
       onLogout={handleLogout}
+      onLogin={() => setShowAuthGate(true)}
+      isAuthenticated={!!isAuthenticated}
     >
       {renderTool()}
       {pendingExternalUrl && (

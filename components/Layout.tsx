@@ -77,24 +77,23 @@ const Layout: React.FC<LayoutProps> = ({
                </button>
              )}
              
-             {/* Authentication Buttons: Explicit check for clarity */}
-             {isAuthenticated && onLogout && (
+             {isAuthenticated ? (
                <button 
                  onClick={onLogout}
-                 className="p-2 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                 className="flex items-center gap-2 p-2 px-3 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-xs font-bold uppercase"
                  title="Sign Out"
                >
-                 <LogOut className="w-5 h-5" />
+                 <LogOut className="w-4 h-4" />
+                 <span className="hidden sm:inline">Sign Out</span>
                </button>
-             )}
-
-             {!isAuthenticated && onLogin && (
+             ) : (
                <button 
                  onClick={onLogin}
-                 className="p-2 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                 className="flex items-center gap-2 p-2 px-3 text-emerald-600 dark:text-emerald-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-xs font-bold uppercase"
                  title="Sign In"
                >
-                 <LogIn className="w-5 h-5" />
+                 <LogIn className="w-4 h-4" />
+                 <span className="hidden sm:inline">Sign In</span>
                </button>
              )}
 
@@ -109,7 +108,7 @@ const Layout: React.FC<LayoutProps> = ({
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 relative z-0">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 relative">
         {children}
       </main>
 
