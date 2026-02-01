@@ -428,8 +428,6 @@ const App: React.FC = () => {
      return <ActivationGuide onBack={() => setShowActivationGuide(false)} />;
   }
   if (isAuthenticated === null) return <div className="min-h-screen bg-slate-950" />;
-  // Removed strict blocking. Now accessible unless AuthGate is triggered.
-  // if (isAuthenticated === false) return <LoginGate onLogin={() => setIsAuthenticated(true)} />;
   
   if (isAuthenticated && hasSelectedKey === false) {
     return (

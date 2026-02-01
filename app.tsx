@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types.ts';
 // Fix: Using explicit .tsx extensions in imports to resolve module resolution issues in the browser environment.
@@ -200,6 +199,10 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); 
   const [hasSelectedKey, setHasSelectedKey] = useState<boolean | null>(null);
   const [showActivationGuide, setShowActivationGuide] = useState(false);
+  
+  // New state for Freemium Access Gate
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  const [pendingTool, setPendingTool] = useState<ToolId | null>(null);
 
   useEffect(() => {
     const hasAccess = localStorage.getItem('nano_access_granted');
@@ -233,12 +236,23 @@ const App: React.FC = () => {
     localStorage.removeItem('supabase_user_id');
     setIsAuthenticated(false);
     setHasSelectedKey(null);
+    setShowAuthGate(false);
+    setPendingTool(null);
   };
 
   const confirmExternalNavigation = () => {
     if (pendingExternalUrl) {
       window.open(pendingExternalUrl, '_blank', 'noopener,noreferrer');
       setPendingExternalUrl(null);
+    }
+  };
+
+  const handleToolAccess = (toolId: ToolId) => {
+    if (isAuthenticated) {
+      setCurrentTool(toolId);
+    } else {
+      setPendingTool(toolId);
+      setShowAuthGate(true);
     }
   };
 
@@ -334,7 +348,7 @@ const App: React.FC = () => {
         {flagshipTools.map((tool) => (
           <button
             key={tool.id}
-            onClick={() => setCurrentTool(tool.id)}
+            onClick={() => handleToolAccess(tool.id)}
             onMouseEnter={() => setHoveredTool(tool.id)}
             onMouseLeave={() => setHoveredTool(null)}
             className="group relative bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 text-left transition-all hover:-translate-y-2 hover:border-amber-500/50 overflow-hidden shadow-xl"
@@ -387,7 +401,7 @@ const App: React.FC = () => {
                    {filteredTools.map((tool) => (
                       <button
                         key={tool.id}
-                        onClick={() => (tool as any).externalUrl ? setPendingExternalUrl((tool as any).externalUrl) : setCurrentTool(tool.id)}
+                        onClick={() => (tool as any).externalUrl ? setPendingExternalUrl((tool as any).externalUrl) : handleToolAccess(tool.id)}
                         className="relative bg-slate-5 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 p-5 rounded-2xl text-left transition-all hover:bg-white dark:hover:bg-slate-900 group"
                       >
                         {tool.releaseDate && isToolNew(tool.releaseDate) && (
@@ -414,8 +428,10 @@ const App: React.FC = () => {
      return <ActivationGuide onBack={() => setShowActivationGuide(false)} />;
   }
   if (isAuthenticated === null) return <div className="min-h-screen bg-slate-950" />;
-  if (isAuthenticated === false) return <LoginGate onLogin={() => setIsAuthenticated(true)} />;
-  if (hasSelectedKey === false) {
+  // Removed strict blocking. Now accessible unless AuthGate is triggered.
+  // if (isAuthenticated === false) return <LoginGate onLogin={() => setIsAuthenticated(true)} />;
+  
+  if (isAuthenticated && hasSelectedKey === false) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center space-y-8 animate-fade-in relative">
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
@@ -488,6 +504,26 @@ const App: React.FC = () => {
               <button onClick={confirmExternalNavigation} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-amber-900/20">Proceed</button>
             </div>
           </div>
+        </div>
+      )}
+      {showAuthGate && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-sm overflow-y-auto animate-fade-in">
+          <div className="absolute top-4 right-4 z-[110]">
+            <button 
+              onClick={() => { setShowAuthGate(false); setPendingTool(null); }}
+              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-full transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          <LoginGate onLogin={() => {
+            setIsAuthenticated(true);
+            setShowAuthGate(false);
+            if (pendingTool) {
+              setCurrentTool(pendingTool);
+              setPendingTool(null);
+            }
+          }} />
         </div>
       )}
     </Layout>

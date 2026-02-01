@@ -1,8 +1,12 @@
+
 import React, { ReactNode, useState } from 'react';
-import { Sparkles, ArrowLeft, MessageSquarePlus, Bug, User, LogOut, CreditCard } from 'lucide-react';
+import { Sparkles, ArrowLeft, Shield, User, LogOut, LogIn, CreditCard, Mail, FileText } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import ThemeSwitcher from './ThemeSwitcher';
 import PricingModal from './PricingModal';
+import ContactModal from './ContactModal';
+import PrivacyModal from './PrivacyModal';
+import TermsModal from './TermsModal';
 
 interface LayoutProps {
   children: ReactNode;
@@ -11,19 +15,25 @@ interface LayoutProps {
   onGoHome?: () => void;
   onProfileClick?: () => void;
   onLogout?: () => void;
+  onLogin?: () => void;
+  isAuthenticated?: boolean;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome, onProfileClick, onLogout }) => {
+const Layout: React.FC<LayoutProps> = ({ 
+  children, 
+  onBack, 
+  title, 
+  onGoHome, 
+  onProfileClick, 
+  onLogout,
+  onLogin,
+  isAuthenticated 
+}) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
-
-  const handleReportBug = () => {
-    window.location.href = "mailto:contact-us@thedigitalgentry.co.uk?subject=AI Suite: Bug Report";
-  };
-
-  const handleFeedback = () => {
-    window.location.href = "mailto:contact-us@thedigitalgentry.co.uk?subject=AI Suite: Feedback";
-  };
+  const [isContactOpen, setIsContactOpen] = useState(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-300">
@@ -56,6 +66,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome, onPr
           <div className="flex items-center gap-3">
              <ThemeSwitcher />
              <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-1"></div>
+             
              {onProfileClick && (
                <button 
                  onClick={onProfileClick}
@@ -65,7 +76,9 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome, onPr
                  <User className="w-5 h-5" />
                </button>
              )}
-             {onLogout && (
+             
+             {/* Authentication Buttons: Explicit check for clarity */}
+             {isAuthenticated && onLogout && (
                <button 
                  onClick={onLogout}
                  className="p-2 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
@@ -74,6 +87,17 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome, onPr
                  <LogOut className="w-5 h-5" />
                </button>
              )}
+
+             {!isAuthenticated && onLogin && (
+               <button 
+                 onClick={onLogin}
+                 className="p-2 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                 title="Sign In"
+               >
+                 <LogIn className="w-5 h-5" />
+               </button>
+             )}
+
              <button
                onClick={() => setIsPricingOpen(true)}
                className="ml-2 flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-900 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-lg shadow-amber-500/20"
@@ -96,18 +120,25 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome, onPr
           </div>
           <div className="flex items-center gap-6">
             <button 
-              onClick={handleReportBug}
-              className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-500 transition-colors"
+              onClick={() => setIsContactOpen(true)}
+              className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
             >
-              <Bug className="w-4 h-4" />
-              Report a bug
+              <Mail className="w-4 h-4" />
+              Contact Us
             </button>
             <button 
-              onClick={handleFeedback}
+              onClick={() => setIsPrivacyOpen(true)}
+              className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            >
+              <Shield className="w-4 h-4" />
+              Privacy
+            </button>
+            <button 
+              onClick={() => setIsTermsOpen(true)}
               className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-500 transition-colors"
             >
-              <MessageSquarePlus className="w-4 h-4" />
-              Feedback
+              <FileText className="w-4 h-4" />
+              Terms & Conditions
             </button>
           </div>
         </div>
@@ -115,6 +146,9 @@ const Layout: React.FC<LayoutProps> = ({ children, onBack, title, onGoHome, onPr
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
+      <ContactModal isOpen={isContactOpen} onClose={() => setIsContactOpen(false)} />
+      <PrivacyModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
+      <TermsModal isOpen={isTermsOpen} onClose={() => setIsTermsOpen(false)} />
     </div>
   );
 };

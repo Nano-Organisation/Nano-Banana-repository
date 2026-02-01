@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Lock, ArrowRight, ShieldCheck, AlertCircle, ShoppingCart, Sparkles, CheckCircle, Zap, RefreshCw, Mail, KeyRound, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { supabase, createInitialProfile } from '../utils/supabase';
@@ -123,7 +124,16 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
           }
         }
       } catch (err: any) {
-        setError(err.message || "Invalid email or password.");
+        // Secure error handling for Registration
+        // Intercepts RLS/Duplicate Key errors to provide a clean, secure message
+        const msg = (err.message || "").toLowerCase();
+        
+        if (msg.includes("security policy") || msg.includes("duplicate key") || msg.includes("already registered")) {
+           setError("Unable to register. If you already have an account, please sign in.");
+        } else {
+           setError(err.message || "Authentication failed.");
+        }
+        
         setShake(true);
         setIsValidating(false);
         setTimeout(() => setShake(false), 500);
