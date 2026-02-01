@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 
@@ -62,29 +63,31 @@ export default async function handler(req: Request) {
     if (model?.includes('veo') || model?.includes('video')) cost = 50;
 
     // 3. CHECK BALANCE (Read-Only)
-    // We check if they *can* pay, but we DO NOT charge yet.
-    if (supabaseUrl && supabaseKey) {
-      const supabase = createClient(supabaseUrl, supabaseKey);
-      
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('credit_balance')
-        .eq('id', userId)
-        .single();
+    // CRITICAL: Skip if it's an admin or license session (pre-paid/unlimited)
+    if (!userId.startsWith('admin-') && !userId.startsWith('license-')) {
+        if (supabaseUrl && supabaseKey) {
+          const supabase = createClient(supabaseUrl, supabaseKey);
+          
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('credit_balance')
+            .eq('id', userId)
+            .single();
 
-      if (profileError || !profile) {
-         return new Response(JSON.stringify({ error: "Authentication Error: User profile not found." }), { 
-             status: 403,
-             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-         });
-      }
+          if (profileError || !profile) {
+             return new Response(JSON.stringify({ error: "Authentication Error: User profile not found." }), { 
+                 status: 403,
+                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+             });
+          }
 
-      if (profile.credit_balance < cost) {
-          return new Response(JSON.stringify({ error: `Insufficient credits. This task requires ${cost} credits.` }), { 
-            status: 402,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-      }
+          if (profile.credit_balance < cost) {
+              return new Response(JSON.stringify({ error: `Insufficient credits. This task requires ${cost} credits.` }), { 
+                status: 402,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+          }
+        }
     }
 
     // 4. EXECUTE MODEL CALL (The risky part)
@@ -120,23 +123,25 @@ export default async function handler(req: Request) {
     }
 
     // 5. DEDUCT CREDITS (Only reached if Step 4 succeeded)
-    // Because we are here, we know the AI call worked and we have a valid response.
-    if (supabaseUrl && supabaseKey) {
-      const supabase = createClient(supabaseUrl, supabaseKey);
-      
-      // Re-fetch to ensure we don't go negative in a race condition (optional but safe)
-      const { data: currentProfile } = await supabase.from('profiles').select('credit_balance').eq('id', userId).single();
-      
-      if (currentProfile) {
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ credit_balance: currentProfile.credit_balance - cost })
-            .eq('id', userId);
-            
-          if (updateError) {
-              console.error("CRITICAL: Failed to deduct credits after successful generation:", updateError);
+    // Only deduct for standard users
+    if (!userId.startsWith('admin-') && !userId.startsWith('license-')) {
+        if (supabaseUrl && supabaseKey) {
+          const supabase = createClient(supabaseUrl, supabaseKey);
+          
+          // Re-fetch to ensure we don't go negative in a race condition (optional but safe)
+          const { data: currentProfile } = await supabase.from('profiles').select('credit_balance').eq('id', userId).single();
+          
+          if (currentProfile) {
+              const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ credit_balance: currentProfile.credit_balance - cost })
+                .eq('id', userId);
+                
+              if (updateError) {
+                  console.error("CRITICAL: Failed to deduct credits after successful generation:", updateError);
+              }
           }
-      }
+        }
     }
 
     return new Response(JSON.stringify(response), {

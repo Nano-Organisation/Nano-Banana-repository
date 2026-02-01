@@ -53,10 +53,16 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
       setTimeout(() => {
         if (VALID_CODES.includes(accessCode.trim())) {
           localStorage.setItem('nano_access_granted', 'true');
-          // Admin session flag lets the app know to bypass credit checks for you
+          
+          // Set User ID for Proxy compatibility
+          // CRITICAL FIX: Ensure backend has a valid ID to check credits against (or bypass)
           if (accessCode.trim() === 'digital-gentry-2025') {
             localStorage.setItem('is_admin_session', 'true');
+            localStorage.setItem('supabase_user_id', 'admin-session');
+          } else {
+            localStorage.setItem('supabase_user_id', `license-${accessCode.trim()}`);
           }
+          
           onLogin();
         } else {
           setError("Invalid Access Code");
@@ -125,7 +131,6 @@ const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
         }
       } catch (err: any) {
         // Secure error handling for Registration
-        // Intercepts RLS/Duplicate Key errors to provide a clean, secure message
         const msg = (err.message || "").toLowerCase();
         
         if (msg.includes("security policy") || msg.includes("duplicate key") || msg.includes("already registered")) {

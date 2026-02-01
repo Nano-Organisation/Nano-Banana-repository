@@ -1,6 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types.ts';
-// Fix: Using explicit .tsx extensions in imports to resolve module resolution issues in the browser environment.
 import Layout from './components/Layout.tsx';
 import LoginGate from './components/LoginGate.tsx';
 import UserDashboard from './components/UserDashboard.tsx';
@@ -196,7 +196,11 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllTools, setShowAllTools] = useState(false);
   const [pendingExternalUrl, setPendingExternalUrl] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); 
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(() => {
+    // Initialize immediately to prevent UI flash
+    const hasAccess = localStorage.getItem('nano_access_granted');
+    return hasAccess === 'true';
+  }); 
   const [hasSelectedKey, setHasSelectedKey] = useState<boolean | null>(null);
   const [showActivationGuide, setShowActivationGuide] = useState(false);
   
@@ -205,6 +209,7 @@ const App: React.FC = () => {
   const [pendingTool, setPendingTool] = useState<ToolId | null>(null);
 
   useEffect(() => {
+    // Also re-check on mount for safety
     const hasAccess = localStorage.getItem('nano_access_granted');
     setIsAuthenticated(hasAccess === 'true');
     const checkKey = async () => {
@@ -427,9 +432,8 @@ const App: React.FC = () => {
   if (showActivationGuide) {
      return <ActivationGuide onBack={() => setShowActivationGuide(false)} />;
   }
+  
   if (isAuthenticated === null) return <div className="min-h-screen bg-slate-950" />;
-  // Removed strict blocking. Now accessible unless AuthGate is triggered.
-  // if (isAuthenticated === false) return <LoginGate onLogin={() => setIsAuthenticated(true)} />;
   
   if (isAuthenticated && hasSelectedKey === false) {
     return (
@@ -480,15 +484,22 @@ const App: React.FC = () => {
       </div>
     );
   }
+
   return (
-    <Layout 
-      onBack={currentTool !== ToolId.Dashboard ? () => setCurrentTool(ToolId.Dashboard) : undefined}
-      title={currentTool !== ToolId.Dashboard ? TOOLS.find(t => t.id === currentTool)?.title : undefined}
-      onGoHome={() => setCurrentTool(ToolId.Dashboard)}
-      onProfileClick={() => setCurrentTool(ToolId.UserProfile)}
-      onLogout={handleLogout}
-    >
-      {renderTool()}
+    <>
+      <Layout 
+        onBack={currentTool !== ToolId.Dashboard ? () => setCurrentTool(ToolId.Dashboard) : undefined}
+        title={currentTool !== ToolId.Dashboard ? TOOLS.find(t => t.id === currentTool)?.title : undefined}
+        onGoHome={() => setCurrentTool(ToolId.Dashboard)}
+        onProfileClick={() => setCurrentTool(ToolId.UserProfile)}
+        onLogout={handleLogout}
+        onLogin={() => setShowAuthGate(true)}
+        isAuthenticated={!!isAuthenticated}
+      >
+        {renderTool()}
+      </Layout>
+
+      {/* Moved Modals outside Layout to ensure they are top-level z-index */}
       {pendingExternalUrl && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
           <div className="bg-slate-900 border border-slate-800 w-full max-sm rounded-2xl shadow-2xl p-6 space-y-6 text-center transform scale-100 transition-all">
@@ -506,6 +517,7 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+      
       {showAuthGate && (
         <div className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-sm overflow-y-auto animate-fade-in">
           <div className="absolute top-4 right-4 z-[110]">
@@ -526,7 +538,7 @@ const App: React.FC = () => {
           }} />
         </div>
       )}
-    </Layout>
+    </>
   );
 };
 
