@@ -47,7 +47,18 @@ export const standardQueue = new Queue();
 export async function withRetry<T>(fn: () => Promise<T>, retries = 3, onRetry?: (msg: string) => void): Promise<T> {
   try {
     return await fn();
-  } catch (e) {
+  } catch (e: any) {
+    // Fail fast on Quota/Rate Limit errors
+    const isQuotaError = 
+        e.message?.includes('429') || 
+        e.message?.includes('quota') || 
+        e.message?.includes('RESOURCE_EXHAUSTED') ||
+        e.status === 429;
+
+    if (isQuotaError) {
+        throw new Error("Quota Exceeded: API limit reached. Please check your billing or try again later.");
+    }
+
     if (retries > 0) {
       if (onRetry) onRetry(`Retrying... (${retries} attempts left)`);
       await new Promise(r => setTimeout(r, 2000));
@@ -225,7 +236,7 @@ export const generateVideoWithGemini = async (prompt: string, aspectRatio: strin
         // Poll
         while (!operation.done) {
             await new Promise(r => setTimeout(r, 5000));
-            operation = await ai.operations.getVideosOperation({ name: operation.name });
+            operation = await ai.operations.getVideosOperation({ name: operation.name } as any);
         }
 
         const uri = operation.response?.generatedVideos?.[0]?.video?.uri;
@@ -262,7 +273,7 @@ export const generateAdvancedVideo = async (prompt: string, aspectRatio: string 
 
         while (!operation.done) {
             await new Promise(r => setTimeout(r, 10000));
-            operation = await ai.operations.getVideosOperation({ name: operation.name });
+            operation = await ai.operations.getVideosOperation({ name: operation.name } as any);
         }
 
         const video = operation.response?.generatedVideos?.[0]?.video;
@@ -286,7 +297,7 @@ export const extendVideo = async (prompt: string, previousVideoHandle: any, onRe
 
         while (!operation.done) {
             await new Promise(r => setTimeout(r, 5000));
-            operation = await ai.operations.getVideosOperation({ name: operation.name });
+            operation = await ai.operations.getVideosOperation({ name: operation.name } as any);
         }
 
         const video = operation.response?.generatedVideos?.[0]?.video;

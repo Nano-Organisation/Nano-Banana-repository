@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 
@@ -152,11 +151,17 @@ export default async function handler(req: Request) {
 
   } catch (error: any) {
     console.error("API Error:", error);
+    
+    // Improved Status Mapping for Quota Errors
+    const status = error.status || 500;
+    const isQuotaError = status === 429 || error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('RESOURCE_EXHAUSTED');
+    const finalStatus = isQuotaError ? 429 : 500;
+
     return new Response(JSON.stringify({ 
       error: error.message || "Internal Server Error",
       details: error.toString() 
     }), {
-      status: 500,
+      status: finalStatus,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
