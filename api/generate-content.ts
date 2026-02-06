@@ -48,7 +48,8 @@ export default async function handler(req: Request) {
 
     // --- HANDLE POLLING (No credit cost) ---
     if (action === 'poll' && operationName) {
-        const operation = await ai.operations.getVideosOperation({ name: operationName });
+        // Cast to any to bypass TS2353 error where SDK definition lags behind runtime support
+        const operation = await ai.operations.getVideosOperation({ name: operationName } as any);
         return new Response(JSON.stringify(operation), {
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
