@@ -166,8 +166,8 @@ const TOOLS = [
   { id: ToolId.Summarizer, title: "AI Sum", description: "Intelligent text summarization.", icon: FileText, color: "emerald", gradient: "from-emerald-500 to-teal-600" },
   { id: ToolId.StoryTeller, title: "AI Tales", description: "Creative story and content generation.", icon: Feather, color: "pink", gradient: "from-pink-500 to-rose-600" },
   { id: ToolId.CodeAssistant, title: "AI Dev", description: "Code generation, prototyping, and security auditing.", icon: Terminal, color: "cyan", gradient: "from-cyan-500 to-sky-600" },
-  { id: ToolId.AutomationHub, title: "AI Automate", description: "Browser extension builder and Excel automation.", icon: Bot, color: "violet", gradient: "from-violet-500 to-purple-600", releaseDate: '2025-12-04' },
-  { id: ToolId.SecurityBox, title: "AI Security Box", description: "Access the external Security Hub.", icon: Shield, color: "slate", gradient: "from-slate-700 to-slate-900", externalUrl: "https://sec-hub.online" }
+  // { id: ToolId.AutomationHub, title: "AI Automate", description: "Browser extension builder and Excel automation.", icon: Bot, color: "violet", gradient: "from-violet-500 to-purple-600", releaseDate: '2025-12-04' },
+  // { id: ToolId.SecurityBox, title: "AI Security Box", description: "Access the external Security Hub.", icon: Shield, color: "slate", gradient: "from-slate-700 to-slate-900", externalUrl: "https://sec-hub.online" }
 ];
 
 const flagshipTools = TOOLS.filter(t => [
@@ -195,7 +195,11 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllTools, setShowAllTools] = useState(false);
   const [pendingExternalUrl, setPendingExternalUrl] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); 
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(() => {
+    // Initialize immediately to prevent UI flash
+    const hasAccess = localStorage.getItem('nano_access_granted');
+    return hasAccess === 'true';
+  }); 
   const [hasSelectedKey, setHasSelectedKey] = useState<boolean | null>(null);
   const [showActivationGuide, setShowActivationGuide] = useState(false);
   
@@ -204,6 +208,7 @@ const App: React.FC = () => {
   const [pendingTool, setPendingTool] = useState<ToolId | null>(null);
 
   useEffect(() => {
+    // Also re-check on mount for safety
     const hasAccess = localStorage.getItem('nano_access_granted');
     setIsAuthenticated(hasAccess === 'true');
     const checkKey = async () => {
@@ -426,6 +431,7 @@ const App: React.FC = () => {
   if (showActivationGuide) {
      return <ActivationGuide onBack={() => setShowActivationGuide(false)} />;
   }
+  
   if (isAuthenticated === null) return <div className="min-h-screen bg-slate-950" />;
   
   if (isAuthenticated && hasSelectedKey === false) {
@@ -477,17 +483,22 @@ const App: React.FC = () => {
       </div>
     );
   }
+
   return (
-    <Layout 
-      onBack={currentTool !== ToolId.Dashboard ? () => setCurrentTool(ToolId.Dashboard) : undefined}
-      title={currentTool !== ToolId.Dashboard ? TOOLS.find(t => t.id === currentTool)?.title : undefined}
-      onGoHome={() => setCurrentTool(ToolId.Dashboard)}
-      onProfileClick={() => setCurrentTool(ToolId.UserProfile)}
-      onLogout={handleLogout}
-      onLogin={() => setShowAuthGate(true)}
-      isAuthenticated={!!isAuthenticated}
-    >
-      {renderTool()}
+    <>
+      <Layout 
+        onBack={currentTool !== ToolId.Dashboard ? () => setCurrentTool(ToolId.Dashboard) : undefined}
+        title={currentTool !== ToolId.Dashboard ? TOOLS.find(t => t.id === currentTool)?.title : undefined}
+        onGoHome={() => setCurrentTool(ToolId.Dashboard)}
+        onProfileClick={() => setCurrentTool(ToolId.UserProfile)}
+        onLogout={handleLogout}
+        onLogin={() => setShowAuthGate(true)}
+        isAuthenticated={!!isAuthenticated}
+      >
+        {renderTool()}
+      </Layout>
+
+      {/* Moved Modals outside Layout to ensure they are top-level z-index */}
       {pendingExternalUrl && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
           <div className="bg-slate-900 border border-slate-800 w-full max-sm rounded-2xl shadow-2xl p-6 space-y-6 text-center transform scale-100 transition-all">
@@ -505,6 +516,7 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+      
       {showAuthGate && (
         <div className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-sm overflow-y-auto animate-fade-in">
           <div className="absolute top-4 right-4 z-[110]">
@@ -525,7 +537,7 @@ const App: React.FC = () => {
           }} />
         </div>
       )}
-    </Layout>
+    </>
   );
 };
 
