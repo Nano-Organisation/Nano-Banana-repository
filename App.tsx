@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ToolId } from './types.ts';
 import Layout from './components/Layout.tsx';
@@ -67,6 +68,7 @@ import StyleForge from './components/tools/StyleForge.tsx';
 import NurseryRhymesTool from './components/tools/NurseryRhymesTool.tsx';
 import CaptionCreator from './components/tools/CaptionCreator.tsx';
 import ActivationGuide from './components/ActivationGuide.tsx';
+import HandwritingTool from './components/tools/HandwritingTool.tsx';
 
 import { 
   Sparkles, MessageSquare, MonitorPlay, Users, Stars, Grid, Copy as CopyIcon, 
@@ -103,6 +105,7 @@ const SHADOW_COLORS: Record<string, string> = {
 
 const TOOLS = [
   { id: ToolId.Chat, title: "AI Chat", description: "Conversational AI assistant for general queries.", icon: MessageSquare, color: "green", gradient: "from-green-500 to-emerald-600" },
+  { id: ToolId.Handwriting, title: "AI Scribe", description: "Convert digital text into realistic handwritten documents.", icon: Feather, color: "emerald", gradient: "from-emerald-500 to-teal-600", releaseDate: '2025-12-23' },
   { id: ToolId.VideoCaptioner, title: "AI Captions", description: "Auto-generate viral timed captions with emojis and animations.", icon: LucideType, color: "blue", gradient: "from-blue-500 to-indigo-600", releaseDate: '2025-12-21' },
   { id: ToolId.NurseryRhymes, title: "AI Nursery Rhymes", description: "Visualize classic nursery rhymes with beautiful AI art.", icon: Music, color: "pink", gradient: "from-pink-400 to-rose-500", releaseDate: '2025-12-20' },
   { id: ToolId.StyleEngine, title: "AI Style Forge", description: "Create, name, and reuse your own visual recipes for consistent art.", icon: FlaskConical, color: "indigo", gradient: "from-indigo-600 to-violet-700", releaseDate: '2025-12-19' },
@@ -176,7 +179,8 @@ const flagshipTools = TOOLS.filter(t => [
   ToolId.Storybook,
   ToolId.StorybookLarge,
   ToolId.Studio,
-  ToolId.VideoCaptioner
+  ToolId.VideoCaptioner,
+  ToolId.Handwriting
 ].includes(t.id));
 
 const isToolNew = (releaseDate?: string) => {
@@ -252,6 +256,9 @@ const App: React.FC = () => {
   };
 
   const handleToolAccess = (toolId: ToolId) => {
+    // Disable access to video generator if requested by user
+    if (toolId === ToolId.VideoGenerator) return;
+
     if (isAuthenticated) {
       setCurrentTool(toolId);
     } else {
@@ -270,6 +277,7 @@ const App: React.FC = () => {
     switch (currentTool) {
       case ToolId.UserProfile: return <UserDashboard />;
       case ToolId.Chat: return <ChatInterface />;
+      case ToolId.Handwriting: return <HandwritingTool />;
       case ToolId.VideoCaptioner: return <CaptionCreator />;
       case ToolId.NurseryRhymes: return <NurseryRhymesTool />;
       case ToolId.StyleEngine: return <StyleForge />;
@@ -355,8 +363,9 @@ const App: React.FC = () => {
             onClick={() => handleToolAccess(tool.id)}
             onMouseEnter={() => setHoveredTool(tool.id)}
             onMouseLeave={() => setHoveredTool(null)}
-            className="group relative bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 text-left transition-all hover:-translate-y-2 hover:border-amber-500/50 overflow-hidden shadow-xl"
-            style={{ boxShadow: hoveredTool === tool.id ? `0 20px 40px -15px ${SHADOW_COLORS[tool.color] || 'rgba(0,0,0,0.5)'}` : 'none' }}
+            disabled={tool.id === ToolId.VideoGenerator}
+            className={`group relative bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 text-left transition-all hover:-translate-y-2 hover:border-amber-500/50 overflow-hidden shadow-xl ${tool.id === ToolId.VideoGenerator ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
+            style={{ boxShadow: hoveredTool === tool.id && tool.id !== ToolId.VideoGenerator ? `0 20px 40px -15px ${SHADOW_COLORS[tool.color] || 'rgba(0,0,0,0.5)'}` : 'none' }}
           >
             {tool.releaseDate && isToolNew(tool.releaseDate) && (
               <div className="absolute top-6 right-6 bg-amber-500 text-slate-900 text-[10px] font-black px-2.5 py-1 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.6)] animate-pulse uppercase tracking-tighter z-30 ring-2 ring-amber-500/20">
@@ -372,7 +381,7 @@ const App: React.FC = () => {
                <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed font-medium">{tool.description}</p>
             </div>
             <div className="mt-8 flex items-center text-xs font-black uppercase tracking-[0.2em] text-amber-600 group-hover:text-amber-500 transition-colors">
-              Launch Flagship <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+              {tool.id === ToolId.VideoGenerator ? 'Maintenance Mode' : <>Launch Flagship <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span></>}
             </div>
           </button>
         ))}
@@ -406,7 +415,8 @@ const App: React.FC = () => {
                       <button
                         key={tool.id}
                         onClick={() => (tool as any).externalUrl ? setPendingExternalUrl((tool as any).externalUrl) : handleToolAccess(tool.id)}
-                        className="relative bg-slate-5 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 p-5 rounded-2xl text-left transition-all hover:bg-white dark:hover:bg-slate-900 group"
+                        disabled={tool.id === ToolId.VideoGenerator}
+                        className={`relative bg-slate-5 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 p-5 rounded-2xl text-left transition-all hover:bg-white dark:hover:bg-slate-900 group ${tool.id === ToolId.VideoGenerator ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
                       >
                         {tool.releaseDate && isToolNew(tool.releaseDate) && (
                           <div className="absolute top-2 right-2 bg-amber-500 text-slate-900 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse uppercase tracking-tighter z-20 ring-1 ring-amber-500/20">

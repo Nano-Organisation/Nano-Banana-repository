@@ -68,7 +68,8 @@ export enum ToolId {
   ImagesToMovie = 'IMAGES_TO_MOVIE',
   StyleEngine = 'STYLE_ENGINE',
   NurseryRhymes = 'NURSERY_RHYMES',
-  VideoCaptioner = 'VIDEO_CAPTIONER'
+  VideoCaptioner = 'VIDEO_CAPTIONER',
+  Handwriting = 'HANDWRITING'
 }
 
 export interface ToolConfig {
