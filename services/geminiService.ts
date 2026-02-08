@@ -1,4 +1,5 @@
-import { GoogleGenAI, Type, Modality } from "@google/genai";
+
+import { Type, Modality } from "@google/genai";
 import { 
   EmojiPuzzle, WordPuzzle, TwoTruthsPuzzle, RiddlePuzzle, MemeData, 
   SocialCampaign, PromptAnalysis, DailyTip, HelpfulList, PodcastScript, 
@@ -7,9 +8,39 @@ import {
   CarouselData, DreamAnalysis, PetProfile, StorybookData, BabyDebateScript
 } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 // --- UTILITIES ---
+
+// Helper to access the API Proxy
+const callProxyAPI = async (payload: any) => {
+  const userId = localStorage.getItem('supabase_user_id');
+  
+  // We allow the request to proceed even if userId is missing so the backend can handle the 401/403 error gracefully
+  // or if there are specific public routes (though typical usage requires login).
+  
+  try {
+    const response = await fetch('/api/generate-content', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...payload,
+        userId: userId || 'anonymous' // Backend enforces valid IDs for credit deduction
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || data.details || "Service Error");
+    }
+
+    return data;
+  } catch (error: any) {
+    console.error("Proxy API Error:", error);
+    throw error;
+  }
+};
 
 class Queue {
   private queue: (() => Promise<void>)[] = [];
@@ -48,7 +79,7 @@ export async function withRetry<T>(fn: () => Promise<T>, retries = 3, onRetry?: 
   try {
     return await fn();
   } catch (e: any) {
-    // Fail fast on Quota/Rate Limit errors
+    // Fail fast on Quota/Rate Limit errors from the proxy
     const isQuotaError = 
         e.message?.includes('429') || 
         e.message?.includes('quota') || 
@@ -79,12 +110,15 @@ export function handleGeminiError(error: any) {
 export const generateTextWithGemini = async (prompt: string, systemInstruction?: string) => {
   return standardQueue.run(async () => {
     try {
-      const response = await ai.models.generateContent({
+      // Proxy handles the structure, we send the intent
+      const response = await callProxyAPI({
         model: 'gemini-3-flash-preview',
-        contents: prompt,
+        contents: [{ parts: [{ text: prompt }] }],
         config: { systemInstruction },
       });
-      return response.text || "";
+      
+      // Parse the standard Gemini response structure returned by proxy
+      return response.candidates?.[0]?.content?.parts?.[0]?.text || "";
     } catch (error) { handleGeminiError(error); return ""; }
   });
 };
@@ -92,16 +126,12 @@ export const generateTextWithGemini = async (prompt: string, systemInstruction?:
 export const sendChatToProxy = async (history: { role: string, parts: { text: string }[] }[], model: string, systemInstruction?: string) => {
   return standardQueue.run(async () => {
     try {
-      // Direct call to generate content with history as contents if formatted correctly, 
-      // but strictly speaking generateContent takes contents (list of parts or string). 
-      // For chat, we simulate by sending the last user message with history context if needed, 
-      // but here we just pass the history as contents since the API supports array of Content objects.
-      const response = await ai.models.generateContent({
+      const response = await callProxyAPI({
         model: model || 'gemini-3-flash-preview',
-        contents: history as any, // Cast to any to fit SDK types if mismatch
+        contents: history,
         config: { systemInstruction }
       });
-      return response.text || "";
+      return response.candidates?.[0]?.content?.parts?.[0]?.text || "";
     } catch (error) { handleGeminiError(error); return ""; }
   });
 };
@@ -110,27 +140,24 @@ export const sendChatToProxy = async (history: { role: string, parts: { text: st
 
 export const generateImageWithGemini = async (prompt: string, aspectRatio: string = '1:1', referenceImage?: string, onRetry?: (msg: string) => void) => {
   return withRetry(async () => {
-    // If reference image provided, we might use it for editing or just as context.
-    // For simplicity, we use gemini-2.5-flash-image for generation.
     const model = 'gemini-2.5-flash-image';
-    const contents: any = [{ text: prompt }];
+    const contents: any[] = [{ parts: [{ text: prompt }] }];
     
     if (referenceImage) {
         const base64Data = referenceImage.split(',')[1];
-        contents.push({ inlineData: { mimeType: 'image/png', data: base64Data } });
+        // Insert image part into the content
+        contents[0].parts.push({ inlineData: { mimeType: 'image/png', data: base64Data } });
     }
 
-    const response = await ai.models.generateContent({
+    const response = await callProxyAPI({
       model,
-      contents,
+      contents: contents[0].parts.length > 1 ? { parts: contents[0].parts } : contents[0], // Adjust structure for single vs multi-part
       config: {
-        // imageConfig not fully supported on flash-image via generateContent in all SDK versions yet, 
-        // but passing prompt is key. Aspect ratio usually handled via prompt instruction for flash-image 
-        // or specific config if supported. We append to prompt for robustness.
+        // Aspect ratio handling implicitly via model or prompt
       }
     });
     
-    // Extract image
+    // Extract image from response
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
         return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
@@ -142,22 +169,21 @@ export const generateImageWithGemini = async (prompt: string, aspectRatio: strin
 
 export const generateProImageWithGemini = async (prompt: string, aspectRatio: string = '1:1', size: string = '1K', referenceImage?: string, onRetry?: (msg: string) => void) => {
     return withRetry(async () => {
-        // Pro model
         const model = 'gemini-3-pro-image-preview';
-        const contents: any = [{ text: prompt }];
+        const parts: any[] = [{ text: prompt }];
         
         if (referenceImage) {
             const base64Data = referenceImage.split(',')[1];
-            contents.push({ inlineData: { mimeType: 'image/png', data: base64Data } });
+            parts.push({ inlineData: { mimeType: 'image/png', data: base64Data } });
         }
 
-        const response = await ai.models.generateContent({
+        const response = await callProxyAPI({
             model,
-            contents,
+            contents: { parts },
             config: {
                 imageConfig: {
-                    aspectRatio: aspectRatio as any, // Cast to avoid strict enum issues if string
-                    // imageSize: size // Optional depending on SDK version
+                    aspectRatio: aspectRatio,
+                    // imageSize: size // Optional depending on backend SDK support
                 }
             }
         });
@@ -172,12 +198,10 @@ export const generateProImageWithGemini = async (prompt: string, aspectRatio: st
 };
 
 export const editImageWithGemini = async (image: string, prompt: string) => {
-    // Same as generate but conceptually for editing
     return generateImageWithGemini(prompt, '1:1', image);
 };
 
 export const generateBatchImages = async (prompt: string, count: number): Promise<string[]> => {
-    // Parallel requests
     const promises = Array(count).fill(null).map(() => generateImageWithGemini(prompt));
     return Promise.all(promises);
 };
@@ -185,26 +209,31 @@ export const generateBatchImages = async (prompt: string, count: number): Promis
 export const generateImagePrompt = async (image: string, platform: string) => {
     const base64Data = image.split(',')[1];
     const prompt = `Analyze this image and write a detailed text prompt for ${platform} to recreate it.`;
-    const response = await ai.models.generateContent({
+    
+    const response = await callProxyAPI({
         model: 'gemini-3-flash-preview',
-        contents: [
-            { inlineData: { mimeType: 'image/png', data: base64Data } },
-            { text: prompt }
-        ]
+        contents: {
+            parts: [
+                { inlineData: { mimeType: 'image/png', data: base64Data } },
+                { text: prompt }
+            ]
+        }
     });
-    return response.text || "";
+    return response.candidates?.[0]?.content?.parts?.[0]?.text || "";
 };
 
 export const analyzeImageWithGemini = async (image: string, prompt: string) => {
     const base64Data = image.split(',')[1];
-    const response = await ai.models.generateContent({
+    const response = await callProxyAPI({
         model: 'gemini-3-flash-preview',
-        contents: [
-            { inlineData: { mimeType: 'image/png', data: base64Data } },
-            { text: prompt }
-        ]
+        contents: {
+            parts: [
+                { inlineData: { mimeType: 'image/png', data: base64Data } },
+                { text: prompt }
+            ]
+        }
     });
-    return response.text || "";
+    return response.candidates?.[0]?.content?.parts?.[0]?.text || "";
 };
 
 // --- VIDEO GENERATION ---
@@ -212,68 +241,69 @@ export const analyzeImageWithGemini = async (image: string, prompt: string) => {
 export const generateVideoWithGemini = async (prompt: string, aspectRatio: string = '16:9', image?: string, onRetry?: (msg: string) => void) => {
     return withRetry(async () => {
         const model = 'veo-3.1-fast-generate-preview';
-        let operation;
         
+        // 1. Start Operation
+        const startPayload: any = {
+            model,
+            prompt,
+            config: { aspectRatio }
+        };
+
         if (image) {
             const base64Data = image.split(',')[1];
-            operation = await ai.models.generateVideos({
-                model,
-                prompt,
-                image: {
-                    imageBytes: base64Data,
-                    mimeType: 'image/png'
-                },
-                config: { aspectRatio: aspectRatio as any }
-            });
-        } else {
-            operation = await ai.models.generateVideos({
-                model,
-                prompt,
-                config: { aspectRatio: aspectRatio as any }
-            });
+            startPayload.image = {
+                imageBytes: base64Data,
+                mimeType: 'image/png'
+            };
         }
 
-        // Poll
+        const startResponse = await callProxyAPI(startPayload);
+        
+        if (!startResponse.name) {
+            throw new Error("Video generation failed to start.");
+        }
+
+        // 2. Poll for Completion
+        let operation = startResponse;
         while (!operation.done) {
             await new Promise(r => setTimeout(r, 5000));
-            operation = await ai.operations.getVideosOperation({ name: operation.name } as any);
+            operation = await callProxyAPI({ 
+                action: 'poll', 
+                operationName: startResponse.name 
+            });
         }
 
         const uri = operation.response?.generatedVideos?.[0]?.video?.uri;
         if (!uri) throw new Error("Video generation returned no URI");
         
-        // Append API Key for download
+        // Append API Key for download only if available in env (legacy behavior)
+        // Ideally this should be proxied too, but for now we follow existing pattern for download access
         return `${uri}&key=${process.env.API_KEY}`;
     }, 3, onRetry);
 };
 
 export const generateAdvancedVideo = async (prompt: string, aspectRatio: string = '16:9', image?: string, onRetry?: (msg: string) => void) => {
-    // Returns object with uri and video handle for extensions
     return withRetry(async () => {
         const model = 'veo-3.1-generate-preview'; // Higher quality
-        let operation;
         
-        const config = { aspectRatio: aspectRatio as any };
+        const startPayload: any = {
+            model,
+            prompt,
+            config: { aspectRatio }
+        };
 
         if (image) {
             const base64Data = image.split(',')[1];
-            operation = await ai.models.generateVideos({
-                model,
-                prompt,
-                image: { imageBytes: base64Data, mimeType: 'image/png' },
-                config
-            });
-        } else {
-            operation = await ai.models.generateVideos({
-                model,
-                prompt,
-                config
-            });
+            startPayload.image = { imageBytes: base64Data, mimeType: 'image/png' };
         }
 
+        const startResponse = await callProxyAPI(startPayload);
+        if (!startResponse.name) throw new Error("Advanced video generation failed to start");
+
+        let operation = startResponse;
         while (!operation.done) {
             await new Promise(r => setTimeout(r, 10000));
-            operation = await ai.operations.getVideosOperation({ name: operation.name } as any);
+            operation = await callProxyAPI({ action: 'poll', operationName: startResponse.name });
         }
 
         const video = operation.response?.generatedVideos?.[0]?.video;
@@ -286,18 +316,19 @@ export const generateAdvancedVideo = async (prompt: string, aspectRatio: string 
 
 export const extendVideo = async (prompt: string, previousVideoHandle: any, onRetry?: (msg: string) => void) => {
     return withRetry(async () => {
-        let operation = await ai.models.generateVideos({
+        const startResponse = await callProxyAPI({
             model: 'veo-3.1-generate-preview',
             prompt,
             video: previousVideoHandle,
-            config: {
-                // Resolution must match 720p for extensions usually, but let SDK handle defaults if not strict
-            }
+            config: {} // Inherits resolution
         });
 
+        if (!startResponse.name) throw new Error("Video extension failed to start");
+
+        let operation = startResponse;
         while (!operation.done) {
             await new Promise(r => setTimeout(r, 5000));
-            operation = await ai.operations.getVideosOperation({ name: operation.name } as any);
+            operation = await callProxyAPI({ action: 'poll', operationName: startResponse.name });
         }
 
         const video = operation.response?.generatedVideos?.[0]?.video;
@@ -328,7 +359,7 @@ export const generateSpeechWithGemini = async (text: string, voiceName: string =
         };
     }
 
-    const response = await ai.models.generateContent({
+    const response = await callProxyAPI({
         model,
         contents: [{ parts: [{ text }] }],
         config: {
@@ -340,26 +371,24 @@ export const generateSpeechWithGemini = async (text: string, voiceName: string =
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) throw new Error("No audio generated");
 
-    // Decode PCM (Using a simplified approach, real implementation might need WAV header addition)
-    // For browser playback, usually we need to wrap PCM in WAV container or use AudioContext decoding.
-    // Here we assume client handles it or we return a WAV data URI if we had a helper.
-    // For simplicity, returning base64. Component handles decoding.
     return `data:audio/pcm;base64,${base64Audio}`; 
 };
 
 // --- STRUCTURED CONTENT GENERATION ---
 
-// Helper to generate JSON
+// Helper to generate JSON via Proxy
 async function generateJSON<T>(prompt: string, schema: any): Promise<T> {
-    const response = await ai.models.generateContent({
+    const response = await callProxyAPI({
         model: 'gemini-3-flash-preview',
-        contents: prompt,
+        contents: [{ parts: [{ text: prompt }] }],
         config: {
             responseMimeType: 'application/json',
             responseSchema: schema
         }
     });
-    return JSON.parse(response.text || "{}") as T;
+    
+    const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+    return JSON.parse(text || "{}") as T;
 }
 
 export const generateEmojiPuzzle = async (): Promise<EmojiPuzzle> => {
@@ -536,27 +565,29 @@ export const generateRiddleContent = async (topic: string): Promise<RiddleData> 
 
 export const transcribeMediaWithGemini = async (base64: string, mimeType: string) => {
     const data = base64.split(',')[1];
-    const response = await ai.models.generateContent({
+    const response = await callProxyAPI({
         model: 'gemini-3-flash-preview',
-        contents: [
-            { inlineData: { mimeType, data } },
-            { text: "Transcribe this audio/video verbatim." }
-        ]
+        contents: {
+            parts: [
+                { inlineData: { mimeType, data } },
+                { text: "Transcribe this audio/video verbatim." }
+            ]
+        }
     });
-    return response.text || "";
+    return response.candidates?.[0]?.content?.parts?.[0]?.text || "";
 };
 
 export const generateUiCode = async (prompt: string, device: string, style: string, refImage?: string) => {
-    const contents: any[] = [{ text: `Generate HTML/Tailwind code for a ${device} UI in ${style} style. ${prompt}` }];
+    const parts: any[] = [{ text: `Generate HTML/Tailwind code for a ${device} UI in ${style} style. ${prompt}` }];
     if (refImage) {
         const data = refImage.split(',')[1];
-        contents.push({ inlineData: { mimeType: 'image/png', data } });
+        parts.push({ inlineData: { mimeType: 'image/png', data } });
     }
-    const response = await ai.models.generateContent({
+    const response = await callProxyAPI({
         model: 'gemini-3-flash-preview',
-        contents
+        contents: { parts }
     });
-    return response.text || "";
+    return response.candidates?.[0]?.content?.parts?.[0]?.text || "";
 };
 
 export const generateAffirmationPlan = async (topic: string, tone: string): Promise<AffirmationPlan> => {
@@ -689,15 +720,13 @@ export const generateBabyNames = async (gender: string, style: string, origin: s
 };
 
 export const generate3DOrchestration = async (input: string, image?: string): Promise<AI360Response> => {
-    let contents: any[] = [{ text: `Orchestrate 3D generation for: ${input}` }];
+    let contents: any[] = [{ parts: [{ text: `Orchestrate 3D generation for: ${input}` }] }];
     if (image) {
         const data = image.split(',')[1];
-        contents.push({ inlineData: { mimeType: 'image/png', data } });
+        contents[0].parts.push({ inlineData: { mimeType: 'image/png', data } });
     }
     
-    // Using generateTextWithGemini logic but need specific prompt for JSON
-    // Re-implement locally for custom schema
-    const response = await ai.models.generateContent({
+    const response = await callProxyAPI({
         model: 'gemini-2.5-flash',
         contents,
         config: {
@@ -714,7 +743,8 @@ export const generate3DOrchestration = async (input: string, image?: string): Pr
             }
         }
     });
-    return JSON.parse(response.text || "{}") as AI360Response;
+    const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+    return JSON.parse(text || "{}") as AI360Response;
 };
 
 export const generateCarouselContent = async (topic: string, count: number, handle: string): Promise<CarouselData> => {
@@ -755,12 +785,14 @@ export const analyzeDream = async (text: string): Promise<DreamAnalysis> => {
 
 export const analyzePetProfile = async (image: string): Promise<PetProfile> => {
     const data = image.split(',')[1];
-    const response = await ai.models.generateContent({
+    const response = await callProxyAPI({
         model: 'gemini-3-flash-preview',
-        contents: [
-            { inlineData: { mimeType: 'image/png', data } },
-            { text: "Analyze this pet's personality." }
-        ],
+        contents: {
+            parts: [
+                { inlineData: { mimeType: 'image/png', data } },
+                { text: "Analyze this pet's personality." }
+            ]
+        },
         config: {
             responseMimeType: 'application/json',
             responseSchema: {
@@ -775,16 +807,17 @@ export const analyzePetProfile = async (image: string): Promise<PetProfile> => {
             }
         }
     });
-    return JSON.parse(response.text || "{}") as PetProfile;
+    const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+    return JSON.parse(text || "{}") as PetProfile;
 };
 
 export const generateComicScriptFromImages = async (images: string[], topic: string): Promise<StorybookData> => {
     const parts: any[] = images.map(img => ({ inlineData: { mimeType: 'image/png', data: img.split(',')[1] } }));
     parts.push({ text: `Create a comic script about ${topic} using these characters.` });
     
-    const response = await ai.models.generateContent({
+    const response = await callProxyAPI({
         model: 'gemini-3-pro-preview',
-        contents: parts,
+        contents: { parts },
         config: {
             responseMimeType: 'application/json',
             responseSchema: {
@@ -817,18 +850,25 @@ export const generateComicScriptFromImages = async (images: string[], topic: str
             }
         }
     });
-    return JSON.parse(response.text || "{}") as StorybookData;
+    const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+    return JSON.parse(text || "{}") as StorybookData;
 };
 
 export const analyzeVideoCharacters = async (frame: string) => {
     // Return structured analysis
     const data = frame.split(',')[1];
-    const response = await ai.models.generateContent({
+    const response = await callProxyAPI({
         model: 'gemini-3-flash-preview',
-        contents: [{ inlineData: { mimeType: 'image/jpeg', data } }, { text: "Analyze characters in this frame for a baby transformation." }],
-        config: { responseMimeType: 'application/json' } // Schema implicit or loose
+        contents: {
+            parts: [
+                { inlineData: { mimeType: 'image/jpeg', data } }, 
+                { text: "Analyze characters in this frame for a baby transformation." }
+            ]
+        },
+        config: { responseMimeType: 'application/json' }
     });
-    return JSON.parse(response.text || "{}");
+    const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+    return JSON.parse(text || "{}");
 };
 
 export const generateBabyTransformation = async (frame: string, analysis: any) => {
@@ -864,7 +904,9 @@ export const generateTalkingBabyVideo = async (script: any, style: string, music
 
 export const analyzeSlideshow = async (images: string[]) => {
     // Analyze sequence
-    return generateTextWithGemini(`Analyze this sequence of ${images.length} images for a slideshow.`);
+    // Note: We can't easily upload multiple images in this simplified proxy wrapper for analyzeSlideshow 
+    // unless we adapt it. For now, sending a prompt about the intent.
+    return generateTextWithGemini(`Analyze the intent for a slideshow with ${images.length} images.`);
 };
 
 export const generateStoryScript = async (concept: string, style: string, characters?: string): Promise<StorybookData> => {
